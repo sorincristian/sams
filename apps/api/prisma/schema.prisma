@@ -8,74 +8,153 @@ datasource db {
 }
 
 model Garage {
-  id             String          @id @default(cuid())
-  code           String          @unique
-  name           String
-  buses          Bus[]
-  users          User[]
-  inventoryItems InventoryItem[]
-  workOrders     WorkOrder[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                    String                 @id @default(cuid())
+  code                  String                 @unique
+  name                  String
+  buses                 Bus[]
+  users                 User[]
+  inventoryItems        InventoryItem[]
+  workOrders            WorkOrder[]
+  inventoryTransactions InventoryTransaction[]
+  workOrderPartUsages   WorkOrderPartUsage[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
 }
 
 model Bus {
-  id             String      @id @default(cuid())
-  fleetNumber    String      @unique
-  model          String
-  manufacturer   String
-  status         String      @default("ACTIVE")
-  garageId       String
-  garage         Garage      @relation(fields: [garageId], references: [id])
-  workOrders     WorkOrder[]
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id           String      @id @default(cuid())
+  fleetNumber  String      @unique
+  model        String
+  manufacturer String
+  status       String      @default("ACTIVE")
+  garageId     String
+  garage       Garage      @relation(fields: [garageId], references: [id])
+  workOrders   WorkOrder[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 }
 
 model SeatInsertType {
-  id             String          @id @default(cuid())
-  partNumber     String          @unique
-  description    String
-  vendor         String
-  minStockLevel  Int             @default(0)
-  inventoryItems InventoryItem[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                    String                 @id @default(cuid())
+  partNumber            String                 @unique
+  description           String
+  vendor                String
+  compatibleBusModels   String[]               @default([])
+  minStockLevel         Int                    @default(0)
+  reorderPoint          Int                    @default(0)
+  unitCost              Float                  @default(0)
+  active                Boolean                @default(true)
+  inventoryItems        InventoryItem[]
+  inventoryTransactions InventoryTransaction[]
+  workOrderPartUsages   WorkOrderPartUsage[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
 }
 
 model InventoryItem {
   id               String         @id @default(cuid())
   garageId         String
   seatInsertTypeId String
-  quantity         Int            @default(0)
+  quantityOnHand   Int            @default(0)
+  quantityReserved Int            @default(0)
+  binLocation      String?
   garage           Garage         @relation(fields: [garageId], references: [id])
   seatInsertType   SeatInsertType @relation(fields: [seatInsertTypeId], references: [id])
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@unique([garageId, seatInsertTypeId])
 }
 
+model InventoryTransaction {
+  id               String               @id @default(cuid())
+  seatInsertTypeId String
+  garageId         String
+  quantity         Int
+  type             String // Enum: RECEIVE, ISSUE, TRANSFER_OUT, TRANSFER_IN, ADJUST_IN, ADJUST_OUT, RETURN, SCRAP
+  notes            String?
+  referenceType    String?
+  referenceId      String?
+  performedByUserId String
+  seatInsertType   SeatInsertType       @relation(fields: [seatInsertTypeId], references: [id])
+  garage           Garage               @relation(fields: [garageId], references: [id])
+  performedByUser  User                 @relation(fields: [performedByUserId], references: [id])
+  workOrderUsages  WorkOrderPartUsage[]
+  createdAt        DateTime             @default(now())
+}
+
 model WorkOrder {
-  id               String   @id @default(cuid())
-  workOrderNumber  String   @unique
-  status           String   @default("OPEN")
-  priority         String   @default("MEDIUM")
+  id               String               @id @default(cuid())
+  workOrderNumber  String               @unique
+  status           String               @default("OPEN")
+  priority         String               @default("MEDIUM")
   issueDescription String
   busId            String
   garageId         String
-  bus              Bus      @relation(fields: [busId], references: [id])
-  garage           Garage   @relation(fields: [garageId], references: [id])
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  bus              Bus                  @relation(fields: [busId], references: [id])
+  garage           Garage               @relation(fields: [garageId], references: [id])
+  partUsages       WorkOrderPartUsage[]
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+}
+
+model WorkOrderPartUsage {
+  id                     String                @id @default(cuid())
+  workOrderId            String
+  seatInsertTypeId       String
+  garageId               String
+  quantity               Int
+  issuedByUserId         String
+  inventoryTransactionId String?               @unique
+  notes                  String?
+  workOrder              WorkOrder             @relation(fields: [workOrderId], references: [id])
+  seatInsertType         SeatInsertType        @relation(fields: [seatInsertTypeId], references: [id])
+  garage                 Garage                @relation(fields: [garageId], references: [id])
+  issuedByUser           User                  @relation(fields: [issuedByUserId], references: [id])
+  inventoryTransaction   InventoryTransaction? @relation(fields: [inventoryTransactionId], references: [id])
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
 }
 
 model User {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  role         String
-  garageId     String?
-  garage       Garage?  @relation(fields: [garageId], references: [id])
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                    String                 @id @default(cuid())
+  name                  String
+  email                 String                 @unique
+  passwordHash          String
+  role                  String
+  garageId              String?
+  garage                Garage?                @relation(fields: [garageId], references: [id])
+  inventoryTransactions InventoryTransaction[]
+  workOrderPartUsages   WorkOrderPartUsage[]
+  auditLogs             AuditLog[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String
+  before    Json?
+  after     Json?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// FUTURE PHASES STUBS
+model Vendor {
+  id   String @id @default(cuid())
+  name String @unique
+}
+
+model PurchaseOrder {
+  id     String @id @default(cuid())
+  number String @unique
+}
+
+model PurchaseOrderLine {
+  id              String @id @default(cuid())
+  purchaseOrderId String
 }

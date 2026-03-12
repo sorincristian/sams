@@ -17,7 +17,7 @@ export function InventoryPage() {
                 <td>{row.garage.name}</td>
                 <td>{row.seatInsertType.partNumber}</td>
                 <td>{row.seatInsertType.description}</td>
-                <td>{row.quantity}</td>
+                <td>{row.quantityOnHand}</td>
               </tr>
             ))}
           </tbody>

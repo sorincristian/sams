@@ -29,7 +29,7 @@ export function DashboardPage() {
                   <tr key={`${row.garage}-${row.partNumber}`}>
                     <td>{row.garage}</td>
                     <td>{row.partNumber}</td>
-                    <td>{row.quantity} / min {row.minStockLevel}</td>
+                    <td>{row.quantityOnHand} / min {row.minStockLevel}</td>
                   </tr>
                 ))}
             </tbody>

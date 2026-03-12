@@ -23,12 +23,12 @@ router.get("/", requireAuth, async (req, res) => {
   ]);
 
   const lowStock = inventoryRows
-    .filter((row) => row.quantity <= row.seatInsertType.minStockLevel)
+    .filter((row) => row.quantityOnHand <= row.seatInsertType.minStockLevel)
     .map((row) => ({
       garage: row.garage.name,
       partNumber: row.seatInsertType.partNumber,
       description: row.seatInsertType.description,
-      quantity: row.quantity,
+      quantityOnHand: row.quantityOnHand,
       minStockLevel: row.seatInsertType.minStockLevel
     }));
 

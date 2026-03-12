@@ -34,7 +34,7 @@ export interface InventoryRow {
   id: string;
   garageId: string;
   seatInsertTypeId: string;
-  quantity: number;
+  quantityOnHand: number;
   garage: Garage;
   seatInsertType: SeatInsertType;
 }
@@ -63,7 +63,7 @@ export interface DashboardResponse {
     garage: string;
     partNumber: string;
     description: string;
-    quantity: number;
+    quantityOnHand: number;
     minStockLevel: number;
   }>;
   recentWorkOrders: WorkOrder[];

@@ -48,8 +48,8 @@ async function main() {
           seatInsertTypeId: created.id
         }
       },
-      update: { quantity: 50 },
-      create: { garageId: malvern.id, seatInsertTypeId: created.id, quantity: 50 }
+      update: { quantityOnHand: 50 },
+      create: { garageId: malvern.id, seatInsertTypeId: created.id, quantityOnHand: 50 }
     });
   }
 
