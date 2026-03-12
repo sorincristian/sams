@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Garage {
+  id             String          @id @default(cuid())
+  code           String          @unique
+  name           String
+  buses          Bus[]
+  users          User[]
+  inventoryItems InventoryItem[]
+  workOrders     WorkOrder[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model Bus {
+  id             String      @id @default(cuid())
+  fleetNumber    String      @unique
+  model          String
+  manufacturer   String
+  status         String      @default("ACTIVE")
+  garageId       String
+  garage         Garage      @relation(fields: [garageId], references: [id])
+  workOrders     WorkOrder[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model SeatInsertType {
+  id             String          @id @default(cuid())
+  partNumber     String          @unique
+  description    String
+  vendor         String
+  minStockLevel  Int             @default(0)
+  inventoryItems InventoryItem[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model InventoryItem {
+  id               String         @id @default(cuid())
+  garageId         String
+  seatInsertTypeId String
+  quantity         Int            @default(0)
+  garage           Garage         @relation(fields: [garageId], references: [id])
+  seatInsertType   SeatInsertType @relation(fields: [seatInsertTypeId], references: [id])
+
+  @@unique([garageId, seatInsertTypeId])
+}
+
+model WorkOrder {
+  id               String   @id @default(cuid())
+  workOrderNumber  String   @unique
+  status           String   @default("OPEN")
+  priority         String   @default("MEDIUM")
+  issueDescription String
+  busId            String
+  garageId         String
+  bus              Bus      @relation(fields: [busId], references: [id])
+  garage           Garage   @relation(fields: [garageId], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String
+  garageId     String?
+  garage       Garage?  @relation(fields: [garageId], references: [id])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

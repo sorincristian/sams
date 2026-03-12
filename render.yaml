@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: sams-api
+    runtime: node
+    plan: starter
+    buildCommand: corepack enable && pnpm install --frozen-lockfile=false && pnpm --filter @sams/api prisma generate && pnpm --filter @sams/api build
+    startCommand: cd apps/api && pnpm prisma migrate deploy && pnpm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sams-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 12h
+      - key: CORS_ORIGIN
+        value: https://sams-web.onrender.com
+
+  - type: web
+    name: sams-web
+    runtime: static
+    buildCommand: corepack enable && pnpm install --frozen-lockfile=false && pnpm --filter @sams/web build
+    staticPublishPath: apps/web/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://sams-api.onrender.com/api
+
+databases:
+  - name: sams-postgres
+    plan: starter
+    databaseName: sams_prod
+    user: sams_user

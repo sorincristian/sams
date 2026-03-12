@@ -1,0 +1,9 @@
+Scope: all 4 workspace projects
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Progress: resolved 23, reused 23, downloaded 0, added 0
+Progress: resolved 25, reused 24, downloaded 0, added 0
+Progress: resolved 156, reused 130, downloaded 0, added 0
+Progress: resolved 269, reused 197, downloaded 0, added 0
+Packages: +198
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ERR_PNPM_ENOENT  ENOENT: no such file or directory, rename 'F:\SIMS\sams-render\node_modules\.pnpm\@types+cors@2.8.19\node_modules\@types\node' -> 'F:\SIMS\sams-render\node_modules\.pnpm\@types+cors@2.8.19\node_modules\@types\.ignored_node'
