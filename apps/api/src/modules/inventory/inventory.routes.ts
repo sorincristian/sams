@@ -30,6 +30,15 @@ router.post("/transaction", requireAuth, async (req, res) => {
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ message: "Invalid request payload" });
 
+  const actorUserId = (req as any).user?.userId;
+  if (!actorUserId) {
+    return res.status(401).json({ message: "Unauthorized: Missing user identity" });
+  }
+
+  if (["TRANSFER_IN", "TRANSFER_OUT"].includes(parsed.data.type)) {
+    return res.status(400).json({ message: "Transfer workflows require a two-garage endpoint; use ADJUST for single locations." });
+  }
+
   try {
     const result = await prisma.$transaction(async (tx) => {
       // 1. Fetch current item securely
@@ -67,9 +76,7 @@ router.post("/transaction", requireAuth, async (req, res) => {
           notes: parsed.data.notes,
           referenceType: parsed.data.referenceType,
           referenceId: parsed.data.referenceId,
-          // Extract authenticated User ID attached directly via JWT (requires valid JWT auth middleware payload)
-          // For transition safety if req.user is dynamically missing, fallback to explicit UI payload injection (must fix frontend payload properly next) -> Fallback injected explicitly per TS types.
-          performedByUserId: (req as any).user?.userId || "UNKNOWN_USER_ID" // Ideally sourced from `req.user.id` upon JWT unpacking
+          performedByUserId: actorUserId
         }
       });
 
@@ -79,13 +86,13 @@ router.post("/transaction", requireAuth, async (req, res) => {
           action: "INVENTORY_TRANSACTION_EXECUTE",
           entity: "InventoryItem",
           entityId: item.id,
-          userId: (req as any).user?.userId || "UNKNOWN_USER_ID",
+          userId: actorUserId,
           before: { quantityOnHand: currentQOH },
           after: { quantityOnHand: newQOH, transactionId: transactionRecord.id, type: parsed.data.type }
         }
       });
 
-      return updatedItem;
+      return { updatedItem, transactionRecord };
     });
 
     res.json(result);
