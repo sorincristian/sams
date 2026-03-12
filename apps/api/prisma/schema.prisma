@@ -7,6 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum InventoryTransactionType {
+  RECEIVE
+  ISSUE
+  TRANSFER_OUT
+  TRANSFER_IN
+  ADJUST_IN
+  ADJUST_OUT
+  RETURN
+  SCRAP
+}
+
 model Garage {
   id                    String                 @id @default(cuid())
   code                  String                 @unique
@@ -55,6 +66,7 @@ model InventoryItem {
   id               String         @id @default(cuid())
   garageId         String
   seatInsertTypeId String
+  quantity         Int            @default(0) // Legacy column kept for additive safety
   quantityOnHand   Int            @default(0)
   quantityReserved Int            @default(0)
   binLocation      String?
@@ -67,20 +79,20 @@ model InventoryItem {
 }
 
 model InventoryTransaction {
-  id               String               @id @default(cuid())
+  id               String                   @id @default(cuid())
   seatInsertTypeId String
   garageId         String
   quantity         Int
-  type             String // Enum: RECEIVE, ISSUE, TRANSFER_OUT, TRANSFER_IN, ADJUST_IN, ADJUST_OUT, RETURN, SCRAP
+  type             InventoryTransactionType
   notes            String?
   referenceType    String?
   referenceId      String?
   performedByUserId String
-  seatInsertType   SeatInsertType       @relation(fields: [seatInsertTypeId], references: [id])
-  garage           Garage               @relation(fields: [garageId], references: [id])
-  performedByUser  User                 @relation(fields: [performedByUserId], references: [id])
+  seatInsertType   SeatInsertType           @relation(fields: [seatInsertTypeId], references: [id])
+  garage           Garage                   @relation(fields: [garageId], references: [id])
+  performedByUser  User                     @relation(fields: [performedByUserId], references: [id])
   workOrderUsages  WorkOrderPartUsage[]
-  createdAt        DateTime             @default(now())
+  createdAt        DateTime                 @default(now())
 }
 
 model WorkOrder {

@@ -4,6 +4,9 @@ ALTER TABLE "SeatInsertType" ADD COLUMN "reorderPoint" INTEGER NOT NULL DEFAULT 
 ALTER TABLE "SeatInsertType" ADD COLUMN "unitCost" DOUBLE PRECISION NOT NULL DEFAULT 0;
 ALTER TABLE "SeatInsertType" ADD COLUMN "active" BOOLEAN NOT NULL DEFAULT true;
 
+-- CreateEnum
+CREATE TYPE "InventoryTransactionType" AS ENUM ('RECEIVE', 'ISSUE', 'TRANSFER_OUT', 'TRANSFER_IN', 'ADJUST_IN', 'ADJUST_OUT', 'RETURN', 'SCRAP');
+
 -- Notice: SeatInsertType already has updatedAt in the database from init, skipping duplicate ADD COLUMN.
 
 -- AlterTable: InventoryItem
@@ -31,7 +34,7 @@ CREATE TABLE "InventoryTransaction" (
     "seatInsertTypeId" TEXT NOT NULL,
     "garageId" TEXT NOT NULL,
     "quantity" INTEGER NOT NULL,
-    "type" TEXT NOT NULL,
+    "type" "InventoryTransactionType" NOT NULL,
     "notes" TEXT,
     "referenceType" TEXT,
     "referenceId" TEXT,
