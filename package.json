@@ -9,5 +9,8 @@
     "db:generate": "pnpm --filter @sams/api prisma generate",
     "db:migrate": "pnpm --filter @sams/api prisma migrate dev",
     "db:seed": "pnpm --filter @sams/api prisma db seed"
+  },
+  "dependencies": {
+    "prisma": "^5.22.0"
   }
 }
