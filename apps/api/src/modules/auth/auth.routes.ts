@@ -8,32 +8,37 @@ import jwt, { SignOptions } from "jsonwebtoken";
 const router = Router();
 
 router.post("/login", async (req, res) => {
-  const schema = z.object({
-    email: z.string().email(),
-    password: z.string().min(1)
-  });
+  try {
+    const schema = z.object({
+      email: z.string().email(),
+      password: z.string().min(1)
+    });
 
-  const parsed = schema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ message: "Invalid request" });
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: "Invalid request" });
 
-  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-  if (!user) return res.status(401).json({ message: "Invalid credentials" });
+    const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+    if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
-  const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
-  if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+    const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
+    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
-  const jwtSecret = process.env.JWT_SECRET;
-  if (!jwtSecret) {
-    throw new Error("JWT_SECRET environment variable missing");
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error("JWT_SECRET environment variable missing");
+    }
+    const expiresIn = (process.env.JWT_EXPIRES_IN || "12h") as SignOptions["expiresIn"];
+    const payload = { sub: user.id, email: user.email, role: user.role };
+    const token = jwt.sign(payload, jwtSecret, { expiresIn });
+
+    res.json({
+      token,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+    });
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
-  const expiresIn = (process.env.JWT_EXPIRES_IN || "12h") as SignOptions["expiresIn"];
-  const payload = { sub: user.id, email: user.email, role: user.role };
-  const token = jwt.sign(payload, jwtSecret, { expiresIn });
-
-  res.json({
-    token,
-    user: { id: user.id, email: user.email, name: user.name, role: user.role }
-  });
 });
 
 router.get("/me", requireAuth, async (req: AuthRequest, res) => {
