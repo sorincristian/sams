@@ -2,7 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "../../prisma.js";
-import { signToken, requireAuth, type AuthRequest } from "../../auth.js";
+import { requireAuth, type AuthRequest } from "../../auth.js";
+import jwt, { SignOptions } from "jsonwebtoken";
 
 const router = Router();
 
@@ -21,7 +22,14 @@ router.post("/login", async (req, res) => {
   const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
   if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
-  const token = signToken({ sub: user.id, email: user.email, role: user.role });
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) {
+    throw new Error("JWT_SECRET environment variable is missing");
+  }
+  const expiresIn = (process.env.JWT_EXPIRES_IN || "12h") as SignOptions["expiresIn"];
+  const payload = { sub: user.id, email: user.email, role: user.role };
+  const token = jwt.sign(payload, jwtSecret, { expiresIn });
+
   res.json({
     token,
     user: { id: user.id, email: user.email, name: user.name, role: user.role }
