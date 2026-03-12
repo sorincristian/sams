@@ -12,15 +12,32 @@ import workOrdersRoutes from "./modules/workOrders/workOrders.routes.js";
 
 const app = express();
 
-const corsOptions = {
-  origin: process.env.CORS_ORIGIN,
-  credentials: true,
-  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"]
-};
+const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
 
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+// Explicit preflight/CORS handling
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", allowedOrigin);
+  res.header("Vary", "Origin");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
+  next();
+});
+
+// Standard middleware
+app.use(
+  cors({
+    origin: allowedOrigin,
+    credentials: true,
+  })
+);
+
+app.use(helmet());
 app.use(express.json());
 app.use(morgan("dev"));
 
