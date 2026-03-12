@@ -14,7 +14,6 @@ const app = express();
 
 const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
 
-// Explicit preflight/CORS handling
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.header("Access-Control-Allow-Origin", allowedOrigin);
   res.header("Vary", "Origin");
@@ -29,7 +28,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Standard middleware
 app.use(
   cors({
     origin: allowedOrigin,
@@ -41,8 +39,8 @@ app.use(helmet());
 app.use(express.json());
 app.use(morgan("dev"));
 
-app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "sams-api", phase: "ready" });
+app.get("/health", (_req: Request, res: Response) => {
+  res.status(200).json({ ok: true });
 });
 
 app.use("/api/auth", authRoutes);
@@ -50,9 +48,5 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api", fleetRoutes); // Handles /api/garages and /api/buses
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/work-orders", workOrdersRoutes);
-
-app.use((_req, res) => {
-  res.status(404).json({ message: "Not found" });
-});
 
 export default app;
