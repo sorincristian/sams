@@ -3,7 +3,7 @@ services:
     name: sams-api
     runtime: node
     plan: starter
-    buildCommand: pnpm install && pnpm --filter @sams/api prisma generate && pnpm --filter @sams/api prisma migrate deploy && pnpm --filter @sams/api build
+    buildCommand: pnpm install && pnpm prisma generate && pnpm prisma migrate deploy && pnpm build
     startCommand: cd apps/api && pnpm start
     healthCheckPath: /health
     autoDeploy: true
