@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express, { Request, Response, NextFunction } from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -12,16 +12,25 @@ import workOrdersRoutes from "./modules/workOrders/workOrders.routes.js";
 
 const app = express();
 
-const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
+const allowedOrigin = process.env.CORS_ORIGIN || "https://sams-web-emwb.onrender.com";
 
-app.use(cors({
-  origin: allowedOrigin,
+const corsOptions: cors.CorsOptions = {
+  origin(origin, callback) {
+    // allow browser requests from the configured frontend
+    // allow server-to-server requests with no origin
+    if (!origin || origin === allowedOrigin) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
-  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
-  allowedHeaders: ["Content-Type","Authorization"]
-}));
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  optionsSuccessStatus: 204,
+};
 
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(helmet());
 app.use(express.json());
