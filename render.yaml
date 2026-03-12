@@ -23,7 +23,7 @@ services:
       - key: JWT_EXPIRES_IN
         value: 12h
       - key: CORS_ORIGIN
-        value: https://sams-web.onrender.com
+        value: https://sams-web-emwb.onrender.com
 
   - type: web
     name: sams-web
@@ -36,7 +36,7 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://sams-api.onrender.com/api
+        value: https://sams-api-vfvj.onrender.com/api
 
 databases:
   - name: sams-postgres
