@@ -11,23 +11,25 @@ import workOrdersRoutes from "./modules/workOrders/workOrders.routes.js";
 
 const app = express();
 
-const allowedOrigin =
-  process.env.CORS_ORIGIN || "https://sams-web-emwb.onrender.com";
+const allowedOrigins = [
+  "https://sams-web-emwb.onrender.com",
+  process.env.CORS_ORIGIN
+].filter(Boolean);
 
 // Single global CORS/preflight handler
 app.use((req: Request, res: Response, next: NextFunction) => {
-  const requestOrigin = req.headers.origin;
+  const origin = req.headers.origin;
 
-  if (requestOrigin && requestOrigin === allowedOrigin) {
-    res.setHeader("Access-Control-Allow-Origin", requestOrigin);
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
   }
 
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
   res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET,POST,PUT,DELETE,OPTIONS"
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
   );
 
   if (req.method === "OPTIONS") {

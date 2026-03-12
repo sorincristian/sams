@@ -1,7 +1,7 @@
 import axios from "axios";
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "/api"
+  baseURL: import.meta.env.VITE_API_BASE_URL || "https://sams-platform-2-backend.onrender.com/api"
 });
 
 export function setAuthToken(token: string | null) {

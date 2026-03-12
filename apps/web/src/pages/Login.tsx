@@ -16,8 +16,13 @@ export function Login({ onLogin }: { onLogin: (token: string) => void }) {
       setAuthToken(res.data.token);
       onLogin(res.data.token);
       navigate("/");
-    } catch {
-      setError("Invalid credentials");
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        setError("Invalid credentials");
+      } else {
+        setError("Server connection error");
+      }
     }
   }
 
