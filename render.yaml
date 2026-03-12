@@ -3,8 +3,8 @@ services:
     name: sams-api
     runtime: node
     plan: starter
-    buildCommand: corepack enable && pnpm install --frozen-lockfile=false && pnpm --filter @sams/api prisma generate && pnpm --filter @sams/api build
-    startCommand: cd apps/api && pnpm prisma migrate deploy && pnpm start
+    buildCommand: pnpm install && pnpm --filter @sams/api prisma generate && pnpm --filter @sams/api prisma migrate deploy && pnpm --filter @sams/api build
+    startCommand: cd apps/api && pnpm start
     healthCheckPath: /health
     autoDeploy: true
     envVars:
