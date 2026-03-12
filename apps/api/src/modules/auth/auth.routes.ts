@@ -24,7 +24,7 @@ router.post("/login", async (req, res) => {
 
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
-    throw new Error("JWT_SECRET environment variable is missing");
+    throw new Error("JWT_SECRET environment variable missing");
   }
   const expiresIn = (process.env.JWT_EXPIRES_IN || "12h") as SignOptions["expiresIn"];
   const payload = { sub: user.id, email: user.email, role: user.role };
