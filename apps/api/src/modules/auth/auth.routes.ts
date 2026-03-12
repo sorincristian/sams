@@ -17,27 +17,44 @@ router.post("/login", async (req, res) => {
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: "Invalid request" });
 
+    console.log("LOGIN ATTEMPT:", { email: parsed.data.email });
+
     const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-    if (!user) return res.status(401).json({ message: "Invalid credentials" });
+    if (!user) {
+      console.error("LOGIN FAILED: User not found", parsed.data.email);
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (!user.passwordHash) {
+      console.error("LOGIN FAILED: User missing passwordHash", user.email);
+      return res.status(500).json({ message: "User record invalid" });
+    }
 
     const ok = await bcrypt.compare(parsed.data.password, user.passwordHash);
-    if (!ok) return res.status(401).json({ message: "Invalid credentials" });
+    if (!ok) {
+      console.error("LOGIN FAILED: Password mismatch", user.email);
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     const jwtSecret = process.env.JWT_SECRET;
     if (!jwtSecret) {
-      throw new Error("JWT_SECRET environment variable missing");
+      console.error("LOGIN FAILED: JWT_SECRET environment variable is missing");
+      return res.status(500).json({ message: "Server auth misconfiguration" });
     }
+
     const expiresIn = (process.env.JWT_EXPIRES_IN || "12h") as SignOptions["expiresIn"];
     const payload = { sub: user.id, email: user.email, role: user.role };
     const token = jwt.sign(payload, jwtSecret, { expiresIn });
+
+    console.log("LOGIN SUCCESS:", { email: user.email });
 
     res.json({
       token,
       user: { id: user.id, email: user.email, name: user.name, role: user.role }
     });
   } catch (err) {
-    console.error("LOGIN ERROR:", err);
-    res.status(500).json({ error: "Internal server error" });
+    console.error("LOGIN ROUTE ERROR:", err);
+    res.status(500).json({ error: "Internal server error during login" });
   }
 });
 
