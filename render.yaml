@@ -40,6 +40,6 @@ services:
 
 databases:
   - name: sams-postgres
-    plan: starter
+    plan: basic-1gb
     databaseName: sams_prod
     user: sams_user
