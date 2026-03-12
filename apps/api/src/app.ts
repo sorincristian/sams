@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -15,7 +15,7 @@ const app = express();
 const allowedOrigin = process.env.CORS_ORIGIN || "http://localhost:5173";
 
 // Explicit preflight/CORS handling
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   res.header("Access-Control-Allow-Origin", allowedOrigin);
   res.header("Vary", "Origin");
   res.header("Access-Control-Allow-Credentials", "true");
