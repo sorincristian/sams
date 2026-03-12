@@ -40,6 +40,16 @@ app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ ok: true });
 });
 
+app.options("/api/auth/login", (_req: Request, res: Response) => {
+  const allowedOrigin = process.env.CORS_ORIGIN || "https://sams-web-emwb.onrender.com";
+  res.header("Access-Control-Allow-Origin", allowedOrigin);
+  res.header("Vary", "Origin");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  return res.sendStatus(204);
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api", fleetRoutes); // Handles /api/garages and /api/buses
