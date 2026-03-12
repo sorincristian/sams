@@ -5,8 +5,6 @@ services:
     plan: starter
     buildCommand: |
       pnpm install
-      pnpm --filter @sams/api exec prisma db push --schema=./apps/api/prisma/schema.prisma
-      pnpm --filter @sams/api exec prisma generate --schema=./apps/api/prisma/schema.prisma
       pnpm build
     startCommand: cd apps/api && pnpm start
     healthCheckPath: /health
