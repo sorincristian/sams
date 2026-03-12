@@ -10,9 +10,8 @@ export function signToken(payload: { sub: string; email: string; role: string })
     throw new Error("JWT_SECRET environment variable is completely missing or undefined");
   }
 
-  // Ensure options strictly match JSON Web Token SignOptions
   const options: SignOptions = {
-    expiresIn: (process.env.JWT_EXPIRES_IN as string) || "12h"
+    expiresIn: (process.env.JWT_EXPIRES_IN ?? "12h") as SignOptions["expiresIn"]
   };
 
   return jwt.sign(payload, process.env.JWT_SECRET, options);
