@@ -5,6 +5,7 @@ import { FleetPage } from "../pages/FleetPage";
 import { InventoryPage } from "../pages/InventoryPage";
 import { TransactionsLedgerPage } from "../pages/TransactionsLedgerPage";
 import { WorkOrdersPage } from "../pages/WorkOrdersPage";
+import { WorkOrderDetailPage } from "../pages/WorkOrderDetailPage";
 
 export function Shell({ user, onLogout }: { user: { name: string; role: string } | null; onLogout: () => void }) {
   return (
@@ -34,6 +35,7 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/transactions" element={<TransactionsLedgerPage />} />
           <Route path="/work-orders" element={<WorkOrdersPage />} />
+          <Route path="/work-orders/:id" element={<WorkOrderDetailPage />} />
         </Routes>
       </main>
     </div>

@@ -103,14 +103,17 @@ router.post("/transaction", requireAuth, async (req, res) => {
 });
 
 router.get("/transactions", requireAuth, async (req, res) => {
+  const { referenceId } = req.query;
+  const where = referenceId ? { referenceId: String(referenceId) } : {};
   const transactions = await prisma.inventoryTransaction.findMany({
+    where,
     include: {
       garage: true,
       seatInsertType: true,
       performedByUser: { select: { id: true, name: true, email: true } }
     },
     orderBy: { createdAt: "desc" },
-    take: 100
+    take: 200
   });
   res.json(transactions);
 });

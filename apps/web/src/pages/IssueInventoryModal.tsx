@@ -1,6 +1,6 @@
 import React from "react";
 import { api } from "../api";
-import type { InventoryRow } from "@sams/types";
+import type { InventoryRow, InventoryTransactionType } from "@sams/types";
 
 interface WorkOrder {
   id: string;
@@ -10,49 +10,67 @@ interface WorkOrder {
 }
 
 interface Props {
-  item: InventoryRow;
+  item: InventoryRow | null;
+  prefilledWorkOrderId?: string;
   onClose: () => void;
   onDone: () => void;
 }
 
-export function IssueInventoryModal({ item, onClose, onDone }: Props) {
+export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, onClose, onDone }: Props) {
   const [workOrders, setWorkOrders] = React.useState<WorkOrder[]>([]);
+  const [inventoryItems, setInventoryItems] = React.useState<InventoryRow[]>([]);
   const [loadingWOs, setLoadingWOs] = React.useState(true);
-  const [selectedWO, setSelectedWO] = React.useState("");
+  const [loadingItems, setLoadingItems] = React.useState(!initialItem);
+
+  // selected state
+  const [selectedWO, setSelectedWO] = React.useState(prefilledWorkOrderId ?? "");
+  const [selectedItemId, setSelectedItemId] = React.useState(initialItem?.id ?? "");
   const [quantity, setQuantity] = React.useState(1);
   const [notes, setNotes] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Resolved item (from picker or prop)
+  const resolvedItem = initialItem ?? inventoryItems.find((i) => i.id === selectedItemId) ?? null;
+  const projectedQOH = resolvedItem ? resolvedItem.quantityOnHand - quantity : null;
 
   React.useEffect(() => {
     api.get("/work-orders")
       .then((res) => {
         const open = (res.data as WorkOrder[]).filter((wo) => wo.status === "OPEN");
         setWorkOrders(open);
-        if (open.length > 0) setSelectedWO(open[0].id);
+        if (!prefilledWorkOrderId && open.length > 0 && !selectedWO) {
+          setSelectedWO(open[0].id);
+        }
       })
       .finally(() => setLoadingWOs(false));
-  }, []);
 
-  const projectedQOH = item.quantityOnHand - quantity;
+    if (!initialItem) {
+      api.get("/inventory")
+        .then((res) => {
+          setInventoryItems(res.data);
+          if (res.data.length > 0) setSelectedItemId(res.data[0].id);
+        })
+        .finally(() => setLoadingItems(false));
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (quantity < 1) return;
-    if (projectedQOH < 0) {
-      setError(`Cannot issue ${quantity} — only ${item.quantityOnHand} on hand.`);
-      return;
-    }
-    if (!selectedWO) {
-      setError("Please select a work order.");
-      return;
-    }
-    setLoading(true);
     setError(null);
+    if (!selectedWO) { setError("Please select a work order."); return; }
+    if (!resolvedItem) { setError("Please select an inventory item."); return; }
+    if (quantity < 1) { setError("Quantity must be at least 1."); return; }
+    if (projectedQOH !== null && projectedQOH < 0) {
+      setError(`Cannot issue ${quantity} — only ${resolvedItem.quantityOnHand} on hand.`);
+      return;
+    }
+
+    setLoading(true);
     try {
       await api.post("/inventory/transaction", {
-        inventoryItemId: item.id,
-        type: "ISSUE",
+        inventoryItemId: resolvedItem.id,
+        type: "ISSUE" as InventoryTransactionType,
         quantity,
         notes: notes.trim() || undefined,
         referenceType: "WORK_ORDER",
@@ -70,18 +88,50 @@ export function IssueInventoryModal({ item, onClose, onDone }: Props) {
     <div style={overlayStyle}>
       <div style={modalStyle}>
         <h3 style={{ marginBottom: 4 }}>Issue Parts</h3>
-        <p className="muted" style={{ marginBottom: 16 }}>
-          {item.seatInsertType.partNumber} — {item.seatInsertType.description}
-          <br />Garage: {item.garage.name}
-          <br />Current on hand: <strong>{item.quantityOnHand}</strong>
-        </p>
+
+        {resolvedItem && (
+          <p className="muted" style={{ marginBottom: 16 }}>
+            {resolvedItem.seatInsertType.partNumber} — {resolvedItem.seatInsertType.description}
+            <br />Garage: {resolvedItem.garage.name}
+            <br />Current on hand: <strong>{resolvedItem.quantityOnHand}</strong>
+          </p>
+        )}
 
         {error && <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>}
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {/* Inventory item picker — only shown when not pre-selected */}
+          {!initialItem && (
+            <label>
+              <div style={{ marginBottom: 4, fontWeight: 600 }}>Inventory Item</div>
+              {loadingItems ? (
+                <div className="muted">Loading inventory...</div>
+              ) : (
+                <select
+                  value={selectedItemId}
+                  onChange={(e) => setSelectedItemId(e.target.value)}
+                  required
+                  style={selectStyle}
+                >
+                  {inventoryItems.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.seatInsertType.partNumber} — {item.seatInsertType.description} ({item.garage.name}, QOH: {item.quantityOnHand})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </label>
+          )}
+
+          {/* Work Order picker */}
           <label>
             <div style={{ marginBottom: 4, fontWeight: 600 }}>Work Order</div>
-            {loadingWOs ? (
+            {prefilledWorkOrderId ? (
+              <div style={{ padding: "8px 10px", background: "#111827", borderRadius: 6, color: "#9ca3af", fontSize: "0.9rem" }}>
+                {workOrders.find((wo) => wo.id === prefilledWorkOrderId)?.workOrderNumber ?? prefilledWorkOrderId}
+                <span style={{ marginLeft: 8, fontSize: "0.75rem" }}>(pre-selected)</span>
+              </div>
+            ) : loadingWOs ? (
               <div className="muted">Loading work orders...</div>
             ) : workOrders.length === 0 ? (
               <div style={{ color: "#f59e0b" }}>No open work orders found.</div>
@@ -90,7 +140,7 @@ export function IssueInventoryModal({ item, onClose, onDone }: Props) {
                 value={selectedWO}
                 onChange={(e) => setSelectedWO(e.target.value)}
                 required
-                style={{ width: "100%", background: "#111827", color: "#f9fafb", border: "1px solid #374151", borderRadius: 6, padding: "8px 10px" }}
+                style={selectStyle}
               >
                 {workOrders.map((wo) => (
                   <option key={wo.id} value={wo.id}>
@@ -102,11 +152,11 @@ export function IssueInventoryModal({ item, onClose, onDone }: Props) {
           </label>
 
           <label>
-            <div style={{ marginBottom: 4, fontWeight: 600 }}>Quantity to issue</div>
+            <div style={{ marginBottom: 4, fontWeight: 600 }}>Quantity</div>
             <input
               type="number"
               min={1}
-              max={item.quantityOnHand}
+              max={resolvedItem?.quantityOnHand}
               value={quantity}
               onChange={(e) => setQuantity(Number(e.target.value))}
               required
@@ -114,12 +164,14 @@ export function IssueInventoryModal({ item, onClose, onDone }: Props) {
             />
           </label>
 
-          <div style={{ padding: "10px 14px", background: "#111827", borderRadius: 6, fontSize: "0.9rem" }}>
-            Remaining after issue:{" "}
-            <strong style={{ color: projectedQOH < 0 ? "#ef4444" : projectedQOH === 0 ? "#f59e0b" : "#10b981" }}>
-              {projectedQOH}
-            </strong>
-          </div>
+          {resolvedItem && projectedQOH !== null && (
+            <div style={{ padding: "10px 14px", background: "#111827", borderRadius: 6, fontSize: "0.9rem" }}>
+              Remaining after issue:{" "}
+              <strong style={{ color: projectedQOH < 0 ? "#ef4444" : projectedQOH === 0 ? "#f59e0b" : "#10b981" }}>
+                {projectedQOH}
+              </strong>
+            </div>
+          )}
 
           <label>
             <div style={{ marginBottom: 4, fontWeight: 600 }}>Notes (optional)</div>
@@ -127,7 +179,7 @@ export function IssueInventoryModal({ item, onClose, onDone }: Props) {
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. seat row 3, replaced worn inserts"
+              placeholder="e.g. row 3 replacement"
               style={{ width: "100%" }}
             />
           </label>
@@ -139,7 +191,7 @@ export function IssueInventoryModal({ item, onClose, onDone }: Props) {
             <button
               type="submit"
               style={{ width: "auto", background: "#dc2626" }}
-              disabled={loading || projectedQOH < 0 || workOrders.length === 0}
+              disabled={loading || (projectedQOH !== null && projectedQOH < 0) || workOrders.length === 0}
             >
               {loading ? "Saving..." : "Confirm Issue"}
             </button>
@@ -149,6 +201,15 @@ export function IssueInventoryModal({ item, onClose, onDone }: Props) {
     </div>
   );
 }
+
+const selectStyle: React.CSSProperties = {
+  width: "100%",
+  background: "#111827",
+  color: "#f9fafb",
+  border: "1px solid #374151",
+  borderRadius: 6,
+  padding: "8px 10px",
+};
 
 const overlayStyle: React.CSSProperties = {
   position: "fixed",
@@ -166,6 +227,8 @@ const modalStyle: React.CSSProperties = {
   borderRadius: 10,
   padding: 28,
   width: "100%",
-  maxWidth: 480,
+  maxWidth: 500,
+  maxHeight: "90vh",
+  overflowY: "auto",
   boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
 };

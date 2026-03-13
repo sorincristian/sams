@@ -1,9 +1,11 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { Bus, WorkOrder } from "@sams/types";
 
 export function WorkOrdersPage() {
-  const [rows, setRows] = React.useState<WorkOrder[]>([]);
+  const navigate = useNavigate();
+  const [rows, setRows] = React.useState<WorkOrder[]>([]);;
   const [buses, setBuses] = React.useState<Bus[]>([]);
   const [busId, setBusId] = React.useState("");
   const [issueDescription, setIssueDescription] = React.useState("");
@@ -128,7 +130,11 @@ export function WorkOrdersPage() {
               </thead>
               <tbody>
                 {rows.map((wo) => (
-                  <tr key={wo.id}>
+                  <tr
+                    key={wo.id}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => navigate(`/work-orders/${wo.id}`)}
+                  >
                     <td><strong>{wo.workOrderNumber}</strong></td>
                     <td>{wo.bus.fleetNumber}</td>
                     <td>

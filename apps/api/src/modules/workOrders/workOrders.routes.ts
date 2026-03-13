@@ -13,6 +13,17 @@ router.get("/", requireAuth, async (req, res) => {
   res.json(workOrders);
 });
 
+router.get("/:id", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const wo = await prisma.workOrder.findUnique({
+    where: { id },
+    include: { bus: { include: { garage: true } } }
+  });
+  if (!wo) return res.status(404).json({ message: "Work order not found" });
+  res.json(wo);
+});
+
+
 router.post("/", requireAuth, async (req, res) => {
   const schema = z.object({
     busId: z.string(),
