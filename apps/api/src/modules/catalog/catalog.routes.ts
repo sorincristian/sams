@@ -13,6 +13,34 @@ router.get("/", requireAuth, async (req, res) => {
   res.json(parts);
 });
 
+// GET /api/catalog/bus-compat — list all bus compatibility rows
+// NOTE: must be defined before /:id to avoid route shadowing
+router.get("/bus-compat", requireAuth, async (req, res) => {
+  const rows = await prisma.busCompatibility.findMany({
+    orderBy: [{ manufacturer: "asc" }, { fleetRangeStart: "asc" }],
+    include: { attachments: true, seatInsertTypes: { select: { id: true, partNumber: true, description: true } } }
+  });
+  res.json(rows);
+});
+
+// GET /api/catalog/:id/detail — full detail: part + compat rows + attachments
+router.get("/:id/detail", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const part = await prisma.seatInsertType.findUnique({
+    where: { id },
+    include: {
+      busCompatibilities: {
+        include: { attachments: true }
+      },
+      catalogAttachments: true,
+    }
+  });
+  if (!part) return res.status(404).json({ message: "Part not found" });
+  res.json(part);
+});
+
+
+
 // POST /api/catalog — create new seat insert type
 router.post("/", requireAuth, async (req, res) => {
   const schema = z.object({

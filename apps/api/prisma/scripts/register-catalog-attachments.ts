@@ -1,0 +1,192 @@
+/**
+ * register-catalog-attachments.ts
+ * Registers the known PDF diagram files as CatalogAttachment records,
+ * parses filename metadata, and links to matching BusCompatibility rows.
+ * Also links New Flyer seat inserts to New Flyer compatibility rows.
+ *
+ * Usage:
+ *   pnpm exec tsx prisma/scripts/register-catalog-attachments.ts
+ */
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+// ============================================================
+// Hardcoded metadata per PDF — exact mapping from spec
+// ============================================================
+interface PdfMeta {
+  fileName: string;
+  busTypeLabel: string;
+  manufacturer: string;
+  modelFamily: string;
+  propulsion: string | null;
+  fleetRangeLabel: string;
+}
+
+const PDF_MAP: PdfMeta[] = [
+  {
+    fileName: "BYD Bus #3750-3759 (1).pdf",
+    busTypeLabel: "BYD Bus",
+    manufacturer: "BYD",
+    modelFamily: "40 ft unknown",
+    propulsion: "Electric",
+    fleetRangeLabel: "3750-3759",
+  },
+  {
+    fileName: "New Flyer 40 ft. Electric - Bus #3700 - 3709 (1).pdf",
+    busTypeLabel: "New Flyer 40' Electric Bus",
+    manufacturer: "New Flyer",
+    modelFamily: "40 ft",
+    propulsion: "Electric",
+    fleetRangeLabel: "3700-3709",
+  },
+  {
+    fileName: "New Flyer 40 ft. Electric - Bus #3710 - 3724 (1).pdf",
+    busTypeLabel: "New Flyer 40' Electric Bus",
+    manufacturer: "New Flyer",
+    modelFamily: "40 ft",
+    propulsion: "Electric",
+    fleetRangeLabel: "3710-3724",
+  },
+  {
+    fileName: "New Flyer 40 ft. Electric - Bus #6000-6203 (1).pdf",
+    busTypeLabel: "New Flyer 40' Electric Bus",
+    manufacturer: "New Flyer",
+    modelFamily: "40 ft",
+    propulsion: "Electric",
+    fleetRangeLabel: "6000-6203",
+  },
+  {
+    fileName: "New Flyer 40 ft. HYB - Bus #7200 - 7333 (1).pdf",
+    busTypeLabel: "New Flyer 40' Hybrid Bus",
+    manufacturer: "New Flyer",
+    modelFamily: "40 ft",
+    propulsion: "Hybrid",
+    fleetRangeLabel: "7200-7333",
+  },
+  {
+    fileName: "NOVA L729, L738 - Bus #9000 - 9026 (1).pdf",
+    busTypeLabel: "Nova Artic Bus",
+    manufacturer: "Nova",
+    modelFamily: "L729/L738",
+    propulsion: null,
+    fleetRangeLabel: "9000-9026",
+  },
+  {
+    fileName: "NOVA L777 - Bus #9027 - 9152 (1).pdf",
+    busTypeLabel: "Nova Artic Bus",
+    manufacturer: "Nova",
+    modelFamily: "L777",
+    propulsion: null,
+    fleetRangeLabel: "9027-9152",
+  },
+  {
+    fileName: "NOVA L859 - Bus #8400 (1).pdf",
+    busTypeLabel: "Nova 40' Bus",
+    manufacturer: "Nova",
+    modelFamily: "L859",
+    propulsion: null,
+    fleetRangeLabel: "8400",
+  },
+  {
+    fileName: "NOVA L860 - Bus #8401 - 8504 (1).pdf",
+    busTypeLabel: "Nova 40' Bus",
+    manufacturer: "Nova",
+    modelFamily: "L860",
+    propulsion: null,
+    fleetRangeLabel: "8401-8504",
+  },
+  {
+    fileName: "Proterra Bus #3725 - 3749 (1).pdf",
+    busTypeLabel: "Proterra Electric Bus",
+    manufacturer: "Proterra",
+    modelFamily: "Electric",
+    propulsion: "Electric",
+    fleetRangeLabel: "3725-3749",
+  },
+];
+
+// New Flyer fleet ranges for linking seat inserts
+const NEW_FLYER_RANGES = ["3700-3709", "3710-3724", "6000-6203", "7200-7333"];
+
+async function main() {
+  console.log("=== Registering catalog attachments ===\n");
+
+  // Step 1: ensure BusCompatibility rows exist for all PDF bus types
+  for (const pdf of PDF_MAP) {
+    await prisma.busCompatibility.upsert({
+      where: { busTypeLabel_fleetRangeLabel: { busTypeLabel: pdf.busTypeLabel, fleetRangeLabel: pdf.fleetRangeLabel } },
+      update: { manufacturer: pdf.manufacturer, modelFamily: pdf.modelFamily, propulsion: pdf.propulsion },
+      create: {
+        busTypeLabel: pdf.busTypeLabel,
+        manufacturer: pdf.manufacturer,
+        modelFamily: pdf.modelFamily,
+        propulsion: pdf.propulsion,
+        fleetRangeLabel: pdf.fleetRangeLabel,
+        sourceSheet: "PDF_FILENAME",
+      },
+    });
+    console.log(`  ✓ BusCompat: ${pdf.busTypeLabel} [${pdf.fleetRangeLabel}]`);
+  }
+
+  // Step 2: register each PDF as a CatalogAttachment linked to its BusCompatibility
+  for (const pdf of PDF_MAP) {
+    const compat = await prisma.busCompatibility.findUnique({
+      where: { busTypeLabel_fleetRangeLabel: { busTypeLabel: pdf.busTypeLabel, fleetRangeLabel: pdf.fleetRangeLabel } },
+    });
+
+    // Upsert by fileName (skip if already registered)
+    const existing = await prisma.catalogAttachment.findFirst({ where: { fileName: pdf.fileName } });
+    if (!existing) {
+      await prisma.catalogAttachment.create({
+        data: {
+          fileName: pdf.fileName,
+          fileType: "application/pdf",
+          attachmentType: "DIAGRAM",
+          urlOrPath: `/import-data/${pdf.fileName}`,
+          busTypeLabel: pdf.busTypeLabel,
+          fleetRangeLabel: pdf.fleetRangeLabel,
+          notes: "Imported from Seat Inserts ZIP",
+          busCompatibilityId: compat?.id ?? null,
+        },
+      });
+      console.log(`  ✓ Attachment: ${pdf.fileName}`);
+    } else {
+      console.log(`  ~ Already exists: ${pdf.fileName}`);
+    }
+  }
+
+  // Step 3: link New Flyer SeatInsertType rows to New Flyer BusCompatibility rows
+  console.log("\n=== Linking New Flyer seat inserts to compatibility rows ===\n");
+
+  const newFlyerInserts = await prisma.seatInsertType.findMany({
+    where: { vendor: { in: ["New Flyer", "new flyer"] } },
+  });
+
+  const newFlyerCompats = await prisma.busCompatibility.findMany({
+    where: { manufacturer: "New Flyer", fleetRangeLabel: { in: NEW_FLYER_RANGES } },
+  });
+
+  if (newFlyerInserts.length === 0) {
+    console.log("  ! No New Flyer seat inserts found — run import-seat-catalog.ts first");
+  } else if (newFlyerCompats.length === 0) {
+    console.log("  ! No New Flyer BusCompatibility rows found — run import-bus-compatibility.ts first");
+  } else {
+    for (const insert of newFlyerInserts) {
+      await prisma.seatInsertType.update({
+        where: { id: insert.id },
+        data: {
+          busCompatibilities: {
+            connect: newFlyerCompats.map((c) => ({ id: c.id })),
+          },
+        },
+      });
+      console.log(`  ✓ Linked ${insert.partNumber} → ${newFlyerCompats.length} New Flyer compat rows`);
+    }
+  }
+
+  console.log("\nDone.");
+  await prisma.$disconnect();
+}
+
+main().catch((e) => { console.error(e); process.exit(1); });

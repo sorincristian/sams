@@ -46,21 +46,64 @@ model Bus {
 }
 
 model SeatInsertType {
-  id                    String                 @id @default(cuid())
-  partNumber            String                 @unique
-  description           String
-  vendor                String
-  compatibleBusModels   String[]               @default([])
-  minStockLevel         Int                    @default(0)
-  reorderPoint          Int                    @default(0)
-  unitCost              Float                  @default(0)
-  active                Boolean                @default(true)
-  inventoryItems        InventoryItem[]
-  inventoryTransactions InventoryTransaction[]
-  workOrderPartUsages   WorkOrderPartUsage[]
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  id                     String                 @id @default(cuid())
+  partNumber             String                 @unique
+  description            String
+  vendor                 String
+  compatibleBusModels    String[]               @default([])
+  minStockLevel          Int                    @default(0)
+  reorderPoint           Int                    @default(0)
+  unitCost               Float                  @default(0)
+  active                 Boolean                @default(true)
+  // Phase 2: catalog import fields
+  manufacturerPartNumber String?
+  alternatePartNumbers   String[]               @default([])
+  componentType          String?                // BACK | CUSHION
+  trimSpec               String?
+  inventoryItems         InventoryItem[]
+  inventoryTransactions  InventoryTransaction[]
+  workOrderPartUsages    WorkOrderPartUsage[]
+  busCompatibilities     BusCompatibility[]     @relation("SeatInsertBusCompat")
+  catalogAttachments     CatalogAttachment[]
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
 }
+
+model BusCompatibility {
+  id              String              @id @default(cuid())
+  busTypeLabel    String
+  manufacturer    String
+  modelFamily     String?
+  propulsion      String?
+  fleetRangeStart Int?
+  fleetRangeEnd   Int?
+  fleetRangeLabel String
+  sourceSheet     String?
+  sourceRow       Int?
+  seatInsertTypes SeatInsertType[]    @relation("SeatInsertBusCompat")
+  attachments     CatalogAttachment[]
+  createdAt       DateTime            @default(now())
+
+  @@unique([busTypeLabel, fleetRangeLabel])
+}
+
+model CatalogAttachment {
+  id                 String            @id @default(cuid())
+  seatInsertTypeId   String?
+  busCompatibilityId String?
+  fileName           String
+  fileType           String
+  attachmentType     String            // DIAGRAM | PHOTO | INSTALL_GUIDE
+  urlOrPath          String
+  busTypeLabel       String?
+  fleetRangeLabel    String?
+  notes              String?
+  seatInsertType     SeatInsertType?   @relation(fields: [seatInsertTypeId], references: [id])
+  busCompatibility   BusCompatibility? @relation(fields: [busCompatibilityId], references: [id])
+  createdAt          DateTime          @default(now())
+}
+
+
 
 model InventoryItem {
   id               String         @id @default(cuid())
