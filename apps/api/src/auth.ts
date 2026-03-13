@@ -2,7 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import jwt, { type SignOptions } from "jsonwebtoken";
 
 export interface AuthRequest extends Request {
-  user?: { sub: string; email: string; role: string };
+  user?: { sub: string; userId: string; email: string; role: string };
 }
 
 export function signToken(payload: { sub: string; email: string; role: string }) {
@@ -29,7 +29,8 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
 
   try {
     const token = header.slice(7);
-    req.user = jwt.verify(token, process.env.JWT_SECRET) as AuthRequest["user"];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as { sub: string; email: string; role: string };
+    req.user = { ...decoded, userId: decoded.sub };
     next();
   } catch {
     return res.status(401).json({ message: "Invalid token" });
