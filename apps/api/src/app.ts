@@ -8,6 +8,7 @@ import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
 import fleetRoutes from "./modules/fleet/fleet.routes.js";
 import inventoryRoutes from "./modules/inventory/inventory.routes.js";
 import workOrdersRoutes from "./modules/workOrders/workOrders.routes.js";
+import catalogRoutes from "./modules/catalog/catalog.routes.js";
 
 const app = express();
 
@@ -52,5 +53,6 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api", fleetRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/work-orders", workOrdersRoutes);
+app.use("/api/catalog", catalogRoutes);
 
 export default app;

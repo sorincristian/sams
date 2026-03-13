@@ -6,6 +6,7 @@ import { InventoryPage } from "../pages/InventoryPage";
 import { TransactionsLedgerPage } from "../pages/TransactionsLedgerPage";
 import { WorkOrdersPage } from "../pages/WorkOrdersPage";
 import { WorkOrderDetailPage } from "../pages/WorkOrderDetailPage";
+import { SeatInsertCatalogPage } from "../pages/SeatInsertCatalogPage";
 
 export function Shell({ user, onLogout }: { user: { name: string; role: string } | null; onLogout: () => void }) {
   return (
@@ -18,6 +19,7 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
           <NavLink to="/fleet" className={({ isActive }) => (isActive ? "active" : "")}>Fleet</NavLink>
           <NavLink to="/inventory" className={({ isActive }) => (isActive ? "active" : "")}>Inventory</NavLink>
           <NavLink to="/transactions" className={({ isActive }) => (isActive ? "active" : "")}>Ledger</NavLink>
+          <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>Catalog</NavLink>
           <NavLink to="/work-orders" className={({ isActive }) => (isActive ? "active" : "")}>Work Orders</NavLink>
         </nav>
       </aside>
@@ -36,6 +38,7 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
           <Route path="/transactions" element={<TransactionsLedgerPage />} />
           <Route path="/work-orders" element={<WorkOrdersPage />} />
           <Route path="/work-orders/:id" element={<WorkOrderDetailPage />} />
+          <Route path="/catalog" element={<SeatInsertCatalogPage />} />
         </Routes>
       </main>
     </div>
