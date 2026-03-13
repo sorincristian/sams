@@ -10,9 +10,6 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prisma": "prisma"
   },
-  "prisma": {
-    "schema": "./prisma/schema.prisma"
-  },
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
