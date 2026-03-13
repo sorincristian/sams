@@ -2,12 +2,17 @@ name: Run Catalog Import Scripts
 
 on:
   workflow_dispatch:
+    inputs:
+      database_url:
+        description: "Production DATABASE_URL (PostgreSQL connection string from Render)"
+        required: true
+        type: string
 
 jobs:
   import:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL: ${{ github.event.inputs.database_url }}
 
     steps:
       - uses: actions/checkout@v4
