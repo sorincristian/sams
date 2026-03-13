@@ -3,6 +3,10 @@
  * Reads the "Seats" sheet from Bus Allocation&Status-Seats.xls
  * and upserts SeatInsertType records.
  *
+ * ACTUAL SHEET STRUCTURE (verified 2026-03-13):
+ *   Row 0:  [vendorName, "Manufacturer code", "TTC code"]   ← header / vendor label in col A
+ *   Row 1+: [description, manufacturerCode, ttcCodes]
+ *
  * Usage (from apps/api):
  *   pnpm exec tsx prisma/scripts/import-seat-catalog.ts <path-to-xls>
  */
@@ -12,16 +16,6 @@ import { PrismaClient } from "@prisma/client";
 import path from "path";
 
 const prisma = new PrismaClient();
-
-// Rows where a manufacturer section header appears (cell B)
-// These are non-data rows we detect by the absence of a valid TTC code in col D.
-function detectManufacturer(cellB: string): string | null {
-  const known = ["New Flyer", "NOVA", "Nova", "BYD", "Proterra", "Orion"];
-  for (const k of known) {
-    if (cellB?.toLowerCase().includes(k.toLowerCase())) return k;
-  }
-  return null;
-}
 
 function parseComponentType(description: string): "BACK" | "CUSHION" | null {
   const lower = description.toLowerCase();
@@ -41,44 +35,49 @@ async function main() {
 
   const wb = XLSX.readFile(xlsPath);
   const ws = wb.Sheets["Seats"];
-  if (!ws) throw new Error('Sheet "Seats" not found in workbook');
+  if (!ws) throw new Error(`Sheet "Seats" not found. Available: ${wb.SheetNames.join(", ")}`);
 
   const rows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+  console.log(`Total rows in Seats sheet: ${rows.length}`);
 
-  let currentVendor = "Unknown";
+  // Row 0 is the header — col A contains the vendor name
+  let currentVendor = String(rows[0]?.[0] ?? "").trim() || "Unknown";
+  console.log(`Initial vendor from header: "${currentVendor}"`);
+
   let imported = 0;
   let skipped = 0;
 
-  for (let i = 0; i < rows.length; i++) {
+  // Start from row 1 (skip header)
+  for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    const colB = String(row[1] ?? "").trim(); // description
-    const colC = String(row[2] ?? "").trim(); // manufacturer code
-    const colD = String(row[3] ?? "").trim(); // TTC code
+    const colA = String(row[0] ?? "").trim(); // description
+    const colB = String(row[1] ?? "").trim(); // manufacturer code
+    const colC = String(row[2] ?? "").trim(); // TTC code(s)
 
-    // Detect section header (vendor name in col B, no TTC code in D)
-    if (colB && !colD && detectManufacturer(colB)) {
-      currentVendor = detectManufacturer(colB)!;
-      console.log(`  → Vendor section: ${currentVendor}`);
+    // If col A looks like a vendor header (no TTC code in col C)
+    if (colA && !colC) {
+      currentVendor = colA;
+      console.log(`  → Vendor: ${currentVendor}`);
       continue;
     }
 
-    // Skip rows without a TTC code
-    if (!colD) { skipped++; continue; }
+    // Skip rows with no TTC code
+    if (!colC) { skipped++; continue; }
 
-    // Parse slash-separated alternate part numbers
-    const parts = colD.split("/").map((p) => p.trim()).filter(Boolean);
+    // Parse slash-separated alternate part numbers from the TTC code field
+    const parts = colC.split("/").map((p: string) => p.trim()).filter(Boolean);
     const primaryPart = parts[0];
-    const alternatePartNumbers = parts; // includes primary
+    const alternatePartNumbers = parts;
 
-    const componentType = parseComponentType(colB);
-    const trimSpec = parseTrimSpec(colB);
+    const componentType = parseComponentType(colA);
+    const trimSpec = parseTrimSpec(colA);
 
     try {
       await prisma.seatInsertType.upsert({
         where: { partNumber: primaryPart },
         update: {
-          description: colB || undefined,
-          manufacturerPartNumber: colC || undefined,
+          description: colA || undefined,
+          manufacturerPartNumber: colB || undefined,
           alternatePartNumbers,
           componentType,
           trimSpec: trimSpec || undefined,
@@ -86,8 +85,8 @@ async function main() {
         },
         create: {
           partNumber: primaryPart,
-          description: colB || `Part ${primaryPart}`,
-          manufacturerPartNumber: colC || null,
+          description: colA || `Part ${primaryPart}`,
+          manufacturerPartNumber: colB || null,
           alternatePartNumbers,
           componentType,
           trimSpec: trimSpec || null,
@@ -98,7 +97,7 @@ async function main() {
       imported++;
       console.log(`  ✓ ${primaryPart} (${componentType ?? "?"}) - ${currentVendor}`);
     } catch (err: any) {
-      console.error(`  ✗ Row ${i + 1} error: ${err.message}`);
+      console.error(`  ✗ Row ${i + 1} [${primaryPart}]: ${err.message}`);
       skipped++;
     }
   }

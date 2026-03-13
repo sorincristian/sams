@@ -131,57 +131,54 @@ async function main() {
     console.log(`  ✓ BusCompat: ${pdf.busTypeLabel} [${pdf.fleetRangeLabel}]`);
   }
 
-  // Step 2: register each PDF as a CatalogAttachment linked to its BusCompatibility
+  // Step 2: register each PDF as a CatalogAttachment (upsert — update URL if exists)
   for (const pdf of PDF_MAP) {
     const compat = await prisma.busCompatibility.findUnique({
       where: { busTypeLabel_fleetRangeLabel: { busTypeLabel: pdf.busTypeLabel, fleetRangeLabel: pdf.fleetRangeLabel } },
     });
-
-    // Upsert by fileName (skip if already registered)
+    const url = `${API_BASE}/api/diagrams/${encodeURIComponent(pdf.fileName)}`;
     const existing = await prisma.catalogAttachment.findFirst({ where: { fileName: pdf.fileName } });
     if (!existing) {
       await prisma.catalogAttachment.create({
         data: {
-          fileName: pdf.fileName,
-          fileType: "application/pdf",
-          attachmentType: "DIAGRAM",
-          urlOrPath: `${API_BASE}/api/diagrams/${encodeURIComponent(pdf.fileName)}`,
-          busTypeLabel: pdf.busTypeLabel,
-          fleetRangeLabel: pdf.fleetRangeLabel,
-          notes: "Imported from Seat Inserts ZIP",
-          busCompatibilityId: compat?.id ?? null,
+          fileName: pdf.fileName, fileType: "application/pdf", attachmentType: "DIAGRAM",
+          urlOrPath: url, busTypeLabel: pdf.busTypeLabel, fleetRangeLabel: pdf.fleetRangeLabel,
+          notes: "Imported from Seat Inserts ZIP", busCompatibilityId: compat?.id ?? null,
         },
       });
-      console.log(`  ✓ Attachment: ${pdf.fileName}`);
+      console.log(`  ✓ Attachment created: ${pdf.fileName}`);
     } else {
-      console.log(`  ~ Already exists: ${pdf.fileName}`);
+      await prisma.catalogAttachment.update({
+        where: { id: existing.id },
+        data: { urlOrPath: url, busCompatibilityId: compat?.id ?? existing.busCompatibilityId },
+      });
+      console.log(`  ↺ Attachment updated: ${pdf.fileName}`);
     }
   }
 
   // Step 3: link New Flyer SeatInsertType rows to New Flyer BusCompatibility rows
   console.log("\n=== Linking New Flyer seat inserts to compatibility rows ===\n");
 
+  // Use contains (case-insensitive) to match whatever vendor string was stored by import-seat-catalog
   const newFlyerInserts = await prisma.seatInsertType.findMany({
-    where: { vendor: { in: ["New Flyer", "new flyer"] } },
+    where: { vendor: { contains: "flyer", mode: "insensitive" } },
   });
 
   const newFlyerCompats = await prisma.busCompatibility.findMany({
-    where: { manufacturer: "New Flyer", fleetRangeLabel: { in: NEW_FLYER_RANGES } },
+    where: { manufacturer: { contains: "flyer", mode: "insensitive" } },
   });
+
+  console.log(`  Found ${newFlyerInserts.length} New Flyer seat inserts, ${newFlyerCompats.length} compat rows`);
 
   if (newFlyerInserts.length === 0) {
     console.log("  ! No New Flyer seat inserts found — run import-seat-catalog.ts first");
   } else if (newFlyerCompats.length === 0) {
-    console.log("  ! No New Flyer BusCompatibility rows found — run import-bus-compatibility.ts first");
+    console.log("  ! No New Flyer BusCompatibility rows found");
   } else {
     for (const insert of newFlyerInserts) {
       await prisma.seatInsertType.update({
         where: { id: insert.id },
-        data: {
-          busCompatibilities: {
-            connect: newFlyerCompats.map((c) => ({ id: c.id })),
-          },
-        },
+        data: { busCompatibilities: { connect: newFlyerCompats.map((c: any) => ({ id: c.id })) } },
       });
       console.log(`  ✓ Linked ${insert.partNumber} → ${newFlyerCompats.length} New Flyer compat rows`);
     }
