@@ -5,7 +5,8 @@
  * Usage:
  *   pnpm exec tsx prisma/scripts/import-bus-compatibility.ts <path-to-xls>
  */
-import * as XLSX from "xlsx";
+import { createRequire } from "module";
+const XLSX = createRequire(import.meta.url)("xlsx");
 import { PrismaClient } from "@prisma/client";
 import path from "path";
 
