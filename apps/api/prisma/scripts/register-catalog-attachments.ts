@@ -9,7 +9,9 @@
  */
 import { PrismaClient } from "@prisma/client";
 
+const API_BASE = process.env.API_BASE_URL ?? "https://sams-api-vfvj.onrender.com";
 const prisma = new PrismaClient();
+
 
 // ============================================================
 // Hardcoded metadata per PDF — exact mapping from spec
@@ -143,7 +145,7 @@ async function main() {
           fileName: pdf.fileName,
           fileType: "application/pdf",
           attachmentType: "DIAGRAM",
-          urlOrPath: `/import-data/${pdf.fileName}`,
+          urlOrPath: `${API_BASE}/api/diagrams/${encodeURIComponent(pdf.fileName)}`,
           busTypeLabel: pdf.busTypeLabel,
           fleetRangeLabel: pdf.fleetRangeLabel,
           notes: "Imported from Seat Inserts ZIP",

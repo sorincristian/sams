@@ -2,6 +2,8 @@ import "dotenv/config";
 import express, { Request, Response, NextFunction } from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import authRoutes from "./modules/auth/auth.routes.js";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
@@ -9,6 +11,8 @@ import fleetRoutes from "./modules/fleet/fleet.routes.js";
 import inventoryRoutes from "./modules/inventory/inventory.routes.js";
 import workOrdersRoutes from "./modules/workOrders/workOrders.routes.js";
 import catalogRoutes from "./modules/catalog/catalog.routes.js";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 
@@ -43,6 +47,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(helmet());
 app.use(express.json());
 app.use(morgan("dev"));
+
+// Static serve for catalog PDF diagrams (no auth required — PDFs are non-sensitive diagrams)
+// In production on Render: __dirname = /opt/render/project/src/apps/api/dist
+// import-data lives at:   /opt/render/project/src/apps/api/prisma/import-data
+const diagramsDir = path.resolve(__dirname, "../../prisma/import-data");
+app.use("/api/diagrams", express.static(diagramsDir, {
+  setHeaders: (res) => {
+    res.setHeader("Content-Disposition", "inline");
+  }
+}));
 
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ ok: true });
