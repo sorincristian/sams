@@ -1,0 +1,45 @@
+name: Run Catalog Import Scripts
+
+on:
+  workflow_dispatch:
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Run Prisma migrations
+        working-directory: apps/api
+        run: pnpm exec prisma migrate deploy --schema=./prisma/schema.prisma
+
+      - name: Generate Prisma client
+        working-directory: apps/api
+        run: pnpm exec prisma generate --schema=./prisma/schema.prisma
+
+      - name: Import seat catalog from spreadsheet
+        working-directory: apps/api
+        run: pnpm exec tsx prisma/scripts/import-seat-catalog.ts "prisma/import-data/Bus Allocation&Status-Seats.xls"
+
+      - name: Import bus compatibility from spreadsheet
+        working-directory: apps/api
+        run: pnpm exec tsx prisma/scripts/import-bus-compatibility.ts "prisma/import-data/Bus Allocation&Status-Seats.xls"
+
+      - name: Register catalog attachments and link compatibility rows
+        working-directory: apps/api
+        run: pnpm exec tsx prisma/scripts/register-catalog-attachments.ts
