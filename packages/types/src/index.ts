@@ -34,9 +34,40 @@ export interface InventoryRow {
   id: string;
   garageId: string;
   seatInsertTypeId: string;
+  quantity: number;
   quantityOnHand: number;
+  quantityReserved: number;
+  binLocation: string | null;
   garage: Garage;
   seatInsertType: SeatInsertType;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type InventoryTransactionType =
+  | "RECEIVE"
+  | "ISSUE"
+  | "TRANSFER_OUT"
+  | "TRANSFER_IN"
+  | "ADJUST_IN"
+  | "ADJUST_OUT"
+  | "RETURN"
+  | "SCRAP";
+
+export interface InventoryTransaction {
+  id: string;
+  seatInsertTypeId: string;
+  garageId: string;
+  quantity: number;
+  type: InventoryTransactionType;
+  notes: string | null;
+  referenceType: string | null;
+  referenceId: string | null;
+  performedByUserId: string;
+  garage: Garage;
+  seatInsertType: SeatInsertType;
+  performedByUser: { id: string; name: string; email: string };
+  createdAt: string;
 }
 
 export interface WorkOrder {

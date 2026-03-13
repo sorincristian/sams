@@ -3,6 +3,7 @@ import { NavLink, Route, Routes } from "react-router-dom";
 import { DashboardPage } from "../pages/DashboardPage";
 import { FleetPage } from "../pages/FleetPage";
 import { InventoryPage } from "../pages/InventoryPage";
+import { TransactionsLedgerPage } from "../pages/TransactionsLedgerPage";
 import { WorkOrdersPage } from "../pages/WorkOrdersPage";
 
 export function Shell({ user, onLogout }: { user: { name: string; role: string } | null; onLogout: () => void }) {
@@ -15,6 +16,7 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
           <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>Dashboard</NavLink>
           <NavLink to="/fleet" className={({ isActive }) => (isActive ? "active" : "")}>Fleet</NavLink>
           <NavLink to="/inventory" className={({ isActive }) => (isActive ? "active" : "")}>Inventory</NavLink>
+          <NavLink to="/transactions" className={({ isActive }) => (isActive ? "active" : "")}>Ledger</NavLink>
           <NavLink to="/work-orders" className={({ isActive }) => (isActive ? "active" : "")}>Work Orders</NavLink>
         </nav>
       </aside>
@@ -30,6 +32,7 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
           <Route path="/" element={<DashboardPage />} />
           <Route path="/fleet" element={<FleetPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/transactions" element={<TransactionsLedgerPage />} />
           <Route path="/work-orders" element={<WorkOrdersPage />} />
         </Routes>
       </main>
