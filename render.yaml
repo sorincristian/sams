@@ -6,7 +6,7 @@ services:
     buildCommand: |
       pnpm install
       pnpm build
-      pnpm --filter @sams/api exec prisma db seed
+      pnpm --filter @sams/api exec prisma migrate deploy
     startCommand: cd apps/api && pnpm start
     healthCheckPath: /health
     autoDeploy: true
