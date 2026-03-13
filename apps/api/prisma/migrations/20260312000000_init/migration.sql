@@ -1,4 +1,4 @@
-﻿-- CreateTable
+-- CreateTable
 CREATE TABLE "Garage" (
     "id" TEXT NOT NULL,
     "code" TEXT NOT NULL,
