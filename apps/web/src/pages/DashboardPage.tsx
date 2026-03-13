@@ -1,8 +1,10 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { DashboardResponse } from "@sams/types";
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const [data, setData] = React.useState<DashboardResponse | null>(null);
   React.useEffect(() => {
     api.get("/dashboard").then((res) => setData(res.data));
@@ -26,10 +28,15 @@ export function DashboardPage() {
             <tbody>
               {data.lowStock.length === 0 ? <tr><td colSpan={3}>No low stock items.</td></tr> :
                 data.lowStock.map((row) => (
-                  <tr key={`${row.garage}-${row.partNumber}`}>
+                  <tr
+                    key={`${row.garage}-${row.partNumber}`}
+                    style={{ cursor: "pointer" }}
+                    title="Click to view in Inventory"
+                    onClick={() => navigate("/inventory?lowStock=1")}
+                  >
                     <td>{row.garage}</td>
                     <td>{row.partNumber}</td>
-                    <td>{row.quantityOnHand} / min {row.minStockLevel}</td>
+                    <td style={{ color: "#ef4444", fontWeight: 700 }}>{row.quantityOnHand} / min {row.minStockLevel}</td>
                   </tr>
                 ))}
             </tbody>

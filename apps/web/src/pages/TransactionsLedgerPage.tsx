@@ -2,6 +2,8 @@ import React from "react";
 import { api } from "../api";
 import type { InventoryTransaction } from "@sams/types";
 
+const TRANSACTION_TYPES = ["RECEIVE", "ISSUE", "ADJUST_IN", "ADJUST_OUT", "RETURN", "SCRAP", "TRANSFER_IN", "TRANSFER_OUT"];
+
 const TYPE_COLORS: Record<string, string> = {
   RECEIVE:      "#16a34a",
   ISSUE:        "#dc2626",
@@ -13,18 +15,16 @@ const TYPE_COLORS: Record<string, string> = {
   TRANSFER_OUT: "#ea580c",
 };
 
+const DEDUCT_TYPES = new Set(["ISSUE", "ADJUST_OUT", "SCRAP", "TRANSFER_OUT"]);
+
 function TypeBadge({ type }: { type: string }) {
   return (
     <span style={{
       background: TYPE_COLORS[type] ?? "#374151",
-      color: "#fff",
-      borderRadius: 4,
-      padding: "2px 8px",
-      fontSize: "0.75rem",
-      fontWeight: 700,
-      letterSpacing: "0.04em",
+      color: "#fff", borderRadius: 4, padding: "2px 8px",
+      fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.04em",
     }}>
-      {type.replace("_", " ")}
+      {type.replace(/_/g, " ")}
     </span>
   );
 }
@@ -33,10 +33,21 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleString();
 }
 
+function toDateInputValue(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
 export function TransactionsLedgerPage() {
   const [rows, setRows] = React.useState<InventoryTransaction[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Filters
+  const [search, setSearch] = React.useState("");
+  const [typeFilter, setTypeFilter] = React.useState("");
+  const [garageFilter, setGarageFilter] = React.useState("");
+  const [dateFrom, setDateFrom] = React.useState("");
+  const [dateTo, setDateTo] = React.useState("");
 
   React.useEffect(() => {
     api.get("/inventory/transactions")
@@ -45,17 +56,118 @@ export function TransactionsLedgerPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Unique garages from loaded data
+  const garages = React.useMemo(() => {
+    const seen = new Set<string>();
+    return rows.filter((tx) => {
+      if (seen.has(tx.garage.id)) return false;
+      seen.add(tx.garage.id);
+      return true;
+    }).map((tx) => tx.garage);
+  }, [rows]);
+
+  const visible = React.useMemo(() => {
+    let out = rows;
+    const q = search.toLowerCase().trim();
+    if (q) {
+      out = out.filter(
+        (tx) =>
+          tx.seatInsertType.partNumber.toLowerCase().includes(q) ||
+          tx.seatInsertType.description.toLowerCase().includes(q) ||
+          (tx.notes ?? "").toLowerCase().includes(q) ||
+          (tx.referenceId ?? "").toLowerCase().includes(q)
+      );
+    }
+    if (typeFilter) out = out.filter((tx) => tx.type === typeFilter);
+    if (garageFilter) out = out.filter((tx) => tx.garage.id === garageFilter);
+    if (dateFrom) out = out.filter((tx) => tx.createdAt >= dateFrom);
+    if (dateTo) {
+      const end = dateTo + "T23:59:59";
+      out = out.filter((tx) => tx.createdAt <= end);
+    }
+    return out;
+  }, [rows, search, typeFilter, garageFilter, dateFrom, dateTo]);
+
+  const hasFilters = search || typeFilter || garageFilter || dateFrom || dateTo;
+
+  function clearFilters() {
+    setSearch(""); setTypeFilter(""); setGarageFilter(""); setDateFrom(""); setDateTo("");
+  }
+
+  const selectStyle: React.CSSProperties = {
+    background: "#111827", color: "#f9fafb", border: "1px solid #374151",
+    borderRadius: 6, padding: "7px 10px",
+  };
+
   return (
     <div className="grid" style={{ gap: 20 }}>
       <h1>Transactions Ledger</h1>
 
+      {/* Filters */}
+      <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+        <input
+          type="text"
+          placeholder="Search part #, notes, reference…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ flex: "1 1 200px", minWidth: 160 }}
+        />
+
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={selectStyle}>
+          <option value="">All Types</option>
+          {TRANSACTION_TYPES.map((t) => (
+            <option key={t} value={t}>{t.replace(/_/g, " ")}</option>
+          ))}
+        </select>
+
+        <select value={garageFilter} onChange={(e) => setGarageFilter(e.target.value)} style={selectStyle}>
+          <option value="">All Garages</option>
+          {garages.map((g) => (
+            <option key={g.id} value={g.id}>{g.name}</option>
+          ))}
+        </select>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span className="muted" style={{ fontSize: "0.8rem" }}>From</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            style={{ ...selectStyle, padding: "6px 8px" }}
+          />
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span className="muted" style={{ fontSize: "0.8rem" }}>To</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            style={{ ...selectStyle, padding: "6px 8px" }}
+          />
+        </div>
+
+        {hasFilters && (
+          <button
+            style={{ width: "auto", padding: "6px 12px", background: "#374151", fontSize: "0.8rem" }}
+            onClick={clearFilters}
+          >
+            Clear filters
+          </button>
+        )}
+
+        <span className="muted" style={{ marginLeft: "auto", fontSize: "0.85rem" }}>
+          {visible.length} / {rows.length} entries
+        </span>
+      </div>
+
       <div className="card">
         {loading && <div className="muted">Loading...</div>}
         {error && <div style={{ color: "#ef4444" }}>{error}</div>}
-        {!loading && !error && rows.length === 0 && (
-          <div className="muted">No transactions recorded yet.</div>
+        {!loading && !error && visible.length === 0 && (
+          <div className="muted">{rows.length === 0 ? "No transactions recorded yet." : "No entries match the current filters."}</div>
         )}
-        {!loading && !error && rows.length > 0 && (
+        {!loading && !error && visible.length > 0 && (
           <div style={{ overflowX: "auto" }}>
             <table>
               <thead>
@@ -71,7 +183,7 @@ export function TransactionsLedgerPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((tx) => (
+                {visible.map((tx) => (
                   <tr key={tx.id}>
                     <td style={{ whiteSpace: "nowrap" }}>{formatDate(tx.createdAt)}</td>
                     <td><TypeBadge type={tx.type} /></td>
@@ -79,9 +191,8 @@ export function TransactionsLedgerPage() {
                     <td><strong>{tx.seatInsertType.partNumber}</strong></td>
                     <td>{tx.seatInsertType.description}</td>
                     <td style={{ textAlign: "right" }}>
-                      <strong>{["ISSUE", "ADJUST_OUT", "SCRAP", "TRANSFER_OUT"].includes(tx.type)
-                        ? `-${tx.quantity}`
-                        : `+${tx.quantity}`}
+                      <strong style={{ color: DEDUCT_TYPES.has(tx.type) ? "#ef4444" : "#10b981" }}>
+                        {DEDUCT_TYPES.has(tx.type) ? `−${tx.quantity}` : `+${tx.quantity}`}
                       </strong>
                     </td>
                     <td>{tx.performedByUser.name}</td>
