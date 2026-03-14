@@ -3,6 +3,12 @@ import { z } from "zod";
 import { prisma } from "../../prisma.js";
 import { requireAuth } from "../../auth.js";
 
+const firstString = (value: unknown): string | undefined => {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+  return undefined;
+};
+
 const router = Router();
 
 // GET /api/catalog — list all seat insert types
@@ -25,7 +31,8 @@ router.get("/bus-compat", requireAuth, async (req, res) => {
 
 // GET /api/catalog/:id/detail — full detail: part + compat rows + attachments
 router.get("/:id/detail", requireAuth, async (req, res) => {
-  const { id } = req.params;
+  const id = firstString(req.params.id);
+  if (!id) return res.status(400).json({ message: "Invalid ID" });
   const part = await prisma.seatInsertType.findUnique({
     where: { id },
     include: {
@@ -73,8 +80,8 @@ router.post("/", requireAuth, async (req, res) => {
 
 // PUT /api/catalog/:id — update seat insert type
 router.put("/:id", requireAuth, async (req, res) => {
-  const { id } = req.params;
-
+  const id = firstString(req.params.id);
+  if (!id) return res.status(400).json({ message: "Invalid ID" });
   const schema = z.object({
     partNumber:          z.string().min(1).optional(),
     description:         z.string().min(1).optional(),
@@ -110,7 +117,8 @@ router.put("/:id", requireAuth, async (req, res) => {
 
 // GET /api/catalog/attachments/:id — fetch a single attachment by ID (for DiagramViewerPage)
 router.get("/attachments/:id", requireAuth, async (req, res) => {
-  const { id } = req.params;
+  const id = firstString(req.params.id);
+  if (!id) return res.status(400).json({ message: "Invalid ID" });
   const attachment = await prisma.catalogAttachment.findUnique({ where: { id } });
   if (!attachment) return res.status(404).json({ message: "Attachment not found" });
   res.json(attachment);
@@ -130,7 +138,8 @@ const hotspotSchema = z.object({
 
 // GET /api/catalog/attachments/:id/hotspots
 router.get("/attachments/:id/hotspots", requireAuth, async (req, res) => {
-  const { id } = req.params;
+  const id = firstString(req.params.id);
+  if (!id) return res.status(400).json({ message: "Invalid ID" });
   const hotspots = await prisma.diagramHotspot.findMany({
     where: { catalogAttachmentId: id },
     include: {
@@ -145,7 +154,8 @@ router.get("/attachments/:id/hotspots", requireAuth, async (req, res) => {
 
 // POST /api/catalog/attachments/:id/hotspots
 router.post("/attachments/:id/hotspots", requireAuth, async (req, res) => {
-  const { id } = req.params;
+  const id = firstString(req.params.id);
+  if (!id) return res.status(400).json({ message: "Invalid ID" });
   const attachment = await prisma.catalogAttachment.findUnique({ where: { id } });
   if (!attachment) return res.status(404).json({ message: "Attachment not found" });
 
@@ -161,7 +171,8 @@ router.post("/attachments/:id/hotspots", requireAuth, async (req, res) => {
 
 // PUT /api/catalog/hotspots/:hid
 router.put("/hotspots/:hid", requireAuth, async (req, res) => {
-  const { hid } = req.params;
+  const hid = firstString(req.params.hid);
+  if (!hid) return res.status(400).json({ message: "Invalid ID" });
   const existing = await prisma.diagramHotspot.findUnique({ where: { id: hid } });
   if (!existing) return res.status(404).json({ message: "Hotspot not found" });
 
@@ -178,7 +189,8 @@ router.put("/hotspots/:hid", requireAuth, async (req, res) => {
 
 // DELETE /api/catalog/hotspots/:hid
 router.delete("/hotspots/:hid", requireAuth, async (req, res) => {
-  const { hid } = req.params;
+  const hid = firstString(req.params.hid);
+  if (!hid) return res.status(400).json({ message: "Invalid ID" });
   const existing = await prisma.diagramHotspot.findUnique({ where: { id: hid } });
   if (!existing) return res.status(404).json({ message: "Hotspot not found" });
   await prisma.diagramHotspot.delete({ where: { id: hid } });
