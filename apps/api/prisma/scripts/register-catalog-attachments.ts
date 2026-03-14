@@ -106,6 +106,7 @@ const PDF_MAP: PdfMeta[] = [
     manufacturer: "Proterra",
     modelFamily: "Electric",
     propulsion: "Electric",
+    fleetRangeLabel: "3725-3749",
   },
 ];
 
