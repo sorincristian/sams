@@ -291,6 +291,11 @@ export function DiagramViewerPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [selected, setSelected] = React.useState<Hotspot | null>(null);
   const [editMode, setEditMode] = React.useState(false);
+  
+  // PDF Rendering States
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+  const [loadingPdf, setLoadingPdf] = React.useState(false);
+  const [pdfError, setPdfError] = React.useState<string | null>(null);
 
   const isAdmin = true; // TODO: wire from auth context if role-gating is needed
 
@@ -334,6 +339,67 @@ export function DiagramViewerPage() {
     : null;
   // urlOrPath is already a full URL like https://sams-api-vfvj.onrender.com/api/diagrams/...
   const pdfUrl = attachment?.urlOrPath ?? null;
+
+  // Render PDF when URL is ready
+  React.useEffect(() => {
+    if (!pdfUrl) return;
+
+    let renderTask: any;
+    let loadingTask: any;
+
+    async function loadAndRenderPdf() {
+      setLoadingPdf(true);
+      setPdfError(null);
+      
+      try {
+        // Dynamically import the core library from unpkg to bypass monorepo peer linkage issues
+        // @ts-ignore
+        const pdfjsLib = await import("https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.min.mjs");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
+
+        loadingTask = pdfjsLib.getDocument(pdfUrl);
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+
+        const scale = 1.5;
+        const viewport = page.getViewport({ scale });
+        
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const context = canvas.getContext("2d");
+        if (!context) return;
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport,
+        };
+
+        renderTask = page.render(renderContext);
+        await renderTask.promise;
+      } catch (err: any) {
+        if (err.name === "RenderingCancelledException") {
+          // Expected on swap, safely ignore
+        } else {
+          console.error("PDF Render Error:", err);
+          setPdfError(err.message || "Failed to render PDF diagram.");
+        }
+      } finally {
+        setLoadingPdf(false);
+      }
+    }
+
+    loadAndRenderPdf();
+
+    return () => {
+      // Cleanup previous render task before unmounting
+      if (renderTask) renderTask.cancel();
+      if (loadingTask) loadingTask.destroy();
+    };
+  }, [pdfUrl]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, height: "100%" }}>
@@ -388,80 +454,76 @@ export function DiagramViewerPage() {
             </div>
           )}
 
-          <div style={{ position: "relative", display: "inline-block", maxWidth: "100%" }}>
-            {previewSrc ? (
-              <img
-                src={previewSrc}
-                alt={attachment?.fileName ?? "Bus diagram"}
-                style={{ display: "block", maxWidth: "100%", height: "auto" }}
-                draggable={false}
-              />
-            ) : (
-              <div style={{
-                width: 700, height: 500, background: "#0f172a",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "#9ca3af", fontSize: "0.9rem",
-              }}>
-                {attachment
-                  ? "No preview image available for this diagram."
-                  : "Loading attachment info…"}
+          <div className="diagram-wrapper" style={{ position: "relative", display: "inline-block", maxWidth: "100%" }}>
+            <canvas ref={canvasRef} id="pdf-canvas" style={{ display: "block", maxWidth: "100%", height: "auto" }} />
+            
+            {loadingPdf && (
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(15, 23, 42, 0.7)", color: "#9ca3af" }}>
+                Rendering PDF…
+              </div>
+            )}
+            {pdfError && (
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(15, 23, 42, 0.9)", color: "#ef4444", padding: 20, textAlign: "center" }}>
+                {pdfError}
               </div>
             )}
 
-            {/* Hotspot rectangles */}
-            {hotspots.map((h) => (
-              <div
-                key={h.id}
-                title={`${h.seatLabel} — ${h.partNumber}`}
-                onClick={() => { if (!editMode) setSelected(h); }}
-                style={{
-                  position: "absolute",
-                  left: `${h.x * 100}%`,
-                  top: `${h.y * 100}%`,
-                  width: `${h.width * 100}%`,
-                  height: `${h.height * 100}%`,
-                  border: `2px solid ${selected?.id === h.id ? "#fbbf24" : "#3b82f6"}`,
-                  background: selected?.id === h.id
-                    ? "rgba(251,191,36,0.18)"
-                    : "rgba(59,130,246,0.12)",
-                  cursor: editMode ? "default" : "pointer",
-                  boxSizing: "border-box",
-                  borderRadius: 2,
-                  zIndex: 4,
-                  display: "flex",
-                  alignItems: "flex-start",
-                  justifyContent: "flex-start",
-                }}
-              >
-                <span style={{
-                  background: "rgba(17,24,39,0.75)", color: "#f9fafb",
-                  fontSize: "0.6rem", padding: "1px 3px", lineHeight: 1.3, borderRadius: 2,
-                  userSelect: "none", maxWidth: "100%", overflow: "hidden", whiteSpace: "nowrap",
-                }}>
-                  {h.seatLabel}
-                </span>
-                {editMode && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteHotspot(h.id); }}
-                    style={{
-                      position: "absolute", top: 0, right: 0, width: "auto",
-                      padding: "0 4px", fontSize: "0.6rem", lineHeight: 1.4,
-                      background: "#ef4444", borderRadius: "0 0 0 4px",
-                    }}
-                    title="Delete hotspot"
-                  >✕</button>
-                )}
-              </div>
-            ))}
+            <div className="hotspot-overlay" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%" }}>
+              {/* Hotspot rectangles */}
+              {hotspots.map((h) => (
+                <div
+                  key={h.id}
+                  title={`${h.seatLabel} — ${h.partNumber}`}
+                  onClick={() => { if (!editMode) setSelected(h); }}
+                  style={{
+                    position: "absolute",
+                    left: `${h.x * 100}%`,
+                    top: `${h.y * 100}%`,
+                    width: `${h.width * 100}%`,
+                    height: `${h.height * 100}%`,
+                    border: `2px solid ${selected?.id === h.id ? "#fbbf24" : "#3b82f6"}`,
+                    background: selected?.id === h.id
+                      ? "rgba(251,191,36,0.18)"
+                      : "rgba(59,130,246,0.12)",
+                    cursor: editMode ? "default" : "pointer",
+                    boxSizing: "border-box",
+                    borderRadius: 2,
+                    zIndex: 4,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "flex-start",
+                  }}
+                >
+                  <span style={{
+                    background: "rgba(17,24,39,0.75)", color: "#f9fafb",
+                    fontSize: "0.6rem", padding: "1px 3px", lineHeight: 1.3, borderRadius: 2,
+                    userSelect: "none", maxWidth: "100%", overflow: "hidden", whiteSpace: "nowrap",
+                  }}>
+                    {h.seatLabel}
+                  </span>
+                  {editMode && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); deleteHotspot(h.id); }}
+                      style={{
+                        position: "absolute", top: 0, right: 0, width: "auto",
+                        padding: "0 4px", fontSize: "0.6rem", lineHeight: 1.4,
+                        background: "#ef4444", borderRadius: "0 0 0 4px",
+                      }}
+                      title="Delete hotspot"
+                    >✕</button>
+                  )}
+                </div>
+              ))}
 
-            {/* Editor overlay (admin only, edit mode) */}
-            {editMode && attachmentId && (
-              <HotspotEditor
-                attachmentId={attachmentId}
-                parts={parts}
-                onCreated={addHotspot}
-              />
-            )}
+              {/* Editor overlay (admin only, edit mode) */}
+              {editMode && attachmentId && (
+                <HotspotEditor
+                  attachmentId={attachmentId}
+                  parts={parts}
+                  onCreated={addHotspot}
+                />
+              )}
+            </div>
 
             {/* Detail panel */}
             {selected && !editMode && (
@@ -470,6 +532,7 @@ export function DiagramViewerPage() {
                 onClose={() => setSelected(null)}
               />
             )}
+
           </div>
         </div>
       )}
