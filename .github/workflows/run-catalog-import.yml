@@ -8,6 +8,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write   # allow the CI bot to push generated preview images back
+
 jobs:
   import:
     runs-on: ubuntu-latest
@@ -17,8 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Need push permission for auto-committing generated previews
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
 
       - uses: pnpm/action-setup@v4
         with:
@@ -29,12 +32,8 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - name: Install system dependencies for canvas + PDF rendering
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            poppler-utils \
-            libcairo2-dev libjpeg-dev libpango1.0-dev libgif-dev librsvg2-dev
+      - name: Install poppler-utils (pdftoppm) for PDF preview generation
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends poppler-utils
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
@@ -55,9 +54,43 @@ jobs:
         working-directory: apps/api
         run: pnpm exec tsx prisma/scripts/import-bus-compatibility.ts "prisma/import-data/Bus Allocation&Status-Seats.xls"
 
-      - name: Generate PDF preview images
+      - name: Generate PDF preview images with pdftoppm
         working-directory: apps/api
-        run: pnpm exec tsx prisma/scripts/generate-previews.ts
+        run: |
+          set -e
+          DIAGRAMS_DIR="diagrams"
+          PREVIEWS_DIR="diagram-previews"
+          mkdir -p "$PREVIEWS_DIR"
+
+          for pdf in "$DIAGRAMS_DIR"/*.pdf; do
+            [ -f "$pdf" ] || continue
+            filename="$(basename "$pdf" .pdf)"
+            slug="$(echo "$filename" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]\+/-/g' | sed 's/^-*//;s/-*$//')"
+            outFile="${PREVIEWS_DIR}/${slug}-page1.png"
+
+            if [ -s "$outFile" ]; then
+              echo "  ↺ Exists: ${slug}-page1.png"
+              continue
+            fi
+
+            echo "  Rendering: $filename -> ${slug}-page1.png"
+            tmpPrefix="${PREVIEWS_DIR}/${slug}-tmp"
+            pdftoppm -png -f 1 -l 1 -r 150 "$pdf" "$tmpPrefix"
+
+            # pdftoppm creates <prefix>-01.png or <prefix>-1.png depending on version
+            generated="$(ls "${tmpPrefix}"*.png 2>/dev/null | head -1)"
+            if [ -n "$generated" ]; then
+              mv "$generated" "$outFile"
+              size=$(du -k "$outFile" | cut -f1)
+              echo "  ✓ Generated: ${slug}-page1.png (${size}KB)"
+            else
+              echo "  ✗ pdftoppm did not produce output for: $filename"
+            fi
+          done
+
+          echo ""
+          echo "Preview summary:"
+          ls -lh "$PREVIEWS_DIR/" || true
 
       - name: Commit generated preview images
         run: |
@@ -65,7 +98,7 @@ jobs:
           git config user.name "SAMS CI Bot"
           git add apps/api/diagram-previews/
           if git diff --staged --quiet; then
-            echo "No new preview images to commit."
+            echo "No new preview images — nothing to commit."
           else
             git commit -m "ci: auto-generate PDF preview images [skip ci]"
             git push
