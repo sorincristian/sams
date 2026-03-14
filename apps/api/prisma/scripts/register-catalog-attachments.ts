@@ -23,6 +23,7 @@ interface PdfMeta {
   modelFamily: string;
   propulsion: string | null;
   fleetRangeLabel: string;
+  previewImageUrl: string | null;  // /api/diagrams/previews/<name>.png
 }
 
 const PDF_MAP: PdfMeta[] = [
@@ -33,6 +34,7 @@ const PDF_MAP: PdfMeta[] = [
     modelFamily: "40 ft unknown",
     propulsion: "Electric",
     fleetRangeLabel: "3750-3759",
+    previewImageUrl: null,
   },
   {
     fileName: "New Flyer 40 ft. Electric - Bus #3700 - 3709 (1).pdf",
@@ -41,6 +43,7 @@ const PDF_MAP: PdfMeta[] = [
     modelFamily: "40 ft",
     propulsion: "Electric",
     fleetRangeLabel: "3700-3709",
+    previewImageUrl: null,
   },
   {
     fileName: "New Flyer 40 ft. Electric - Bus #3710 - 3724 (1).pdf",
@@ -49,6 +52,7 @@ const PDF_MAP: PdfMeta[] = [
     modelFamily: "40 ft",
     propulsion: "Electric",
     fleetRangeLabel: "3710-3724",
+    previewImageUrl: null,
   },
   {
     fileName: "New Flyer 40 ft. Electric - Bus #6000-6203 (1).pdf",
@@ -57,6 +61,7 @@ const PDF_MAP: PdfMeta[] = [
     modelFamily: "40 ft",
     propulsion: "Electric",
     fleetRangeLabel: "6000-6203",
+    previewImageUrl: null,
   },
   {
     fileName: "New Flyer 40 ft. HYB - Bus #7200 - 7333 (1).pdf",
@@ -65,6 +70,7 @@ const PDF_MAP: PdfMeta[] = [
     modelFamily: "40 ft",
     propulsion: "Hybrid",
     fleetRangeLabel: "7200-7333",
+    previewImageUrl: null,
   },
   {
     fileName: "NOVA L729, L738 - Bus #9000 - 9026 (1).pdf",
@@ -73,6 +79,7 @@ const PDF_MAP: PdfMeta[] = [
     modelFamily: "L729/L738",
     propulsion: null,
     fleetRangeLabel: "9000-9026",
+    previewImageUrl: null,
   },
   {
     fileName: "NOVA L777 - Bus #9027 - 9152 (1).pdf",
@@ -81,6 +88,7 @@ const PDF_MAP: PdfMeta[] = [
     modelFamily: "L777",
     propulsion: null,
     fleetRangeLabel: "9027-9152",
+    previewImageUrl: null,
   },
   {
     fileName: "NOVA L859 - Bus #8400 (1).pdf",
@@ -89,6 +97,7 @@ const PDF_MAP: PdfMeta[] = [
     modelFamily: "L859",
     propulsion: null,
     fleetRangeLabel: "8400",
+    previewImageUrl: null,
   },
   {
     fileName: "NOVA L860 - Bus #8401 - 8504 (1).pdf",
@@ -97,6 +106,7 @@ const PDF_MAP: PdfMeta[] = [
     modelFamily: "L860",
     propulsion: null,
     fleetRangeLabel: "8401-8504",
+    previewImageUrl: null,
   },
   {
     fileName: "Proterra Bus #3725 - 3749 (1).pdf",
@@ -105,6 +115,7 @@ const PDF_MAP: PdfMeta[] = [
     modelFamily: "Electric",
     propulsion: "Electric",
     fleetRangeLabel: "3725-3749",
+    previewImageUrl: "/api/diagrams/previews/proterra-3725-3749.png",
   },
 ];
 
@@ -144,13 +155,18 @@ async function main() {
           fileName: pdf.fileName, fileType: "application/pdf", attachmentType: "DIAGRAM",
           urlOrPath: url, busTypeLabel: pdf.busTypeLabel, fleetRangeLabel: pdf.fleetRangeLabel,
           notes: "Imported from Seat Inserts ZIP", busCompatibilityId: compat?.id ?? null,
+          previewImageUrl: pdf.previewImageUrl ?? null,
         },
       });
       console.log(`  ✓ Attachment created: ${pdf.fileName}`);
     } else {
       await prisma.catalogAttachment.update({
         where: { id: existing.id },
-        data: { urlOrPath: url, busCompatibilityId: compat?.id ?? existing.busCompatibilityId },
+        data: {
+          urlOrPath: url,
+          busCompatibilityId: compat?.id ?? existing.busCompatibilityId,
+          previewImageUrl: pdf.previewImageUrl ?? existing.previewImageUrl,
+        },
       });
       console.log(`  ↺ Attachment updated: ${pdf.fileName}`);
     }

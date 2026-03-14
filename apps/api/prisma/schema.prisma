@@ -65,6 +65,7 @@ model SeatInsertType {
   workOrderPartUsages    WorkOrderPartUsage[]
   busCompatibilities     BusCompatibility[]     @relation("SeatInsertBusCompat")
   catalogAttachments     CatalogAttachment[]
+  diagramHotspots        DiagramHotspot[]
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
 }
@@ -88,19 +89,39 @@ model BusCompatibility {
 }
 
 model CatalogAttachment {
-  id                 String            @id @default(cuid())
+  id                 String             @id @default(cuid())
   seatInsertTypeId   String?
   busCompatibilityId String?
   fileName           String
   fileType           String
-  attachmentType     String            // DIAGRAM | PHOTO | INSTALL_GUIDE
+  attachmentType     String             // DIAGRAM | PHOTO | INSTALL_GUIDE
   urlOrPath          String
+  previewImageUrl    String?            // PNG/WebP preview for hotspot overlay
   busTypeLabel       String?
   fleetRangeLabel    String?
   notes              String?
-  seatInsertType     SeatInsertType?   @relation(fields: [seatInsertTypeId], references: [id])
-  busCompatibility   BusCompatibility? @relation(fields: [busCompatibilityId], references: [id])
-  createdAt          DateTime          @default(now())
+  seatInsertType     SeatInsertType?    @relation(fields: [seatInsertTypeId], references: [id])
+  busCompatibility   BusCompatibility?  @relation(fields: [busCompatibilityId], references: [id])
+  hotspots           DiagramHotspot[]
+  createdAt          DateTime           @default(now())
+}
+
+model DiagramHotspot {
+  id                  String            @id @default(cuid())
+  catalogAttachmentId String
+  seatLabel           String
+  partNumber          String
+  seatInsertTypeId    String?
+  x                   Float             // normalized 0..1
+  y                   Float
+  width               Float
+  height              Float
+  shape               String            @default("rect")
+  notes               String?
+  catalogAttachment   CatalogAttachment @relation(fields: [catalogAttachmentId], references: [id], onDelete: Cascade)
+  seatInsertType      SeatInsertType?   @relation(fields: [seatInsertTypeId], references: [id])
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 }
 
 

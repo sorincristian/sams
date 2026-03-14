@@ -106,4 +106,76 @@ router.put("/:id", requireAuth, async (req, res) => {
   res.json(updated);
 });
 
+// ─── Hotspot endpoints ────────────────────────────────────────────────────────
+
+const hotspotSchema = z.object({
+  seatLabel:       z.string().min(1),
+  partNumber:      z.string().min(1),
+  seatInsertTypeId: z.string().optional().nullable(),
+  x:               z.number().min(0).max(1),
+  y:               z.number().min(0).max(1),
+  width:           z.number().min(0.001).max(1),
+  height:          z.number().min(0.001).max(1),
+  shape:           z.string().default("rect"),
+  notes:           z.string().optional().nullable(),
+});
+
+// GET /api/catalog/attachments/:id/hotspots
+router.get("/attachments/:id/hotspots", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const hotspots = await prisma.diagramHotspot.findMany({
+    where: { catalogAttachmentId: id },
+    include: {
+      seatInsertType: {
+        select: { id: true, partNumber: true, description: true, vendor: true, componentType: true }
+      }
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  res.json(hotspots);
+});
+
+// POST /api/catalog/attachments/:id/hotspots
+router.post("/attachments/:id/hotspots", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const attachment = await prisma.catalogAttachment.findUnique({ where: { id } });
+  if (!attachment) return res.status(404).json({ message: "Attachment not found" });
+
+  const parsed = hotspotSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "Invalid data", errors: parsed.error.flatten() });
+
+  const hotspot = await prisma.diagramHotspot.create({
+    data: { ...parsed.data, catalogAttachmentId: id },
+    include: { seatInsertType: { select: { id: true, partNumber: true, description: true, vendor: true, componentType: true } } },
+  });
+  res.status(201).json(hotspot);
+});
+
+// PUT /api/catalog/hotspots/:hid
+router.put("/hotspots/:hid", requireAuth, async (req, res) => {
+  const { hid } = req.params;
+  const existing = await prisma.diagramHotspot.findUnique({ where: { id: hid } });
+  if (!existing) return res.status(404).json({ message: "Hotspot not found" });
+
+  const parsed = hotspotSchema.partial().safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "Invalid data", errors: parsed.error.flatten() });
+
+  const hotspot = await prisma.diagramHotspot.update({
+    where: { id: hid },
+    data: parsed.data,
+    include: { seatInsertType: { select: { id: true, partNumber: true, description: true, vendor: true, componentType: true } } },
+  });
+  res.json(hotspot);
+});
+
+// DELETE /api/catalog/hotspots/:hid
+router.delete("/hotspots/:hid", requireAuth, async (req, res) => {
+  const { hid } = req.params;
+  const existing = await prisma.diagramHotspot.findUnique({ where: { id: hid } });
+  if (!existing) return res.status(404).json({ message: "Hotspot not found" });
+  await prisma.diagramHotspot.delete({ where: { id: hid } });
+  res.status(204).end();
+});
+
 export default router;
+

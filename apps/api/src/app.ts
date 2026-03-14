@@ -48,13 +48,12 @@ app.use(helmet());
 app.use(express.json());
 app.use(morgan("dev"));
 
-// Static serve for catalog PDF diagrams (no auth required — PDFs are non-sensitive diagrams)
-// In production on Render: __dirname = /opt/render/project/src/apps/api/dist
-// import-data lives at:   /opt/render/project/src/apps/api/prisma/import-data
+// Static serve for catalog PDF diagrams + PNG previews (no auth — non-sensitive bus diagrams)
+// Serves: /api/diagrams/<filename>.pdf  and  /api/diagrams/previews/<img>.png
 const diagramsDir = path.resolve(__dirname, "../../prisma/import-data");
 app.use("/api/diagrams", express.static(diagramsDir, {
-  setHeaders: (res) => {
-    res.setHeader("Content-Disposition", "inline");
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith(".pdf")) res.setHeader("Content-Disposition", "inline");
   }
 }));
 

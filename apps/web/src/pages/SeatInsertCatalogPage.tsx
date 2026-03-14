@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 
 interface CatalogPart {
@@ -37,6 +38,7 @@ interface CatalogAttach {
   fileType: string;
   attachmentType: string;
   urlOrPath: string;
+  previewImageUrl?: string | null;
   busTypeLabel?: string | null;
   fleetRangeLabel?: string | null;
   notes?: string | null;
@@ -249,18 +251,32 @@ function DetailPanel({ partId, onClose }: { partId: string; onClose: () => void 
                           {att.via && att.via !== "direct" && ` · via fleet ${att.via}`}
                         </div>
                       </div>
-                      <a
-                        href={att.urlOrPath}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{
-                          display: "inline-block", padding: "4px 10px",
-                          background: "#2563eb", color: "#fff", borderRadius: 4,
-                          fontSize: "0.78rem", textDecoration: "none", whiteSpace: "nowrap",
-                        }}
-                      >
-                        Open ↗
-                      </a>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        {att.previewImageUrl && (
+                          <Link
+                            to={`/diagram/${att.id}`}
+                            style={{
+                              display: "inline-block", padding: "4px 10px",
+                              background: "#1e3a5f", color: "#93c5fd", borderRadius: 4,
+                              fontSize: "0.78rem", textDecoration: "none", whiteSpace: "nowrap",
+                            }}
+                          >
+                            🗺 Interactive
+                          </Link>
+                        )}
+                        <a
+                          href={att.urlOrPath}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            display: "inline-block", padding: "4px 10px",
+                            background: "#2563eb", color: "#fff", borderRadius: 4,
+                            fontSize: "0.78rem", textDecoration: "none", whiteSpace: "nowrap",
+                          }}
+                        >
+                          Open ↗
+                        </a>
+                      </div>
                     </div>
                   ))}
                 </div>

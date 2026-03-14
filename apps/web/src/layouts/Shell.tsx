@@ -7,6 +7,7 @@ import { TransactionsLedgerPage } from "../pages/TransactionsLedgerPage";
 import { WorkOrdersPage } from "../pages/WorkOrdersPage";
 import { WorkOrderDetailPage } from "../pages/WorkOrderDetailPage";
 import { SeatInsertCatalogPage } from "../pages/SeatInsertCatalogPage";
+import { DiagramViewerPage } from "../pages/DiagramViewerPage";
 import { HelpPage } from "../pages/HelpPage";
 
 export function Shell({ user, onLogout }: { user: { name: string; role: string } | null; onLogout: () => void }) {
@@ -45,6 +46,7 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
           <Route path="/work-orders" element={<WorkOrdersPage />} />
           <Route path="/work-orders/:id" element={<WorkOrderDetailPage />} />
           <Route path="/catalog" element={<SeatInsertCatalogPage />} />
+          <Route path="/diagram/:attachmentId" element={<DiagramViewerPage />} />
           <Route path="/help" element={<HelpPage />} />
         </Routes>
       </main>
