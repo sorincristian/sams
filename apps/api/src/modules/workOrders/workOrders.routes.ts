@@ -3,6 +3,12 @@ import { z } from "zod";
 import { prisma } from "../../prisma.js";
 import { requireAuth } from "../../auth.js";
 
+const firstString = (value: unknown): string | undefined => {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value) && typeof value[0] === "string") return value[0];
+  return undefined;
+};
+
 const router = Router();
 
 router.get("/", requireAuth, async (req, res) => {
@@ -14,7 +20,8 @@ router.get("/", requireAuth, async (req, res) => {
 });
 
 router.get("/:id", requireAuth, async (req, res) => {
-  const { id } = req.params;
+  const id = firstString(req.params.id);
+  if (!id) return res.status(400).json({ message: "Invalid ID" });
   const wo = await prisma.workOrder.findUnique({
     where: { id },
     include: { bus: { include: { garage: true } } }
@@ -33,7 +40,8 @@ const TRANSITIONS: Record<string, string[]> = {
 };
 
 router.patch("/:id/status", requireAuth, async (req, res) => {
-  const { id } = req.params;
+  const id = firstString(req.params.id);
+  if (!id) return res.status(400).json({ message: "Invalid ID" });
   const schema = z.object({ status: z.enum(["OPEN", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "CANCELLED"]) });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ message: "Invalid status value" });
