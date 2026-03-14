@@ -107,6 +107,7 @@ const PDF_MAP: PdfMeta[] = [
     modelFamily: "Electric",
     propulsion: "Electric",
     fleetRangeLabel: "3725-3749",
+
   },
 ];
 

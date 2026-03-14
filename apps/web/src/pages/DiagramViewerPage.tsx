@@ -276,7 +276,10 @@ function HotspotEditor({
 }
 
 // ─── Main DiagramViewerPage ───────────────────────────────────────────────────
-const API_BASE = import.meta.env.VITE_API_BASE_URL?.replace("/api", "") ?? "https://sams-api-vfvj.onrender.com";
+// VITE_API_BASE_URL = "https://sams-api-vfvj.onrender.com/api"
+// We need the root without /api for serving static files.
+const VITE_API = import.meta.env.VITE_API_BASE_URL ?? "https://sams-api-vfvj.onrender.com/api";
+const API_BASE = VITE_API.endsWith("/api") ? VITE_API.slice(0, -4) : VITE_API.replace(/\/api\/.*$/, "");
 
 export function DiagramViewerPage() {
   const { attachmentId } = useParams<{ attachmentId: string }>();
@@ -305,19 +308,12 @@ export function DiagramViewerPage() {
       .finally(() => setLoading(false));
   }, [attachmentId]);
 
-  // Fetch the attachment info from hotspot detail or the bus-compat endpoint
-  // For V1 we get attachment context from the first hotspot or a dedicated call
+  // Fetch attachment info directly by ID
   React.useEffect(() => {
     if (!attachmentId) return;
-    // Reconstruct attachment stub — enough for the viewer
-    // The actual attachment data comes from the parent catalog page navigation
-    // We store minimal info in location state or fetch from bus-compat
-    api.get("/catalog/bus-compat").then((res) => {
-      for (const bc of res.data) {
-        const found = bc.attachments?.find((a: any) => a.id === attachmentId);
-        if (found) { setAttachment(found); break; }
-      }
-    }).catch(() => {/* non-fatal */});
+    api.get(`/catalog/attachments/${attachmentId}`)
+      .then((res) => setAttachment(res.data))
+      .catch(() => {/* non-fatal — viewer still works, just no label/preview */});
   }, [attachmentId]);
 
   function addHotspot(h: Hotspot) {
@@ -331,9 +327,12 @@ export function DiagramViewerPage() {
     if (selected?.id === id) setSelected(null);
   }
 
+  // Build image src: previewImageUrl is a path like "/api/diagram-previews/proterra..."
+  // Prepend the API base to get the full URL
   const previewSrc = attachment?.previewImageUrl
     ? `${API_BASE}${attachment.previewImageUrl.startsWith("/") ? "" : "/"}${attachment.previewImageUrl}`
     : null;
+  // urlOrPath is already a full URL like https://sams-api-vfvj.onrender.com/api/diagrams/...
   const pdfUrl = attachment?.urlOrPath ?? null;
 
   return (

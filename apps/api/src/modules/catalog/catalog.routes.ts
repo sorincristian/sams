@@ -108,6 +108,14 @@ router.put("/:id", requireAuth, async (req, res) => {
 
 // ─── Hotspot endpoints ────────────────────────────────────────────────────────
 
+// GET /api/catalog/attachments/:id — fetch a single attachment by ID (for DiagramViewerPage)
+router.get("/attachments/:id", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const attachment = await prisma.catalogAttachment.findUnique({ where: { id } });
+  if (!attachment) return res.status(404).json({ message: "Attachment not found" });
+  res.json(attachment);
+});
+
 const hotspotSchema = z.object({
   seatLabel:       z.string().min(1),
   partNumber:      z.string().min(1),

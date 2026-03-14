@@ -48,14 +48,26 @@ app.use(helmet());
 app.use(express.json());
 app.use(morgan("dev"));
 
-// Static serve for catalog PDF diagrams + PNG previews (no auth — non-sensitive bus diagrams)
-// Serves: /api/diagrams/<filename>.pdf  and  /api/diagrams/previews/<img>.png
-const diagramsDir = path.resolve(__dirname, "../../prisma/import-data");
+// ─── Static file serving ────────────────────────────────────────────────────
+// After TypeScript compilation: __dirname = apps/api/dist/
+// apps/api/diagrams/          = path.join(__dirname, "../diagrams")
+// apps/api/diagram-previews/  = path.join(__dirname, "../diagram-previews")
+
+// Raw PDF diagrams — /api/diagrams/<filename>.pdf
+const diagramsDir = path.join(__dirname, "../diagrams");
 app.use("/api/diagrams", express.static(diagramsDir, {
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith(".pdf")) res.setHeader("Content-Disposition", "inline");
+    if (filePath.endsWith(".pdf")) {
+      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Content-Type", "application/pdf");
+    }
   }
 }));
+
+// Preview images (PNG/WebP) for interactive hotspot viewer — /api/diagram-previews/<img>
+const diagramPreviewsDir = path.join(__dirname, "../diagram-previews");
+app.use("/api/diagram-previews", express.static(diagramPreviewsDir));
+
 
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ ok: true });
