@@ -54,14 +54,21 @@ router.post("/", requireAuth, async (req, res) => {
     partNumber:          z.string().min(1),
     description:         z.string().min(1),
     vendor:              z.string().optional().default(""),
-    compatibleBusModels: z.string().optional().default(""),
+    compatibleBusModels: z.array(z.string()).default([]),
     minStockLevel:       z.number().int().min(0).default(0),
     reorderPoint:        z.number().int().min(0).default(0),
     unitCost:            z.number().min(0).default(0),
     active:              z.boolean().default(true),
   });
 
-  const parsed = schema.safeParse(req.body);
+  const bodyData = { 
+    ...req.body,
+    compatibleBusModels: Array.isArray(req.body.compatibleBusModels)
+      ? req.body.compatibleBusModels
+      : req.body.compatibleBusModels ? [req.body.compatibleBusModels] : []
+  };
+
+  const parsed = schema.safeParse(bodyData);
   if (!parsed.success) {
     return res.status(400).json({ message: "Invalid request", errors: parsed.error.flatten() });
   }
@@ -86,14 +93,21 @@ router.put("/:id", requireAuth, async (req, res) => {
     partNumber:          z.string().min(1).optional(),
     description:         z.string().min(1).optional(),
     vendor:              z.string().optional(),
-    compatibleBusModels: z.string().optional(),
+    compatibleBusModels: z.array(z.string()).optional(),
     minStockLevel:       z.number().int().min(0).optional(),
     reorderPoint:        z.number().int().min(0).optional(),
     unitCost:            z.number().min(0).optional(),
     active:              z.boolean().optional(),
   });
 
-  const parsed = schema.safeParse(req.body);
+  const bodyData = { ...req.body };
+  if (bodyData.compatibleBusModels !== undefined) {
+    bodyData.compatibleBusModels = Array.isArray(bodyData.compatibleBusModels)
+      ? bodyData.compatibleBusModels
+      : bodyData.compatibleBusModels ? [bodyData.compatibleBusModels] : [];
+  }
+
+  const parsed = schema.safeParse(bodyData);
   if (!parsed.success) {
     return res.status(400).json({ message: "Invalid request", errors: parsed.error.flatten() });
   }
