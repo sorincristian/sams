@@ -10,8 +10,8 @@
  * Usage (from apps/api):
  *   pnpm exec tsx prisma/scripts/import-seat-catalog.ts <path-to-xls>
  */
-import { createRequire } from "module";
-const XLSX = createRequire(import.meta.url)("xlsx");
+import * as XLSX from "xlsx";
+import fs from "fs";
 import { PrismaClient } from "@prisma/client";
 import path from "path";
 
@@ -33,7 +33,8 @@ async function main() {
   const xlsPath = process.argv[2] ?? path.join(__dirname, "../import-data/Bus Allocation&Status-Seats.xls");
   console.log(`Reading: ${xlsPath}`);
 
-  const wb = XLSX.readFile(xlsPath);
+  const fileBuffer = fs.readFileSync(xlsPath);
+  const wb = XLSX.read(fileBuffer, { type: "buffer" });
   const ws = wb.Sheets["Seats"];
   if (!ws) throw new Error(`Sheet "Seats" not found. Available: ${wb.SheetNames.join(", ")}`);
 
