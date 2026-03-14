@@ -48,3 +48,7 @@ jobs:
       - name: Register catalog attachments and link compatibility rows
         working-directory: apps/api
         run: pnpm exec tsx prisma/scripts/register-catalog-attachments.ts
+
+      - name: Link manufacturer parts (PRT-BASE, BYD-BASE) to compatibility rows
+        working-directory: apps/api
+        run: pnpm exec tsx prisma/scripts/link-manufacturer-parts.ts
