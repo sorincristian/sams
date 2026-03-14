@@ -16,6 +16,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Need push permission for auto-committing generated previews
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -25,6 +28,13 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+
+      - name: Install system dependencies for canvas + PDF rendering
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            poppler-utils \
+            libcairo2-dev libjpeg-dev libpango1.0-dev libgif-dev librsvg2-dev
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
@@ -44,6 +54,22 @@ jobs:
       - name: Import bus compatibility from spreadsheet
         working-directory: apps/api
         run: pnpm exec tsx prisma/scripts/import-bus-compatibility.ts "prisma/import-data/Bus Allocation&Status-Seats.xls"
+
+      - name: Generate PDF preview images
+        working-directory: apps/api
+        run: pnpm exec tsx prisma/scripts/generate-previews.ts
+
+      - name: Commit generated preview images
+        run: |
+          git config user.email "ci-bot@sams.render.com"
+          git config user.name "SAMS CI Bot"
+          git add apps/api/diagram-previews/
+          if git diff --staged --quiet; then
+            echo "No new preview images to commit."
+          else
+            git commit -m "ci: auto-generate PDF preview images [skip ci]"
+            git push
+          fi
 
       - name: Register catalog attachments and link compatibility rows
         working-directory: apps/api
