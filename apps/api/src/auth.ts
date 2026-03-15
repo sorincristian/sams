@@ -24,7 +24,8 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
   }
   
   if (!process.env.JWT_SECRET) {
-    throw new Error("JWT_SECRET environment variable is missing");
+    console.error("JWT_SECRET environment variable is missing");
+    return res.status(500).json({ error: "Server auth misconfiguration" });
   }
 
   try {

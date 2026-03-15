@@ -39,6 +39,10 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+app.options('*', (req, res) => {
+  res.sendStatus(204);
+});
+
 app.use(helmet());
 app.use(express.json());
 app.use(morgan("dev"));
