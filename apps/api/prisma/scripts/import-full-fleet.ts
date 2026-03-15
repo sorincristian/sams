@@ -36,7 +36,7 @@ function getPropulsion(typeStr: string): string | null {
 async function main() {
   console.log("Starting Full Fleet Import...");
 
-  const csvPath = path.resolve(__dirname, "../../import-data/out.csv");
+  const csvPath = path.resolve(__dirname, "../import-data/out.csv");
   if (!fs.existsSync(csvPath)) {
     console.error(`ERROR: CSV file not found at ${csvPath}`);
     process.exit(1);
