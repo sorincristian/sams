@@ -21,7 +21,7 @@ enum InventoryTransactionType {
 model Garage {
   id                    String                 @id @default(cuid())
   code                  String                 @unique
-  name                  String
+  name                  String                 @unique
   buses                 Bus[]
   users                 User[]
   inventoryItems        InventoryItem[]

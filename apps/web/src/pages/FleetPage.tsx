@@ -144,7 +144,7 @@ export function FleetPage() {
       setEditingRowId(null);
       fetchBuses();
     } catch (err: any) {
-      showError(err.response?.data?.error || "Failed to update bus");
+      showError(err.response?.data?.message || err.response?.data?.error || "Failed to update bus");
     } finally {
       setSubmitting(false);
     }
@@ -162,7 +162,7 @@ export function FleetPage() {
       setIsBusModalOpen(false);
       setAddingBus(null);
     } catch (err: any) {
-      showError(err.response?.data?.error || "Failed to create bus");
+      showError(err.response?.data?.message || err.response?.data?.error || "Failed to create bus");
     } finally {
       setSubmitting(false);
     }
@@ -177,7 +177,7 @@ export function FleetPage() {
       showSuccess(`Bus ${fleetNumber} deleted`);
       fetchBuses();
     } catch (err: any) {
-      showError(err.response?.data?.error || "Failed to delete bus");
+      showError(err.response?.data?.message || err.response?.data?.error || "Failed to delete bus");
     } finally {
       setSubmitting(false);
     }

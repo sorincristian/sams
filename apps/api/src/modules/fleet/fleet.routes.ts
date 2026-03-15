@@ -29,11 +29,20 @@ router.post("/garages", requireAuth, async (req, res) => {
     
     // Check duplicate
     const existing = await prisma.garage.findFirst({ where: { name: { equals: name, mode: 'insensitive' } } });
-    if (existing) return res.status(400).json({ error: "Garage with this name already exists" });
+    if (existing) return res.status(400).json({ error: "GARAGE_NAME_EXISTS", message: "A garage with this name already exists" });
 
-    const codeFix = await prisma.garage.findUnique({ where: { code: c } });
-    const finalCode = codeFix ? `${c}${Math.floor(Math.random()*100)}` : c;
-    
+    // Ensure Code is not a collision
+    let finalCode = c;
+    const codeCollision = await prisma.garage.findUnique({ where: { code: finalCode } });
+    if (codeCollision) {
+        if (!req.body.code) {
+           finalCode = `${c}${Math.floor(Math.random()*100)}`; // Auto-gen fallback
+        } else {
+           return res.status(400).json({ error: "GARAGE_CODE_EXISTS", message: "A garage with this code already exists" });
+        }
+    }
+
+
     const garage = await prisma.garage.create({ data: { code: finalCode, name } });
     res.status(201).json(garage);
   } catch (error) {
@@ -53,7 +62,7 @@ router.put("/garages/:id", requireAuth, async (req, res) => {
     const existing = await prisma.garage.findFirst({ 
       where: { name: { equals: name, mode: 'insensitive' }, id: { not: garageIdParam } } 
     });
-    if (existing) return res.status(400).json({ error: "Garage with this name already exists" });
+    if (existing) return res.status(400).json({ error: "GARAGE_NAME_EXISTS", message: "A garage with this name already exists" });
 
     const garage = await prisma.garage.update({
       where: { id: garageIdParam },
@@ -219,7 +228,7 @@ router.post("/buses", requireAuth, async (req, res) => {
     }
 
     const existing = await prisma.bus.findUnique({ where: { fleetNumber } });
-    if (existing) return res.status(400).json({ error: "Bus with this fleet number already exists" });
+    if (existing) return res.status(400).json({ error: "BUS_FLEET_EXISTS", message: "A bus with this fleet number already exists" });
 
     const bus = await prisma.bus.create({
       data: {
@@ -247,7 +256,7 @@ router.put("/buses/:id", requireAuth, async (req, res) => {
       const existing = await prisma.bus.findFirst({ 
         where: { fleetNumber: { equals: String(fleetNumber) }, id: { not: busIdParam } } 
       });
-      if (existing) return res.status(400).json({ error: "Bus with this fleet number already exists" });
+      if (existing) return res.status(400).json({ error: "BUS_FLEET_EXISTS", message: "A bus with this fleet number already exists" });
     }
 
     const bus = await prisma.bus.update({

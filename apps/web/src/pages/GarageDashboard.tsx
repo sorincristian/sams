@@ -59,7 +59,7 @@ export function GarageDashboard() {
       setEditingGarage(null);
       fetchGarages();
     } catch (err: any) {
-      showError(err.response?.data?.error || "Failed to save garage");
+      showError(err.response?.data?.message || err.response?.data?.error || "Failed to save garage");
     } finally {
       setSubmitting(false);
     }
@@ -77,7 +77,7 @@ export function GarageDashboard() {
       showSuccess(`Garage ${garage.name} deleted successfully`);
       fetchGarages();
     } catch (err: any) {
-      showError(err.response?.data?.error || "Failed to delete garage");
+      showError(err.response?.data?.message || err.response?.data?.error || "Failed to delete garage");
     } finally {
       setSubmitting(false);
     }
