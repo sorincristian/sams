@@ -10,7 +10,7 @@ router.get("/garages", requireAuth, async (req, res) => {
     res.json(garages);
   } catch (error) {
     console.error("Error fetching garages:", error);
-    res.status(500).json({ error: "Failed to fetch garages" });
+    res.status(500).json({ error: "Failed to fetch garages", details: (error as any)?.message || String(error) });
   }
 });
 
@@ -23,7 +23,7 @@ router.get("/buses", requireAuth, async (req, res) => {
     res.json(buses);
   } catch (error) {
     console.error("Error fetching buses:", error);
-    res.status(500).json({ error: "Failed to fetch buses" });
+    res.status(500).json({ error: "Failed to fetch buses", details: (error as any)?.message || String(error) });
   }
 });
 
