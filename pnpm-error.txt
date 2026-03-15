@@ -1,0 +1,10 @@
+﻿Scope: all 4 workspace projects
+Progress: resolved 0, reused 1, downloaded 0, added 0
+Progress: resolved 343, reused 262, downloaded 0, added 0
+ΓÇëWARNΓÇë 7 deprecated subdependencies found: are-we-there-yet@2.0.0, gauge@3.0.2, glob@7.2.3, inflight@1.0.6, npmlog@5.0.1, rimraf@3.0.2, tar@6.2.1
+Packages: +265
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 346, reused 265, downloaded 0, added 0
+ΓÇëERR_PNPM_EISDIRΓÇë EISDIR: illegal operation on a directory, symlink 'D:\SIMS\sams-render\node_modules\.pnpm\@prisma+engines@5.22.0\node_modules\@prisma\engines' -> 'D:\SIMS\sams-render\node_modules\.pnpm\prisma@5.22.0\node_modules\@prisma\engines'
+
+The "D:" drive is exFAT, which does not support symlinks. This will cause installation to fail. You can set the node-linker to "hoisted" to avoid this issue.

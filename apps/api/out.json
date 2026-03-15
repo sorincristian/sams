@@ -1,0 +1,57 @@
+{
+  "OPTIONS": {
+    "status": 204,
+    "headers": {
+      "date": "Sun, 15 Mar 2026 04:18:41 GMT",
+      "connection": "keep-alive",
+      "cf-ray": "9dc8b731cfce375a-YYZ",
+      "access-control-allow-credentials": "true",
+      "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+      "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+      "access-control-allow-origin": "https://sams-web-emwb.onrender.com",
+      "etag": "W/\"a-bAsFyilMr4Ra1hIU5PyoyFRunpI\"",
+      "rndr-id": "7cc8b746-afbf-4f3a",
+      "vary": "Origin",
+      "x-powered-by": "Express",
+      "x-render-origin-server": "Render",
+      "cf-cache-status": "DYNAMIC",
+      "server": "cloudflare",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": ""
+  },
+  "GET": {
+    "status": 401,
+    "headers": {
+      "date": "Sun, 15 Mar 2026 04:18:41 GMT",
+      "content-type": "application/json; charset=utf-8",
+      "transfer-encoding": "chunked",
+      "connection": "keep-alive",
+      "cf-ray": "9dc8b732793b375a-YYZ",
+      "access-control-allow-credentials": "true",
+      "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+      "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+      "access-control-allow-origin": "https://sams-web-emwb.onrender.com",
+      "content-security-policy": "default-src 'self';base-uri 'self';font-src 'self' https: data:;form-action 'self';frame-ancestors 'self';img-src 'self' data:;object-src 'none';script-src 'self';script-src-attr 'none';style-src 'self' https: 'unsafe-inline';upgrade-insecure-requests",
+      "cross-origin-opener-policy": "same-origin",
+      "cross-origin-resource-policy": "same-origin",
+      "etag": "W/\"1b-w4O8U+0Ll+sSArmfAX18RvhWpiQ\"",
+      "origin-agent-cluster": "?1",
+      "referrer-policy": "no-referrer",
+      "rndr-id": "69e6777b-0293-41da",
+      "strict-transport-security": "max-age=31536000; includeSubDomains",
+      "vary": "Origin, Accept-Encoding",
+      "x-content-type-options": "nosniff",
+      "x-dns-prefetch-control": "off",
+      "x-download-options": "noopen",
+      "x-frame-options": "SAMEORIGIN",
+      "x-permitted-cross-domain-policies": "none",
+      "x-render-origin-server": "Render",
+      "x-xss-protection": "0",
+      "cf-cache-status": "DYNAMIC",
+      "server": "cloudflare",
+      "alt-svc": "h3=\":443\"; ma=86400"
+    },
+    "body": "{\"message\":\"Invalid token\"}"
+  }
+}

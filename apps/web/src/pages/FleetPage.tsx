@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../api";
 import type { Bus, Garage } from "@sams/types";
+import { FleetStatsWidget } from "../components/FleetStatsWidget";
+import { BusImportModal } from "../components/BusImportModal";
 import "./FleetPage.css";
 
 // Debounce helper
@@ -28,12 +30,16 @@ export function FleetPage() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
   const [total, setTotal] = useState(0);
+  const [apiError, setApiError] = useState(false);
 
-  // Modals state
+  // Modals / Edit state
   const [isBusModalOpen, setIsBusModalOpen] = useState(false);
-  const [editingBus, setEditingBus] = useState<Partial<Bus> | null>(null);
-  const [isGarageModalOpen, setIsGarageModalOpen] = useState(false);
-  const [editingGarage, setEditingGarage] = useState<Partial<Garage> | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [addingBus, setAddingBus] = useState<Partial<Bus> | null>(null);
+  
+  // Inline editing state
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [inlineEditForm, setInlineEditForm] = useState<Partial<Bus>>({});
 
   // Feedback state
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -43,8 +49,9 @@ export function FleetPage() {
   const fetchGarages = useCallback(async () => {
     try {
       const res = await api.get("/garages");
-      // Sorted alphabetically as requested by default, but let's make sure
-      const sorted = res.data.sort((a: Garage, b: Garage) => a.name.localeCompare(b.name));
+      // Sorted alphabetically as requested by default, defensively check array
+      const items = Array.isArray(res.data) ? res.data : [];
+      const sorted = items.slice().sort((a: Garage, b: Garage) => (a.name || "").localeCompare(b.name || ""));
       setGarages(sorted);
     } catch (err) {
       console.error("Failed to fetch garages", err);
@@ -57,17 +64,28 @@ export function FleetPage() {
     if (debouncedSearch) url += `&search=${encodeURIComponent(debouncedSearch)}`;
     if (garageIdFilter) url += `&garageId=${encodeURIComponent(garageIdFilter)}`;
     try {
+      setApiError(false);
       const res = await api.get(url);
-      setBuses(res.data.items);
-      setTotal(res.data.total);
-      // Ensure page isn't out of bounds if search results change
-      if (res.data.page > 1 && res.data.items.length === 0) {
-        setPage(1);
+      
+      const items = res.data?.items;
+      if (Array.isArray(items)) {
+        setBuses(items);
+        setTotal(res.data.total || 0);
+        
+        // Ensure page isn't out of bounds if search results change
+        if (res.data.page > 1 && items.length === 0) {
+          setPage(1);
+        } else {
+          setPage(res.data.page || 1);
+        }
       } else {
-        setPage(res.data.page);
+        setApiError(true);
+        setBuses([]);
       }
     } catch (err) {
       console.error("Failed to fetch buses", err);
+      setApiError(true);
+      setBuses([]);
     } finally {
       setLoadingBuses(false);
     }
@@ -96,26 +114,45 @@ export function FleetPage() {
     setTimeout(() => setSuccessMsg(null), 3000);
   };
 
-  // Bus Actions
-  const handleSaveBus = async (e: React.FormEvent) => {
+  // Bus Flow - Inline Edits
+  const startInlineEdit = (bus: Bus) => {
+    setEditingRowId(bus.id);
+    setInlineEditForm({
+      model: bus.model,
+      manufacturer: bus.manufacturer,
+      garageId: bus.garageId,
+      status: bus.status
+    });
+  };
+
+  const saveInlineEdit = async (id: string) => {
+    setSubmitting(true);
+    setErrorMsg(null);
+    try {
+      await api.put(`/buses/${id}`, inlineEditForm);
+      showSuccess("Bus updated successfully");
+      setEditingRowId(null);
+      fetchBuses();
+    } catch (err: any) {
+      showError(err.response?.data?.error || "Failed to update bus");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSaveAddBus = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setErrorMsg(null);
     try {
-      if (editingBus?.id) {
-        await api.put(`/buses/${editingBus.id}`, editingBus);
-        showSuccess("Bus updated successfully");
-        fetchBuses();
-      } else {
-        await api.post("/buses", editingBus);
-        showSuccess("Bus created successfully");
-        setPage(1); // Reset to page 1 to see new bus
-        fetchBuses();
-      }
+      await api.post("/buses", addingBus);
+      showSuccess("Bus created successfully");
+      setPage(1); // Reset to page 1 to see new bus
+      fetchBuses();
       setIsBusModalOpen(false);
-      setEditingBus(null);
+      setAddingBus(null);
     } catch (err: any) {
-      showError(err.response?.data?.error || "Failed to save bus");
+      showError(err.response?.data?.error || "Failed to create bus");
     } finally {
       setSubmitting(false);
     }
@@ -136,59 +173,30 @@ export function FleetPage() {
     }
   };
 
-  // Garage Actions
-  const handleSaveGarage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setErrorMsg(null);
-    try {
-      if (editingGarage?.id) {
-        await api.put(`/garages/${editingGarage.id}`, editingGarage);
-        showSuccess("Garage updated successfully");
-      } else {
-        await api.post("/garages", editingGarage);
-        showSuccess("Garage created successfully");
-      }
-      await fetchGarages();
-      setEditingGarage(null); // Reset form
-    } catch (err: any) {
-      showError(err.response?.data?.error || "Failed to save garage");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDeleteGarage = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete garage ${name}?`)) return;
-    setSubmitting(true);
-    setErrorMsg(null);
-    try {
-      await api.delete(`/garages/${id}`);
-      showSuccess(`Garage ${name} deleted`);
-      fetchGarages();
-      if (garageIdFilter === id) setGarageIdFilter("");
-    } catch (err: any) {
-      showError(err.response?.data?.error || "Failed to delete garage");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const totalPages = Math.ceil(total / pageSize);
+
+  const busItems = Array.isArray((buses as any)?.items) ? (buses as any).items : (Array.isArray(buses) ? buses : []);
+  const garageItems = Array.isArray(garages) ? garages : [];
+  const totalItems = typeof (buses as any)?.total === "number" ? (buses as any).total : (typeof total === "number" ? total : 0);
+
+  if (loadingBuses && busItems.length === 0) return <div style={{ padding: "2rem", textAlign: "center", fontSize: "1.25rem" }}>Loading fleet...</div>;
+  if (apiError && busItems.length === 0) return <div style={{ padding: "2rem", textAlign: "center", fontSize: "1.25rem", color: "#dc2626" }}>Failed to load fleet.</div>;
 
   return (
     <div className="fleet-page-container">
       <div className="header-actions">
         <h1>Fleet Management</h1>
         <div className="button-group">
-          <button onClick={() => { setEditingGarage({}); setIsGarageModalOpen(true); }} className="btn btn-secondary">
-            Manage Garages
+          <button onClick={() => setIsImportModalOpen(true)} className="btn btn-secondary">
+            Bulk Import
           </button>
-          <button onClick={() => { setEditingBus({ status: "ACTIVE" }); setIsBusModalOpen(true); }} className="btn btn-primary">
+          <button onClick={() => { setAddingBus({ status: "ACTIVE" }); setIsBusModalOpen(true); }} className="btn btn-primary">
             Add Bus
           </button>
         </div>
       </div>
+
+      {/* <FleetStatsWidget /> */}
 
       {errorMsg && <div className="toast toast-error">{errorMsg}</div>}
       {successMsg && <div className="toast toast-success">{successMsg}</div>}
@@ -208,8 +216,8 @@ export function FleetPage() {
             className="filter-input"
           >
             <option value="">All garages</option>
-            {garages.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
+            {garageItems.map((g: any) => (
+              <option key={g.id} value={g.id}>{g?.name ?? "Unknown Garage"}</option>
             ))}
           </select>
         </div>
@@ -231,24 +239,55 @@ export function FleetPage() {
             <tbody>
               {loadingBuses ? (
                 <tr><td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>Loading...</td></tr>
-              ) : buses.length === 0 ? (
+              ) : apiError ? (
+                <tr><td colSpan={6} style={{ textAlign: "center", padding: "2rem", color: "#dc2626" }}>Error loading fleet data. Please try again.</td></tr>
+              ) : busItems.length === 0 ? (
                 <tr><td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>No buses found.</td></tr>
               ) : (
-                buses.map((bus) => (
-                  <tr key={bus.id}>
-                    <td>{bus.fleetNumber}</td>
-                    <td>{bus.model}</td>
-                    <td>{bus.manufacturer}</td>
-                    <td>{bus.garage?.name || "—"}</td>
+                busItems.map((bus: any) => (
+                  <tr key={bus?.id} className={editingRowId === bus?.id ? "editing-row" : ""}>
                     <td>
-                      <span className={`status-badge status-${bus.status.toLowerCase()}`}>
-                        {bus.status}
-                      </span>
+                      <a href={`/fleet/buses/${bus.id}`} style={{ fontWeight: "bold", color: "#2563eb", textDecoration: "none" }}>
+                        {bus.fleetNumber}
+                      </a>
                     </td>
-                    <td>
-                      <button onClick={() => { setEditingBus(bus); setIsBusModalOpen(true); }} className="btn btn-sm btn-link" disabled={submitting}>Edit</button>
-                      <button onClick={() => handleDeleteBus(bus.id, bus.fleetNumber)} className="btn btn-sm btn-danger-link" disabled={submitting}>Delete</button>
-                    </td>
+                    {editingRowId === bus.id ? (
+                      <>
+                        <td><input type="text" className="filter-input" value={inlineEditForm.model || ""} onChange={e => setInlineEditForm({...inlineEditForm, model: e.target.value})} disabled={submitting} /></td>
+                        <td><input type="text" className="filter-input" value={inlineEditForm.manufacturer || ""} onChange={e => setInlineEditForm({...inlineEditForm, manufacturer: e.target.value})} disabled={submitting} /></td>
+                        <td>
+                          <select className="filter-input" value={inlineEditForm.garageId || ""} onChange={e => setInlineEditForm({...inlineEditForm, garageId: e.target.value})} disabled={submitting}>
+                            {garageItems.map((g: any) => <option key={g.id} value={g.id}>{g?.name ?? "Unknown"}</option>)}
+                          </select>
+                        </td>
+                        <td>
+                          <select className="filter-input" value={inlineEditForm.status || ""} onChange={e => setInlineEditForm({...inlineEditForm, status: e.target.value})} disabled={submitting}>
+                             <option value="ACTIVE">ACTIVE</option>
+                             <option value="MAINTENANCE">MAINTENANCE</option>
+                             <option value="RETIRED">RETIRED</option>
+                          </select>
+                        </td>
+                        <td>
+                          <button onClick={() => saveInlineEdit(bus.id)} className="btn btn-sm btn-primary" disabled={submitting}>Save</button>
+                          <button onClick={() => setEditingRowId(null)} className="btn btn-sm btn-secondary" style={{ marginLeft: "4px" }} disabled={submitting}>Cancel</button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td>{bus?.model ?? "—"}</td>
+                        <td>{bus?.manufacturer ?? "—"}</td>
+                        <td>{bus?.garage?.name ?? "—"}</td>
+                        <td>
+                          <span className={`status-badge status-${(bus?.status || "ACTIVE").toLowerCase()}`}>
+                            {bus?.status || "ACTIVE"}
+                          </span>
+                        </td>
+                        <td>
+                          <button onClick={() => startInlineEdit(bus)} className="btn btn-sm btn-link" disabled={submitting || editingRowId !== null}>Edit</button>
+                          <button onClick={() => handleDeleteBus(bus.id, bus.fleetNumber)} className="btn btn-sm btn-danger-link" disabled={submitting || editingRowId !== null}>Delete</button>
+                        </td>
+                      </>
+                    )}
                   </tr>
                 ))
               )}
@@ -279,97 +318,59 @@ export function FleetPage() {
         )}
       </div>
 
-      {/* Bus Modal */}
+      {/* Add Bus Modal */}
       {isBusModalOpen && (
         <div className="modal-backdrop">
           <div className="modal">
-            <h2>{editingBus?.id ? "Edit Bus" : "Add Bus"}</h2>
-            <form onSubmit={handleSaveBus}>
+            <h2>Add New Bus</h2>
+            <form onSubmit={handleSaveAddBus}>
               <div className="form-group">
                 <label>Fleet Number</label>
-                <input required type="text" value={editingBus?.fleetNumber || ""} onChange={e => setEditingBus({ ...editingBus, fleetNumber: e.target.value })} disabled={submitting} />
+                <input required type="text" value={addingBus?.fleetNumber || ""} onChange={e => setAddingBus({ ...addingBus, fleetNumber: e.target.value })} disabled={submitting} />
               </div>
               <div className="form-group">
                 <label>Model</label>
-                <input required type="text" value={editingBus?.model || ""} onChange={e => setEditingBus({ ...editingBus, model: e.target.value })} disabled={submitting} />
+                <input required type="text" value={addingBus?.model || ""} onChange={e => setAddingBus({ ...addingBus, model: e.target.value })} disabled={submitting} />
               </div>
               <div className="form-group">
                 <label>Manufacturer</label>
-                <input required type="text" value={editingBus?.manufacturer || ""} onChange={e => setEditingBus({ ...editingBus, manufacturer: e.target.value })} disabled={submitting} />
+                <input required type="text" value={addingBus?.manufacturer || ""} onChange={e => setAddingBus({ ...addingBus, manufacturer: e.target.value })} disabled={submitting} />
               </div>
               <div className="form-group">
                 <label>Garage</label>
-                <select required value={editingBus?.garageId || ""} onChange={e => setEditingBus({ ...editingBus, garageId: e.target.value })} disabled={submitting}>
+                <select required value={addingBus?.garageId || ""} onChange={e => setAddingBus({ ...addingBus, garageId: e.target.value })} disabled={submitting}>
                   <option value="" disabled>Select a garage...</option>
-                  {garages.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  {garageItems.map((g: any) => <option key={g.id} value={g.id}>{g?.name ?? "Unknown"}</option>)}
                 </select>
               </div>
               <div className="form-group">
                 <label>Status</label>
-                <select required value={editingBus?.status || "ACTIVE"} onChange={e => setEditingBus({ ...editingBus, status: e.target.value })} disabled={submitting}>
+                <select required value={addingBus?.status || "ACTIVE"} onChange={e => setAddingBus({ ...addingBus, status: e.target.value })} disabled={submitting}>
                   <option value="ACTIVE">ACTIVE</option>
                   <option value="MAINTENANCE">MAINTENANCE</option>
                   <option value="RETIRED">RETIRED</option>
                 </select>
               </div>
               <div className="modal-actions">
-                <button type="button" onClick={() => { setIsBusModalOpen(false); setEditingBus(null); }} className="btn btn-secondary" disabled={submitting}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? "Saving..." : "Save"}</button>
+                <button type="button" onClick={() => { setIsBusModalOpen(false); setAddingBus(null); }} className="btn btn-secondary" disabled={submitting}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? "Saving..." : "Add Bus"}</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Garage Modal */}
-      {isGarageModalOpen && (
-        <div className="modal-backdrop">
-          <div className="modal modal-large">
-            <h2>Manage Garages</h2>
-            <div className="garage-manager-layout">
-              <div className="garage-list">
-                <h3>Existing Garages</h3>
-                <ul>
-                  {garages.map(g => (
-                    <li key={g.id}>
-                      <span>{g.name} <small>({g.code})</small></span>
-                      <div className="garage-actions">
-                        <button onClick={() => setEditingGarage(g)} className="btn btn-sm btn-link" disabled={submitting}>Edit</button>
-                        <button onClick={() => handleDeleteGarage(g.id, g.name)} className="btn btn-sm btn-danger-link" disabled={submitting}>Delete</button>
-                      </div>
-                    </li>
-                  ))}
-                  {garages.length === 0 && <li>No garages found.</li>}
-                </ul>
-              </div>
-              <div className="garage-form">
-                <h3>{editingGarage?.id ? "Edit Garage" : "Add New Garage"}</h3>
-                <form onSubmit={handleSaveGarage}>
-                  <div className="form-group">
-                    <label>Name</label>
-                    <input required type="text" value={editingGarage?.name || ""} onChange={e => setEditingGarage({ ...editingGarage, name: e.target.value })} disabled={submitting} />
-                  </div>
-                  {!editingGarage?.id && (
-                     <div className="form-group">
-                       <label>Code (3 chars)</label>
-                       <input maxLength={3} type="text" value={editingGarage?.code || ""} onChange={e => setEditingGarage({ ...editingGarage, code: e.target.value })} disabled={submitting} placeholder="Auto-generated if blank" />
-                     </div>
-                  )}
-                  <div className="modal-actions">
-                    {editingGarage?.id && (
-                       <button type="button" onClick={() => setEditingGarage({})} className="btn btn-secondary" disabled={submitting}>Cancel Edit</button>
-                    )}
-                    <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? "Saving..." : "Save Garage"}</button>
-                  </div>
-                </form>
-              </div>
-            </div>
-            <div className="modal-actions modal-footer-actions">
-               <button type="button" onClick={() => { setIsGarageModalOpen(false); setEditingGarage(null); fetchBuses(); }} className="btn btn-secondary" disabled={submitting}>Close</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Bulk Import Modal */}
+      {/* {isImportModalOpen && (
+        <BusImportModal 
+          onClose={() => setIsImportModalOpen(false)} 
+          onSuccess={() => {
+            setIsImportModalOpen(false);
+            setPage(1);
+            fetchBuses();
+          }} 
+        />
+      )} */}
     </div>
   );
 }

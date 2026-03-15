@@ -1,0 +1,1 @@
+{"error":"Failed to fetch buses","details":"\nInvalid `prisma.bus.findMany()` invocation:\n\n\nThe column `Bus.busCompatibilityId` does not exist in the current database."}

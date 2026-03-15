@@ -23,6 +23,7 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
         <nav>
           <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>Dashboard</NavLink>
           <NavLink to="/fleet" className={({ isActive }) => (isActive ? "active" : "")}>Fleet</NavLink>
+          <NavLink to="/garages" className={({ isActive }) => (isActive ? "active" : "")}>Garages</NavLink>
           <NavLink to="/inventory" className={({ isActive }) => (isActive ? "active" : "")}>Inventory</NavLink>
           <NavLink to="/transactions" className={({ isActive }) => (isActive ? "active" : "")}>Ledger</NavLink>
           <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>Catalog</NavLink>
@@ -41,6 +42,16 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
         <Routes>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/fleet" element={<FleetPage />} />
+          <Route path="/fleet/buses/:id" element={
+            <React.Suspense fallback={<div>Loading Bus...</div>}>
+              {React.createElement(React.lazy(() => import('../pages/BusDetailPage').then(m => ({ default: m.BusDetailPage }))))}
+            </React.Suspense>
+          } />
+          <Route path="/garages" element={
+            <React.Suspense fallback={<div>Loading Garages...</div>}>
+              {React.createElement(React.lazy(() => import('../pages/GarageDashboard').then(m => ({ default: m.GarageDashboard }))))}
+            </React.Suspense>
+          } />
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/transactions" element={<TransactionsLedgerPage />} />
           <Route path="/work-orders" element={<WorkOrdersPage />} />

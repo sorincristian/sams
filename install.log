@@ -1,9 +1,42 @@
 Scope: all 4 workspace projects
-Progress: resolved 1, reused 0, downloaded 0, added 0
-Progress: resolved 23, reused 23, downloaded 0, added 0
-Progress: resolved 25, reused 24, downloaded 0, added 0
-Progress: resolved 156, reused 130, downloaded 0, added 0
-Progress: resolved 269, reused 197, downloaded 0, added 0
-Packages: +198
+Lockfile is up to date, resolution step is skipped
+Packages: +270
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- ERR_PNPM_ENOENT  ENOENT: no such file or directory, rename 'F:\SIMS\sams-render\node_modules\.pnpm\@types+cors@2.8.19\node_modules\@types\node' -> 'F:\SIMS\sams-render\node_modules\.pnpm\@types+cors@2.8.19\node_modules\@types\.ignored_node'
+Progress: resolved 0, reused 1, downloaded 0, added 0
+Progress: resolved 0, reused 266, downloaded 0, added 6
+Progress: resolved 0, reused 266, downloaded 0, added 13
+Progress: resolved 0, reused 266, downloaded 0, added 19
+Progress: resolved 0, reused 266, downloaded 0, added 27
+Progress: resolved 0, reused 266, downloaded 0, added 33
+Progress: resolved 0, reused 266, downloaded 0, added 49
+Progress: resolved 0, reused 266, downloaded 0, added 67
+Progress: resolved 0, reused 266, downloaded 0, added 92
+Progress: resolved 0, reused 266, downloaded 0, added 111
+Progress: resolved 0, reused 266, downloaded 0, added 123
+Progress: resolved 0, reused 266, downloaded 0, added 136
+Progress: resolved 0, reused 266, downloaded 0, added 145
+Progress: resolved 0, reused 266, downloaded 0, added 160
+Progress: resolved 0, reused 266, downloaded 0, added 173
+Progress: resolved 0, reused 266, downloaded 0, added 192
+Progress: resolved 0, reused 266, downloaded 0, added 209
+Progress: resolved 0, reused 266, downloaded 0, added 228
+Progress: resolved 0, reused 266, downloaded 0, added 241
+Progress: resolved 0, reused 266, downloaded 0, added 253
+Progress: resolved 0, reused 266, downloaded 0, added 259
+Progress: resolved 0, reused 266, downloaded 0, added 268
+Progress: resolved 0, reused 266, downloaded 0, added 269
+Progress: resolved 0, reused 266, downloaded 0, added 270
+Progress: resolved 0, reused 266, downloaded 0, added 270, done
+ EISDIR  EISDIR: illegal operation on a directory, symlink 'D:\SIMS\sams-render\packages\types' -> 'D:\SIMS\sams-render\apps\web\node_modules\@sams\types'
+
+pnpm: EISDIR: illegal operation on a directory, symlink 'D:\SIMS\sams-render\packages\types' -> 'D:\SIMS\sams-render\apps\web\node_modules\@sams\types'
+    at async Object.symlink (node:internal/fs/promises:1001:10)
+    at async forceSymlink (C:\Users\samss\AppData\Local\pnpm\.tools\pnpm\10.6.3_tmp_27056_0\node_modules\pnpm\dist\pnpm.cjs:100691:9)
+    at async symlinkDirectRootDependency (C:\Users\samss\AppData\Local\pnpm\.tools\pnpm\10.6.3_tmp_27056_0\node_modules\pnpm\dist\pnpm.cjs:144795:26)
+    at async C:\Users\samss\AppData\Local\pnpm\.tools\pnpm\10.6.3_tmp_27056_0\node_modules\pnpm\dist\pnpm.cjs:146407:11
+    at async Promise.all (index 0)
+    at async linkDirectDepsOfProject (C:\Users\samss\AppData\Local\pnpm\.tools\pnpm\10.6.3_tmp_27056_0\node_modules\pnpm\dist\pnpm.cjs:146405:7)
+    at async Promise.all (index 3)
+    at async linkDirectDeps (C:\Users\samss\AppData\Local\pnpm\.tools\pnpm\10.6.3_tmp_27056_0\node_modules\pnpm\dist\pnpm.cjs:146346:34)
+    at async headlessInstall (C:\Users\samss\AppData\Local\pnpm\.tools\pnpm\10.6.3_tmp_27056_0\node_modules\pnpm\dist\pnpm.cjs:146696:24)
+    at async tryFrozenInstall (C:\Users\samss\AppData\Local\pnpm\.tools\pnpm\10.6.3_tmp_27056_0\node_modules\pnpm\dist\pnpm.cjs:185896:44)

@@ -4,6 +4,9 @@ export interface Garage {
   id: string;
   code: string;
   name: string;
+  _count?: {
+    buses: number;
+  };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -18,6 +21,16 @@ export interface Bus {
   garage?: Garage;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface FleetStats {
+  totalBuses: number;
+  totalGarages: number;
+  activeBuses: number;
+  maintenanceBuses: number;
+  retiredBuses: number;
+  busesByGarage: { garageId: string; garageName: string; count: number }[];
+  busesByManufacturer: { manufacturer: string; count: number }[];
 }
 
 export interface SeatInsertType {
