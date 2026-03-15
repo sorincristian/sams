@@ -4,18 +4,6 @@ import { requireAuth } from "../../auth.js";
 
 const router = Router();
 
-router.get("/dev/import-fleet", async (req, res) => {
-  try {
-    const { exec } = await import("child_process");
-    const util = await import("util");
-    const execPromise = util.promisify(exec);
-    const { stdout, stderr } = await execPromise("npx tsx prisma/scripts/import-full-fleet.ts", { cwd: process.cwd() });
-    res.json({ output: stdout, stderr });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message, stderr: error.stderr, stdout: error.stdout });
-  }
-});
-
 router.get("/garages", requireAuth, async (req, res) => {
   try {
     const garages = await prisma.garage.findMany({ orderBy: { name: "asc" } });
