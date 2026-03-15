@@ -220,6 +220,85 @@ router.get("/buses/:id", requireAuth, async (req, res) => {
   }
 });
 
+router.get("/buses/:id/history", requireAuth, async (req, res) => {
+  try {
+    const busIdParam = String(req.params.id);
+    
+    // 1. Fetch Work Orders for this bus
+    const workOrders = await prisma.workOrder.findMany({
+      where: { busId: busIdParam },
+      include: {
+        partUsages: true
+      }
+    });
+
+    // 2. Extract transaction IDs from the part usages
+    const transactionIds = workOrders
+      .flatMap(wo => wo.partUsages.map(pu => pu.inventoryTransactionId))
+      .filter(id => id != null);
+
+    // 3. Fetch the linked transactions
+    const transactions = await prisma.inventoryTransaction.findMany({
+       where: { id: { in: transactionIds } },
+       include: {
+         seatInsertType: true,
+         performedByUser: true
+       }
+    });
+
+    const history: any[] = [];
+
+    // Map Work Orders
+    for (const wo of workOrders) {
+      history.push({
+        id: `wo_${wo.id}`,
+        type: "WORK_ORDER",
+        timestamp: wo.createdAt,
+        title: wo.title || `Work Order #${wo.workOrderNumber}`,
+        description: wo.issueDescription,
+        workOrderId: wo.id,
+        busId: wo.busId,
+        performedBy: "SAMS Admin", // Simplified
+        part: null,
+        quantity: null
+      });
+    }
+
+    // Map Transactions
+    for (const tx of transactions) {
+      // Find parent work order ID
+      const parentUsage = workOrders
+          .flatMap(wo => wo.partUsages)
+          .find(pu => pu.inventoryTransactionId === tx.id);
+          
+      history.push({
+        id: `tx_${tx.id}`,
+        type: tx.quantityChange < 0 ? "PART_INSTALLED" : "PART_REMOVED",
+        timestamp: tx.createdAt,
+        title: tx.type.replace(/_/g, " "),
+        description: tx.notes || "No notes",
+        workOrderId: parentUsage?.workOrderId || null,
+        busId: busIdParam,
+        performedBy: tx.performedByUser?.name || "SAMS Admin",
+        part: tx.seatInsertType ? {
+           partNumber: tx.seatInsertType.partNumber,
+           description: tx.seatInsertType.description,
+           category: tx.seatInsertType.category
+        } : null,
+        quantity: tx.quantityChange
+      });
+    }
+
+    // Sort descending by timestamp
+    history.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    res.json({ bus: { id: busIdParam }, history });
+  } catch (error) {
+    console.error("Error fetching bus history:", error);
+    res.status(500).json({ error: "Failed to fetch bus history" });
+  }
+});
+
 router.post("/buses", requireAuth, async (req, res) => {
   try {
     const { fleetNumber, model, manufacturer, garageId, status } = req.body;

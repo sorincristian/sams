@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { Bus, Garage, WorkOrder } from "@sams/types";
+import { BusMaintenanceTimeline } from "../components/BusMaintenanceTimeline";
 
 // Extended Bus type local to this view
 type BusDetail = Bus & {
@@ -151,6 +152,9 @@ export function BusDetailPage() {
                    </div>
                 </div>
               )}
+              
+              <h3 style={{ marginTop: "3rem", borderBottom: "1px solid #e5e7eb", paddingBottom: "0.5rem" }}>Maintenance History</h3>
+              <BusMaintenanceTimeline busId={bus.id} />
             </div>
           )}
         </div>
