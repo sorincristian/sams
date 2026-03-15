@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { api } from "../api";
 import type { Bus, Garage } from "@sams/types";
 import { FleetStatsWidget } from "../components/FleetStatsWidget";
@@ -27,6 +28,15 @@ export function FleetPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
   const [garageIdFilter, setGarageIdFilter] = useState("");
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const gid = params.get("garageId");
+    if (gid) {
+      setGarageIdFilter(gid);
+    }
+  }, [location.search]);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
   const [total, setTotal] = useState(0);

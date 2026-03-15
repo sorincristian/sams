@@ -65,12 +65,16 @@ export function GarageDashboard() {
     }
   };
 
-  const handleDeleteGarage = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete garage ${name}?`)) return;
+  const handleDeleteGarage = async (garage: Garage) => {
+    if ((garage as any)._count?.buses > 0) {
+      showError(`Cannot delete garage ${garage.name} because it has assigned buses. Please reassign or delete them first.`);
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to delete garage ${garage.name}?`)) return;
     setSubmitting(true);
     try {
-      await api.delete(`/garages/${id}`);
-      showSuccess(`Garage ${name} deleted successfully`);
+      await api.delete(`/garages/${garage.id}`);
+      showSuccess(`Garage ${garage.name} deleted successfully`);
       fetchGarages();
     } catch (err: any) {
       showError(err.response?.data?.error || "Failed to delete garage");
@@ -96,25 +100,42 @@ export function GarageDashboard() {
       ) : garages.length === 0 ? (
         <div className="card" style={{ textAlign: "center", padding: "2rem" }}>No garages found. Create one to get started.</div>
       ) : (
-        <div className="stats-grid">
+        <div className="stats-grid" style={{ gap: "1rem", alignItems: "stretch" }}>
           {garages.map(g => (
-            <div key={g.id} className="card stat-card" style={{ alignItems: "flex-start", borderTop: "3px solid #6366f1" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", width: "100%", marginBottom: "1rem" }}>
-                <h3 style={{ margin: 0 }}>{g.name}</h3>
+            <div key={g.id} className="card" style={{ display: "flex", flexDirection: "column", padding: "1.25rem", borderTop: "3px solid #6366f1", margin: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.5rem" }}>
+                <h3 style={{ margin: 0, fontSize: "1.125rem", color: "#111827", fontWeight: 600 }}>{g.name}</h3>
                 <span className="status-badge status-active">{g.code}</span>
               </div>
               
-              <div style={{ marginBottom: "1.5rem" }}>
-                <div className="stat-label">Assigned Buses</div>
-                <div className="stat-value" style={{ fontSize: "2rem" }}>{g._count?.buses || 0}</div>
+              <div style={{ display: "flex", gap: "1rem", margin: "1rem 0", flexWrap: "wrap" }}>
+                <div style={{ flex: 1 }}>
+                  <div className="stat-label" style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}>Total Buses</div>
+                  <div className="stat-value" style={{ fontSize: "1.5rem" }}>{g._count?.buses || 0}</div>
+                </div>
+                {/* Fallbacks if active/maintenance aren't returned implicitly */}
+                {(g as any).activeBuses !== undefined && (
+                  <div>
+                    <div className="stat-label" style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}>Active</div>
+                    <div className="stat-value text-green" style={{ fontSize: "1.5rem" }}>{(g as any).activeBuses}</div>
+                  </div>
+                )}
+                {(g as any).maintenanceBuses !== undefined && (
+                  <div>
+                    <div className="stat-label" style={{ fontSize: "0.75rem", marginBottom: "0.25rem" }}>Maint</div>
+                    <div className="stat-value text-amber" style={{ fontSize: "1.5rem" }}>{(g as any).maintenanceBuses}</div>
+                  </div>
+                )}
               </div>
               
-              <div style={{ display: "flex", gap: "0.5rem", width: "100%" }}>
-                <Link to={`/fleet?garageId=${g.id}`} className="btn btn-secondary btn-sm" style={{ flex: 1, textAlign: "center", textDecoration: "none" }}>
+              <div style={{ marginTop: "auto", paddingTop: "1rem", borderTop: "1px solid #e5e7eb", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <Link to={`/fleet?garageId=${g.id}`} className="btn btn-secondary btn-sm" style={{ textDecoration: "none" }}>
                   View Fleet
                 </Link>
-                <button onClick={() => { setEditingGarage(g); setIsModalOpen(true); }} className="btn btn-link btn-sm">Edit</button>
-                <button onClick={() => handleDeleteGarage(g.id, g.name)} className="btn btn-danger-link btn-sm">Delete</button>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button onClick={() => { setEditingGarage(g); setIsModalOpen(true); }} className="btn btn-secondary btn-sm">Edit</button>
+                  <button onClick={() => handleDeleteGarage(g)} className="btn btn-danger btn-sm" style={{ backgroundColor: "#ef4444", color: "white", padding: "0.25rem 0.75rem", borderRadius: "0.375rem", fontSize: "0.875rem", border: "none" }}>Delete</button>
+                </div>
               </div>
             </div>
           ))}
