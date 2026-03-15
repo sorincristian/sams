@@ -22,6 +22,15 @@ Seat Inserts Management System for TTC bus garages.
 pnpm install
 ```
 
+**Important:** Whenever any `package.json` changes, you must run:
+```bash
+pnpm install
+git add pnpm-lock.yaml
+git commit -m "chore: update lockfile"
+git push
+```
+This ensures Render deployments do not fail due to PNPM lockfile drift.
+
 ### 2) Configure env
 Copy:
 - `apps/api/.env.example` → `apps/api/.env`

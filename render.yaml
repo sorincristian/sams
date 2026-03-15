@@ -4,11 +4,8 @@ services:
     runtime: node
     plan: starter
     buildCommand: |
-      corepack enable
-      pnpm install --no-frozen-lockfile
-      pnpm build
-      pnpm --filter @sams/api exec prisma migrate deploy
-    startCommand: cd apps/api && pnpm start
+      corepack enable && pnpm install --frozen-lockfile && pnpm --filter @sams/api prisma generate && pnpm --filter @sams/api prisma migrate deploy && pnpm --filter @sams/api build
+    startCommand: pnpm --filter @sams/api start
     healthCheckPath: /health
     autoDeploy: true
     envVars:
@@ -32,7 +29,7 @@ services:
   - type: web
     name: sams-web
     runtime: static
-    buildCommand: corepack enable && pnpm install --frozen-lockfile=false && pnpm --filter @sams/web build
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @sams/web build
     staticPublishPath: apps/web/dist
     routes:
       - type: rewrite
