@@ -7,26 +7,6 @@ import jwt, { SignOptions } from "jsonwebtoken";
 
 const router = Router();
 
-router.get("/seed-admin", async (req, res) => {
-  try {
-    const hash = await bcrypt.hash("admin", 10);
-    const user = await prisma.user.upsert({
-      where: { email: "admin@ttc.ca" },
-      update: { passwordHash: hash, role: "ADMIN" },
-      create: {
-        email: "admin@ttc.ca",
-        name: "Admin User",
-        role: "ADMIN",
-        passwordHash: hash,
-      }
-    });
-    res.json({ message: "Admin user explicitly seeded into production database", email: user.email });
-  } catch (err: any) {
-    console.error("SEED ADMIN ERROR:", err);
-    res.status(500).json({ error: "Failed to seed admin user", details: err.message });
-  }
-});
-
 router.post("/login", async (req, res) => {
   try {
     const schema = z.object({
