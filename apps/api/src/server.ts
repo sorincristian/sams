@@ -10,11 +10,9 @@ const server = app.listen(port, "0.0.0.0", () => {
 });
 
 process.on("unhandledRejection", (err) => {
-  console.error("Unhandled Rejection:", err);
-  server.close(() => process.exit(1));
+  console.error("UNHANDLED REJECTION:", err);
 });
 
 process.on("uncaughtException", (err) => {
-  console.error("Uncaught Exception:", err);
-  process.exit(1);
+  console.error("UNCAUGHT EXCEPTION:", err);
 });

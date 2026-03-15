@@ -40,6 +40,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', 'https://sams-web-emwb.onrender.com');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.sendStatus(204);
 });
 
