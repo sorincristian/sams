@@ -74,17 +74,34 @@ router.delete("/garages/:id", requireAuth, async (req, res) => {
     // Check if garage has buses
     const busCount = await prisma.bus.count({ where: { garageId: garageIdParam } });
     if (busCount > 0) {
-      return res.status(400).json({ error: "Cannot delete garage with assigned buses" });
+      return res.status(400).json({ error: "GARAGE_HAS_BUSES: Cannot delete garage with assigned buses" });
     }
     
-    // Optional: check for users or inventory
+    // Check for users
     const userCount = await prisma.user.count({ where: { garageId: garageIdParam } });
-    if (userCount > 0) return res.status(400).json({ error: "Cannot delete garage with assigned users" });
+    if (userCount > 0) return res.status(400).json({ error: "GARAGE_HAS_USERS: Cannot delete garage with assigned users" });
+
+    // Check for inventory items
+    const inventoryItemCount = await prisma.inventoryItem.count({ where: { garageId: garageIdParam } });
+    if (inventoryItemCount > 0) return res.status(400).json({ error: "GARAGE_HAS_INVENTORY: Cannot delete garage with existing inventory items" });
+
+    // Check for work orders
+    const workOrderCount = await prisma.workOrder.count({ where: { garageId: garageIdParam } });
+    if (workOrderCount > 0) return res.status(400).json({ error: "GARAGE_HAS_WORK_ORDERS: Cannot delete garage with existing work orders" });
+
+    // Check for inventory transactions
+    const transactionCount = await prisma.inventoryTransaction.count({ where: { garageId: garageIdParam } });
+    if (transactionCount > 0) return res.status(400).json({ error: "GARAGE_HAS_TRANSACTIONS: Cannot delete garage with existing inventory transactions" });
+
+    // Check for work order part usages
+    const usageCount = await prisma.workOrderPartUsage.count({ where: { garageId: garageIdParam } });
+    if (usageCount > 0) return res.status(400).json({ error: "GARAGE_HAS_PART_USAGES: Cannot delete garage with existing part usages" });
 
     await prisma.garage.delete({ where: { id: garageIdParam } });
     res.status(204).send();
   } catch (error: any) {
     if (error.code === 'P2025') return res.status(404).json({ error: "Garage not found" });
+    if (error.code === 'P2003') return res.status(400).json({ error: "GARAGE_DELETE_CONSTRAINT: Cannot delete garage due to existing related records" });
     console.error("Error deleting garage:", error);
     res.status(500).json({ error: "Failed to delete garage" });
   }
