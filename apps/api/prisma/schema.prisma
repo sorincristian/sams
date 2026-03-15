@@ -37,11 +37,13 @@ model Bus {
   fleetNumber  String      @unique
   model        String
   manufacturer String
-  status       String      @default("ACTIVE")
-  garageId     String
-  garage       Garage      @relation(fields: [garageId], references: [id])
-  workOrders   WorkOrder[]
-  createdAt    DateTime    @default(now())
+  status             String            @default("ACTIVE")
+  garageId           String
+  busCompatibilityId String?
+  garage             Garage            @relation(fields: [garageId], references: [id])
+  busCompatibility   BusCompatibility? @relation(fields: [busCompatibilityId], references: [id])
+  workOrders         WorkOrder[]
+  createdAt          DateTime          @default(now())
   updatedAt    DateTime    @updatedAt
 }
 
@@ -81,6 +83,7 @@ model BusCompatibility {
   fleetRangeLabel String
   sourceSheet     String?
   sourceRow       Int?
+  buses           Bus[]
   seatInsertTypes SeatInsertType[]    @relation("SeatInsertBusCompat")
   attachments     CatalogAttachment[]
   createdAt       DateTime            @default(now())
