@@ -18,12 +18,16 @@ export function WorkOrdersPage() {
     try {
       const [woRes, busRes] = await Promise.all([
         api.get("/work-orders"),
-        api.get("/buses")
+        api.get("/buses?pageSize=1000")
       ]);
-      setRows(woRes.data);
-      setBuses(busRes.data);
-      if (busRes.data.length > 0 && !busId) {
-        setBusId(busRes.data[0].id);
+      
+      const woData = Array.isArray(woRes.data) ? woRes.data : (woRes.data?.items || []);
+      const busData = Array.isArray(busRes.data?.items) ? busRes.data.items : (Array.isArray(busRes.data) ? busRes.data : []);
+
+      setRows(woData);
+      setBuses(busData);
+      if (busData.length > 0 && !busId) {
+        setBusId(busData[0].id);
       }
     } catch (err: any) {
       console.error("[WorkOrdersPage] load failed:", err);
