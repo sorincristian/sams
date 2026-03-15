@@ -16,31 +16,26 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 
-const allowedOrigins = [
-  "https://sams-web-emwb.onrender.com",
-  process.env.CORS_ORIGIN
-].filter(Boolean);
-
 // Single global CORS/preflight handler
 app.use((req: Request, res: Response, next: NextFunction) => {
-  const origin = req.headers.origin;
+  const allowedOrigins = [
+    'https://sams-web-emwb.onrender.com',
+    'http://localhost:3000',
+    'http://localhost:5173'
+  ];
+  if (process.env.CORS_ORIGIN) allowedOrigins.push(process.env.CORS_ORIGIN);
 
+  const origin = req.headers.origin as string;
   if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.header('Access-Control-Allow-Origin', origin);
   }
-
-  res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-  );
-
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
-  }
-
+  
+  res.header('Vary', 'Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 
