@@ -125,20 +125,29 @@ Errors: ${res.data.failed}`);
           </div>
         ) : (
           <div>
-            <div className="stats-grid" style={{ marginBottom: "1.5rem" }}>
-               <div className="stat-card" style={{ padding: "1rem" }}>
-                 <div className="stat-label">Total Rows</div>
-                 <div className="stat-value" style={{ fontSize: "1.5rem" }}>{previewData.totalRows}</div>
-               </div>
-               <div className="stat-card" style={{ padding: "1rem", borderTop: "3px solid #16a34a" }}>
-                 <div className="stat-label">Valid Entries</div>
-                 <div className="stat-value text-green" style={{ fontSize: "1.5rem" }}>{previewData.validRows}</div>
-               </div>
-               <div className="stat-card" style={{ padding: "1rem", borderTop: "3px solid #dc2626" }}>
-                 <div className="stat-label">Errors / Skipped</div>
-                 <div className="stat-value" style={{ fontSize: "1.5rem", color: "#dc2626" }}>{previewData.errorRows + (previewData.totalRows - previewData.validRows - previewData.errorRows)}</div>
-               </div>
-            </div>
+            {(() => {
+              const totalRows = previewData.totalRows ?? previewData.total ?? 0;
+              const validEntries = previewData.validRows ?? previewData.valid ?? 0;
+              const errorRows = previewData.errorRows ?? previewData.errors ?? 0;
+              const skippedRows = previewData.skippedRows ?? previewData.skipped ?? Math.max(0, totalRows - validEntries - errorRows);
+              const duplicateRows = previewData.duplicateRows ?? 0;
+
+              return (
+                <React.Fragment>
+                  <div className="stats-grid" style={{ marginBottom: "1.5rem" }}>
+                     <div className="stat-card" style={{ padding: "1rem" }}>
+                       <div className="stat-label">Total Rows</div>
+                       <div className="stat-value" style={{ fontSize: "1.5rem" }}>{totalRows}</div>
+                     </div>
+                     <div className="stat-card" style={{ padding: "1rem", borderTop: "3px solid #16a34a" }}>
+                       <div className="stat-label">Valid Entries</div>
+                       <div className="stat-value text-green" style={{ fontSize: "1.5rem" }}>{validEntries}</div>
+                     </div>
+                     <div className="stat-card" style={{ padding: "1rem", borderTop: "3px solid #dc2626" }}>
+                       <div className="stat-label">Errors / Skipped</div>
+                       <div className="stat-value" style={{ fontSize: "1.5rem", color: "#dc2626" }}>{errorRows + skippedRows}</div>
+                     </div>
+                  </div>
 
             {(previewData.rows || []).length > 0 && (
                <div className="table-responsive" style={{ maxHeight: "400px", overflowY: "auto", marginBottom: "1.5rem" }}>
@@ -159,11 +168,11 @@ Errors: ${res.data.failed}`);
                          <td>{row.rowNumber}</td>
                          <td>
                            <span className={`status-badge ${
-                             row.action === 'CREATE' ? 'status-active' :
-                             row.action === 'UPDATE' ? 'status-maintenance' :
+                             row.isValid && row.action === 'CREATE' ? 'status-active' :
+                             row.isValid && row.action === 'UPDATE' ? 'status-maintenance' :
                              row.action === 'SKIP' ? 'status-retired' : ''
                            }`}>
-                             {row.action === 'ERROR' ? <strong style={{ color: "#dc2626" }}>ERROR</strong> : row.action}
+                             {!row.isValid ? <strong style={{ color: "#dc2626" }}>ERROR</strong> : row.action}
                            </span>
                          </td>
                          <td>{row.data.fleetNumber}</td>
@@ -186,16 +195,19 @@ Errors: ${res.data.failed}`);
                </div>
             )}
 
-            <div className="modal-actions">
-              <button onClick={() => setPreviewData(null)} className="btn btn-secondary" disabled={uploading}>Back</button>
-              <button 
-                onClick={handleCommit} 
-                className="btn btn-primary" 
-                disabled={previewData.validRows === 0 || uploading}
-              >
-                {uploading ? "Importing..." : `Commit ${previewData.validRows} Valid Rows`}
-              </button>
-            </div>
+                  <div className="modal-actions">
+                    <button onClick={() => setPreviewData(null)} className="btn btn-secondary" disabled={uploading}>Back</button>
+                    <button 
+                      onClick={handleCommit} 
+                      className="btn btn-primary" 
+                      disabled={validEntries === 0 || uploading}
+                    >
+                      {uploading ? "Importing..." : `Commit ${validEntries} Valid Rows`}
+                    </button>
+                  </div>
+                </React.Fragment>
+              );
+            })()}
           </div>
         )}
       </div>

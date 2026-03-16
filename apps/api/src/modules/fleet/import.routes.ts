@@ -15,8 +15,16 @@ export const IMPORT_COLUMNS = {
   STATUS: "Status"
 };
 
+router.get("/import/template", requireAuth, (req, res) => {
+  const csvContent = "fleetNumber,model,manufacturer,garage,status\n,,,,,";
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="sams_fleet_import_template.csv"');
+  res.send(csvContent);
+});
+
 router.post("/import/preview", requireAuth, upload.single('file'), async (req: any, res: any) => {
   try {
+    const mode = req.body.mode || 'UPSERT'; // UPSERT, CREATE_ONLY, UPDATE_ONLY
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
@@ -30,6 +38,10 @@ router.post("/import/preview", requireAuth, upload.single('file'), async (req: a
     const results = [];
     let validCount = 0;
     let errorCount = 0;
+    let duplicateCount = 0;
+    
+    // Intra-file duplicate tracker
+    const fileSeenFleetNumbers = new Set<string>();
 
     for (let i = 0; i < rawRows.length; i++) {
         const row = rawRows[i];
@@ -79,27 +91,58 @@ router.post("/import/preview", requireAuth, upload.single('file'), async (req: a
             errors.push("Missing Garage");
         }
 
-        const isUpdate = existingFleetSet.has(fleetNum);
+        // Intra-file duplicate check
+        if (fleetNum && fileSeenFleetNumbers.has(fleetNum)) {
+            errors.push("Duplicate fleet number within the same file");
+            duplicateCount++;
+        }
+        if (fleetNum) {
+            fileSeenFleetNumbers.add(fleetNum);
+        }
 
-        if (errors.length > 0) {
+        const isExisting = existingFleetSet.has(fleetNum);
+        
+        let action = 'ERROR';
+        if (errors.length === 0) {
+            if (isExisting) {
+                if (mode === 'CREATE_ONLY') {
+                    action = 'SKIP';
+                    errors.push("Bus already exists (Create Only mode)");
+                } else {
+                    action = 'UPDATE';
+                }
+            } else {
+                if (mode === 'UPDATE_ONLY') {
+                    action = 'SKIP';
+                    errors.push("Bus not found in database (Update Only mode)");
+                } else {
+                    action = 'CREATE';
+                }
+            }
+        }
+
+        const isValid = action === 'CREATE' || action === 'UPDATE';
+
+        if (!isValid && action !== 'SKIP') {
             errorCount++;
-        } else {
+        } else if (isValid) {
             validCount++;
         }
 
         results.push({
             rowNumber: i + 2, // Accounting for 0-index + Header row
-            action: isUpdate ? 'UPDATE' : 'CREATE',
+            action,
             data: { fleetNumber: fleetNum, model, manufacturer: mfg, status, garageId, garageName: matchedGarageName },
             errors,
-            isValid: errors.length === 0
+            isValid
         });
     }
 
     res.json({
-        total: rawRows.length,
-        valid: validCount,
-        errors: errorCount,
+        totalRows: rawRows.length,
+        validRows: validCount,
+        errorRows: errorCount,
+        duplicateRows: duplicateCount,
         rows: results
     });
 
@@ -119,28 +162,56 @@ router.post("/import/commit", requireAuth, async (req, res) => {
 
         let created = 0;
         let updated = 0;
+        let skipped = rows.length - validRows.length;
+        let failed = 0;
 
-        await prisma.$transaction(async (tx) => {
-            for (const row of validRows) {
-                const { fleetNumber, model, manufacturer, status, garageId } = row.data;
-                const existing = await tx.bus.findUnique({ where: { fleetNumber } });
-                
-                if (existing) {
-                    await tx.bus.update({ 
-                        where: { id: existing.id },
-                        data: { model, manufacturer, status, garageId }
+        const toCreate: any[] = [];
+        const toUpdate: any[] = [];
+
+        for (const row of validRows) {
+            if (row.action === 'CREATE') toCreate.push(row.data);
+            if (row.action === 'UPDATE') toUpdate.push(row.data);
+        }
+
+        try {
+            await prisma.$transaction(async (tx) => {
+                // Bulk Insert for newly identified buses
+                if (toCreate.length > 0) {
+                    const createResult = await tx.bus.createMany({
+                        data: toCreate.map(bus => ({
+                            fleetNumber: bus.fleetNumber,
+                            model: bus.model,
+                            manufacturer: bus.manufacturer,
+                            status: bus.status,
+                            garageId: bus.garageId
+                        })),
+                        skipDuplicates: true
                     });
-                    updated++;
-                } else {
-                    await tx.bus.create({
-                        data: { fleetNumber, model, manufacturer, status, garageId }
-                    });
-                    created++;
+                    created += createResult.count;
                 }
-            }
-        });
 
-        res.json({ success: true, created, updated });
+                // Batch updates using Promise.all
+                if (toUpdate.length > 0) {
+                    const updatePromises = toUpdate.map(bus => 
+                        tx.bus.update({
+                            where: { fleetNumber: bus.fleetNumber },
+                            data: {
+                                model: bus.model,
+                                manufacturer: bus.manufacturer,
+                                status: bus.status,
+                                garageId: bus.garageId
+                            }
+                        })
+                    );
+                    await Promise.all(updatePromises);
+                    updated += toUpdate.length;
+                }
+            });
+            res.json({ success: true, created, updated, skipped, failed });
+        } catch (txError) {
+            console.error("Transaction Error:", txError);
+            res.status(500).json({ error: "Import transaction failed" });
+        }
     } catch (error) {
         console.error("XLS Commit Error:", error);
         res.status(500).json({ error: "Import transaction failed" });
