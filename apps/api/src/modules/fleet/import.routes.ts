@@ -33,11 +33,27 @@ router.post("/import/preview", requireAuth, upload.single('file'), async (req: a
 
     for (let i = 0; i < rawRows.length; i++) {
         const row = rawRows[i];
-        const fleetNum = String(row[IMPORT_COLUMNS.FLEET_NUMBER] || '').trim();
-        const model = String(row[IMPORT_COLUMNS.MODEL] || '').trim();
-        const mfg = String(row[IMPORT_COLUMNS.MANUFACTURER] || '').trim();
-        const garageInput = String(row[IMPORT_COLUMNS.GARAGE] || '').trim().toUpperCase();
-        let status = String(row[IMPORT_COLUMNS.STATUS] || 'ACTIVE').trim().toUpperCase();
+
+        // Normalize incoming header keys to lower-case, trimmed
+        const normalizedRow: Record<string, any> = {};
+        for (const key of Object.keys(row)) {
+            normalizedRow[key.trim().toLowerCase()] = row[key];
+        }
+
+        const getField = (aliases: string[]) => {
+            for (const alias of aliases) {
+                if (normalizedRow[alias] !== undefined && normalizedRow[alias] !== null) {
+                    return String(normalizedRow[alias]).trim();
+                }
+            }
+            return '';
+        };
+
+        const fleetNum = getField(["fleet #", "fleet number", "fleetnumber"]);
+        const model = getField(["model", "bus model"]);
+        const mfg = getField(["manufacturer", "make"]);
+        const garageInput = getField(["garage", "garage name"]).toUpperCase();
+        let status = getField(["status"]).toUpperCase() || 'ACTIVE';
         
         const errors = [];
         
