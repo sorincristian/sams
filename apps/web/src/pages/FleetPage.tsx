@@ -383,7 +383,7 @@ export function FleetPage() {
       )}
 
       {/* Bulk Import Modal */}
-      {/* {isImportModalOpen && (
+      {isImportModalOpen && (
         <BusImportModal 
           onClose={() => setIsImportModalOpen(false)} 
           onSuccess={() => {
@@ -392,7 +392,7 @@ export function FleetPage() {
             fetchBuses();
           }} 
         />
-      )} */}
+      )}
     </div>
   );
 }
