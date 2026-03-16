@@ -117,13 +117,24 @@
   padding: 0.5rem 1rem;
   border: 1px solid #d1d5db;
   background: white;
+  color: #111827;
   border-radius: 4px;
   cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-pagination:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
 }
 
 .btn-pagination:disabled {
   background: #f3f4f6;
+  border-color: #e5e7eb;
+  color: #6b7280;
   cursor: not-allowed;
+  opacity: 1; /* Override global .btn opacity to keep text readable */
 }
 
 /* Modals */
