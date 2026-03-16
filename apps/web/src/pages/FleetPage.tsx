@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { Bus, Garage } from "@sams/types";
 import { FleetStatsWidget } from "../components/FleetStatsWidget";
@@ -27,15 +27,18 @@ export function FleetPage() {
   // Filters & Pagination
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 400);
-  const [garageIdFilter, setGarageIdFilter] = useState("");
   const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Initialize state synchronously from URL to prevent race conditions on mount
+  const [garageIdFilter, setGarageIdFilter] = useState(() => {
+    return new URLSearchParams(location.search).get("garageId") || "";
+  });
 
+  // Sync state if URL changes externally (e.g., Back button)
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const gid = params.get("garageId");
-    if (gid) {
-      setGarageIdFilter(gid);
-    }
+    setGarageIdFilter(params.get("garageId") || "");
   }, [location.search]);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
@@ -222,7 +225,16 @@ export function FleetPage() {
           />
           <select
             value={garageIdFilter}
-            onChange={(e) => setGarageIdFilter(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              const params = new URLSearchParams(location.search);
+              if (val) {
+                params.set("garageId", val);
+              } else {
+                params.delete("garageId");
+              }
+              navigate(`${location.pathname}?${params.toString()}`);
+            }}
             className="filter-input"
           >
             <option value="">All garages</option>
