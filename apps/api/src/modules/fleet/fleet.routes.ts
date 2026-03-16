@@ -254,7 +254,7 @@ router.get("/buses/:id/history", requireAuth, async (req, res) => {
         id: `wo_${wo.id}`,
         type: "WORK_ORDER",
         timestamp: wo.createdAt,
-        title: wo.title || `Work Order #${wo.workOrderNumber}`,
+        title: `Work Order #${wo.workOrderNumber}`,
         description: wo.issueDescription,
         workOrderId: wo.id,
         busId: wo.busId,
@@ -273,9 +273,9 @@ router.get("/buses/:id/history", requireAuth, async (req, res) => {
           
       history.push({
         id: `tx_${tx.id}`,
-        type: tx.quantityChange < 0 ? "PART_INSTALLED" : "PART_REMOVED",
+        type: tx.quantity < 0 ? "PART_INSTALLED" : "PART_REMOVED",
         timestamp: tx.createdAt,
-        title: tx.type.replace(/_/g, " "),
+        title: tx.seatInsertType?.description || tx.type.replace(/_/g, " "),
         description: tx.notes || "No notes",
         workOrderId: parentUsage?.workOrderId || null,
         busId: busIdParam,
@@ -283,9 +283,9 @@ router.get("/buses/:id/history", requireAuth, async (req, res) => {
         part: tx.seatInsertType ? {
            partNumber: tx.seatInsertType.partNumber,
            description: tx.seatInsertType.description,
-           category: tx.seatInsertType.category
+           category: tx.seatInsertType.componentType || "Uncategorized"
         } : null,
-        quantity: tx.quantityChange
+        quantity: tx.quantity
       });
     }
 
