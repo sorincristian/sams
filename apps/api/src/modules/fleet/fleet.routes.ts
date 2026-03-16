@@ -273,7 +273,7 @@ router.get("/buses/:id/history", requireAuth, async (req, res) => {
           
       history.push({
         id: `tx_${tx.id}`,
-        type: tx.quantity < 0 ? "PART_INSTALLED" : "PART_REMOVED",
+        type: ["ISSUE", "TRANSFER_OUT", "ADJUST_OUT", "SCRAP"].includes(tx.type) ? "PART_INSTALLED" : "PART_REMOVED",
         timestamp: tx.createdAt,
         title: tx.seatInsertType?.description || tx.type.replace(/_/g, " "),
         description: tx.notes || "No notes",
