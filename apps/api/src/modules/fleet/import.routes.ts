@@ -1,11 +1,26 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import multer from "multer";
 import * as xlsx from "xlsx";
 import { prisma } from "../../prisma.js";
-import { requireAuth } from "../../auth.js";
+import { requireAuth, AuthRequest } from "../../auth.js";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_FILE_SIZE }
+});
+
+// Multer error handler – returns 413 for oversized files
+function handleUpload(req: Request, res: Response, next: NextFunction) {
+  upload.single('file')(req, res, (err: any) => {
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: 'File too large; max 5 MB' });
+    }
+    if (err) return res.status(400).json({ error: err.message });
+    next();
+  });
+}
 
 export const IMPORT_COLUMNS = {
   FLEET_NUMBER: "Fleet Number",
@@ -22,7 +37,8 @@ router.get("/import/template", requireAuth, (req, res) => {
   res.send(csvContent);
 });
 
-router.post("/import/preview", requireAuth, upload.single('file'), async (req: any, res: any) => {
+router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: any) => {
+  const startTime = Date.now();
   try {
     const mode = req.body.mode || 'UPSERT'; // UPSERT, CREATE_ONLY, UPDATE_ONLY
     // Accept optional manual column mapping from the wizard (JSON string)
@@ -187,6 +203,26 @@ router.post("/import/preview", requireAuth, upload.single('file'), async (req: a
       mappedHeaders[field] = match || null;
     }
 
+    const durationMs = Date.now() - startTime;
+    const filename = req.file?.originalname || 'unknown';
+
+    // Structured log
+    console.log(JSON.stringify({
+      event: 'IMPORT_PREVIEW', actor: req.user?.userId, filename,
+      fileSize: req.file?.size, totalRows: rawRows.length,
+      validRows: validCount, errorRows: errorCount,
+      duplicateRows: duplicateCount, durationMs, outcome: 'previewed'
+    }));
+
+    // Audit log (non-blocking)
+    prisma.auditLog.create({
+      data: {
+        action: 'IMPORT_PREVIEW', entity: 'fleet', entityId: 'bulk',
+        userId: req.user?.userId ?? 'system',
+        after: { filename, totalRows: rawRows.length, validRows: validCount, errorRows: errorCount, duplicateRows: duplicateCount }
+      }
+    }).catch(() => {});
+
     res.json({
         totalRows: rawRows.length,
         validRows: validCount,
@@ -200,15 +236,20 @@ router.post("/import/preview", requireAuth, upload.single('file'), async (req: a
         rows: results
     });
 
-  } catch (error) {
-    console.error("XLS Preview Error:", error);
+  } catch (error: any) {
+    console.error(JSON.stringify({
+      event: 'IMPORT_PREVIEW', actor: req.user?.userId,
+      filename: req.file?.originalname, outcome: 'failed',
+      error: error.message, durationMs: Date.now() - startTime
+    }));
     res.status(500).json({ error: "Failed to process excel file" });
   }
 });
 
-router.post("/import/commit", requireAuth, async (req, res) => {
+router.post("/import/commit", requireAuth, async (req: any, res: any) => {
+    const startTime = Date.now();
     try {
-        const { rows } = req.body; // Expects the array of valid rows from preview
+        const { rows, filename } = req.body; // Expects the array of valid rows from preview
         if (!Array.isArray(rows)) return res.status(400).json({ error: "Invalid payload format" });
 
         const validRows = rows.filter((r: any) => r.isValid);
@@ -260,14 +301,54 @@ router.post("/import/commit", requireAuth, async (req, res) => {
                     await Promise.all(updatePromises);
                     updated += toUpdate.length;
                 }
+
+                // Audit log (inside transaction for consistency)
+                await tx.auditLog.create({
+                  data: {
+                    action: 'IMPORT_COMMIT', entity: 'fleet', entityId: 'bulk',
+                    userId: req.user?.userId ?? 'system',
+                    after: {
+                      filename: filename || 'unknown',
+                      totalRows: rows.length, created, updated, skipped, failed,
+                      status: 'SUCCESS'
+                    }
+                  }
+                });
             });
+
+            const durationMs = Date.now() - startTime;
+            console.log(JSON.stringify({
+              event: 'IMPORT_COMMIT', actor: req.user?.userId,
+              filename: filename || 'unknown', totalRows: rows.length,
+              created, updated, skipped, failed, durationMs, outcome: 'success'
+            }));
+
             res.json({ success: true, created, updated, skipped, failed });
-        } catch (txError) {
-            console.error("Transaction Error:", txError);
+        } catch (txError: any) {
+            const durationMs = Date.now() - startTime;
+            console.error(JSON.stringify({
+              event: 'IMPORT_COMMIT', actor: req.user?.userId,
+              filename: filename || 'unknown', totalRows: rows.length,
+              durationMs, outcome: 'failed', error: txError.message
+            }));
+
+            // Audit the failure (non-blocking, outside failed transaction)
+            prisma.auditLog.create({
+              data: {
+                action: 'IMPORT_COMMIT', entity: 'fleet', entityId: 'bulk',
+                userId: req.user?.userId ?? 'system',
+                after: { filename: filename || 'unknown', status: 'FAILED', error: txError.message }
+              }
+            }).catch(() => {});
+
             res.status(500).json({ error: "Import transaction failed" });
         }
-    } catch (error) {
-        console.error("XLS Commit Error:", error);
+    } catch (error: any) {
+        console.error(JSON.stringify({
+          event: 'IMPORT_COMMIT', actor: req.user?.userId,
+          outcome: 'failed', error: error.message,
+          durationMs: Date.now() - startTime
+        }));
         res.status(500).json({ error: "Import transaction failed" });
     }
 });
