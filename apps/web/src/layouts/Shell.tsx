@@ -28,6 +28,7 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
           <NavLink to="/transactions" className={({ isActive }) => (isActive ? "active" : "")}>Ledger</NavLink>
           <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>Catalog</NavLink>
           <NavLink to="/work-orders" className={({ isActive }) => (isActive ? "active" : "")}>Work Orders</NavLink>
+          <NavLink to="/import-history" className={({ isActive }) => (isActive ? "active" : "")}>Import History</NavLink>
           <NavLink to="/help" className={({ isActive }) => (isActive ? "active" : "")}>Help</NavLink>
         </nav>
       </aside>
@@ -57,6 +58,11 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
           <Route path="/work-orders" element={<WorkOrdersPage />} />
           <Route path="/work-orders/:id" element={<WorkOrderDetailPage />} />
           <Route path="/catalog" element={<SeatInsertCatalogPage />} />
+          <Route path="/import-history" element={
+            <React.Suspense fallback={<div>Loading Import History...</div>}>
+              {React.createElement(React.lazy(() => import('../pages/ImportHistoryPage').then(m => ({ default: m.ImportHistoryPage }))))}
+            </React.Suspense>
+          } />
           <Route path="/diagram/:attachmentId" element={<DiagramViewerPage />} />
           <Route path="/help" element={<HelpPage />} />
         </Routes>
