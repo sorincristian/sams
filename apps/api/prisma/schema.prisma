@@ -206,6 +206,7 @@ model User {
   inventoryTransactions InventoryTransaction[]
   workOrderPartUsages   WorkOrderPartUsage[]
   auditLogs             AuditLog[]
+  importMappings        ImportMapping[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 }
@@ -222,6 +223,17 @@ model AuditLog {
   createdAt DateTime @default(now())
 }
 
+model ImportMapping {
+  id        String   @id @default(cuid())
+  userId    String
+  entity    String
+  mapping   Json
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, entity])
+}
 // FUTURE PHASES STUBS
 model Vendor {
   id   String @id @default(cuid())

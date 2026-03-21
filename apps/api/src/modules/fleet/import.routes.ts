@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import multer from "multer";
+import crypto from "crypto";
 import * as xlsx from "xlsx";
 import { prisma } from "../../prisma.js";
 import { requireAuth, AuthRequest } from "../../auth.js";
@@ -41,52 +42,98 @@ const FIELD_ALIASES: Record<string, string[]> = {
 
 const REQUIRED_FIELDS = ['fleetNumber', 'model', 'manufacturer'];
 
+// ── Types ──
+type MappingSource = 'saved' | 'alias' | 'manual' | 'exact';
+type MappingMeta = Record<string, { source: MappingSource; confidence: number; matchedAlias?: string }>;
+
 /** Normalize a header for alias matching: lowercase, trim, strip symbols */
 function normalizeHeader(h: string): string {
   return h.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 }
 
 /**
- * Resolve the column map: for each system field find the best matching raw header.
- * Manual mapping overrides alias detection.
+ * Resolve the column map with confidence scoring.
+ * Priority: manual mapping → saved mapping → alias detection
  */
 function resolveColumnMap(
   rawHeaders: string[],
-  manualMapping: Record<string, string | null>
-): Record<string, string | null> {
-  const resolved: Record<string, string | null> = {};
+  manualMapping: Record<string, string | null>,
+  savedMapping: Record<string, string | null> | null
+): { mapping: Record<string, string | null>; meta: MappingMeta } {
+  const mapping: Record<string, string | null> = {};
+  const meta: MappingMeta = {};
   const usedHeaders = new Set<string>();
 
   for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
-    // 1. Manual mapping takes priority
+    // 1. Manual mapping takes top priority
     const manual = manualMapping[field];
     if (manual) {
-      // Verify the manual mapping actually exists in the raw headers (case-insensitive)
       const match = rawHeaders.find(h => h.trim().toLowerCase() === manual.trim().toLowerCase());
       if (match) {
-        resolved[field] = match;
+        mapping[field] = match;
+        meta[field] = { source: 'manual', confidence: 1.0 };
         usedHeaders.add(match);
         continue;
       }
     }
 
-    // 2. Alias detection with normalized matching
-    let bestMatch: string | null = null;
-    for (const rawHeader of rawHeaders) {
-      if (usedHeaders.has(rawHeader)) continue; // don't double-map
-      const normalized = normalizeHeader(rawHeader);
-      if (aliases.some(a => normalizeHeader(a) === normalized)) {
-        bestMatch = rawHeader;
-        break; // first match wins (deterministic)
+    // 2. Saved mapping (from ImportMapping table)
+    if (savedMapping && savedMapping[field]) {
+      const savedCol = savedMapping[field]!;
+      const match = rawHeaders.find(h => h.trim().toLowerCase() === savedCol.trim().toLowerCase());
+      if (match && !usedHeaders.has(match)) {
+        mapping[field] = match;
+        meta[field] = { source: 'saved', confidence: 1.0 };
+        usedHeaders.add(match);
+        continue;
       }
     }
-    resolved[field] = bestMatch;
-    if (bestMatch) usedHeaders.add(bestMatch);
+
+    // 3. Alias detection with confidence scoring
+    let bestMatch: string | null = null;
+    let bestConfidence = 0;
+    let bestAlias: string | undefined;
+
+    for (const rawHeader of rawHeaders) {
+      if (usedHeaders.has(rawHeader)) continue;
+      const normalized = normalizeHeader(rawHeader);
+
+      // Exact match (normalized header IS the system field name)
+      if (normalized === field.toLowerCase()) {
+        bestMatch = rawHeader;
+        bestConfidence = 1.0;
+        bestAlias = field;
+        break;
+      }
+
+      // Alias match
+      for (const alias of aliases) {
+        const normalizedAlias = normalizeHeader(alias);
+        if (normalized === normalizedAlias) {
+          // Score: exact alias text → 0.95, normalized match → 0.85
+          const score = rawHeader.trim().toLowerCase() === alias ? 0.95 : 0.85;
+          if (score > bestConfidence) {
+            bestMatch = rawHeader;
+            bestConfidence = score;
+            bestAlias = alias;
+          }
+          break; // found an alias match for this header, move on
+        }
+      }
+      if (bestConfidence >= 0.95) break; // good enough, stop scanning
+    }
+
+    mapping[field] = bestMatch;
+    if (bestMatch) {
+      meta[field] = { source: bestConfidence >= 1.0 ? 'exact' : 'alias', confidence: bestConfidence, matchedAlias: bestAlias };
+      usedHeaders.add(bestMatch);
+    }
   }
 
-  return resolved;
+  return { mapping, meta };
 }
 
+// ── Template download ──
 router.get("/import/template", requireAuth, (req, res) => {
   const csvContent = "fleetNumber,model,manufacturer,garage,status\n,,,,,";
   res.setHeader('Content-Type', 'text/csv');
@@ -94,10 +141,14 @@ router.get("/import/template", requireAuth, (req, res) => {
   res.send(csvContent);
 });
 
+// ── Preview ──
 router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: any) => {
   const startTime = Date.now();
+  const requestId = crypto.randomUUID();
   try {
     const mode = req.body.mode || 'UPSERT';
+    const userId = req.user?.userId;
+
     // Accept optional manual column mapping from the wizard (JSON string)
     let manualMapping: Record<string, string | null> = {};
     try {
@@ -108,31 +159,54 @@ router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: 
       }
     } catch (e) { /* ignore bad JSON */ }
 
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded", requestId });
 
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const rawRows = xlsx.utils.sheet_to_json<any>(workbook.Sheets[sheetName]);
+    const rawHeaders = rawRows.length > 0 ? Object.keys(rawRows[0]) : [];
+
+    // ── Load saved mapping if no manual mapping provided ──
+    let savedMapping: Record<string, string | null> | null = null;
+    if (Object.keys(manualMapping).length === 0 && userId) {
+      try {
+        const saved = await prisma.importMapping.findUnique({
+          where: { userId_entity: { userId, entity: 'fleet' } }
+        });
+        if (saved) savedMapping = saved.mapping as Record<string, string | null>;
+      } catch { /* table may not exist yet */ }
+    }
 
     // ── Resolve column mapping ONCE before processing rows ──
-    const rawHeaders = rawRows.length > 0 ? Object.keys(rawRows[0]) : [];
-    const columnMap = resolveColumnMap(rawHeaders, manualMapping);
+    const { mapping: columnMap, meta: mappingMeta } = resolveColumnMap(rawHeaders, manualMapping, savedMapping);
 
     // ── Early fail if required fields are not mapped ──
     const missingMappings = REQUIRED_FIELDS.filter(f => !columnMap[f]);
     if (missingMappings.length > 0) {
       const filename = req.file?.originalname || 'unknown';
       console.log(JSON.stringify({
-        event: 'IMPORT_PREVIEW', actor: req.user?.userId, filename,
+        event: 'IMPORT_PREVIEW', requestId, actor: userId, filename,
         fileSize: req.file?.size, totalRows: rawRows.length,
-        mappedColumns: columnMap, missingMappings, outcome: 'blocked'
+        mappedColumns: columnMap, mappingMeta, missingMappings, outcome: 'blocked'
       }));
       return res.status(422).json({
         error: 'Missing required column mappings',
+        requestId,
         missingFields: missingMappings,
         detectedHeaders: rawHeaders,
-        mappedHeaders: columnMap
+        mappedHeaders: columnMap,
+        mappingMeta
       });
+    }
+
+    // ── Persist manual mapping for future use ──
+    const hasManualMapping = Object.keys(manualMapping).some(k => manualMapping[k]);
+    if (hasManualMapping && userId) {
+      prisma.importMapping.upsert({
+        where: { userId_entity: { userId, entity: 'fleet' } },
+        create: { userId, entity: 'fleet', mapping: columnMap },
+        update: { mapping: columnMap }
+      }).catch(() => {}); // non-blocking
     }
 
     const garages = await prisma.garage.findMany();
@@ -242,11 +316,11 @@ router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: 
 
     // Structured log
     console.log(JSON.stringify({
-      event: 'IMPORT_PREVIEW', actor: req.user?.userId, filename,
+      event: 'IMPORT_PREVIEW', requestId, actor: userId, filename,
       fileSize: req.file?.size, totalRows,
       validRows: validCount, errorRows: errorCount,
       duplicateRows: duplicateCount, successRate,
-      mappedColumns: columnMap, missingMappings: [],
+      mappedColumns: columnMap, mappingMeta, missingMappings: [],
       durationMs, outcome: 'previewed'
     }));
 
@@ -254,12 +328,14 @@ router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: 
     prisma.auditLog.create({
       data: {
         action: 'IMPORT_PREVIEW', entity: 'fleet', entityId: 'bulk',
-        userId: req.user?.userId ?? 'system',
+        userId: userId ?? 'system',
+        before: { requestId },
         after: { filename, totalRows, validRows: validCount, errorRows: errorCount, duplicateRows: duplicateCount, mappedColumns: columnMap }
       }
     }).catch(() => {});
 
     res.json({
+        requestId,
         totalRows,
         validRows: validCount,
         errorRows: errorCount,
@@ -270,28 +346,31 @@ router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: 
         updateRows: results.filter(r => r.action === 'UPDATE').length,
         detectedHeaders: rawHeaders,
         mappedHeaders: columnMap,
+        mappingMeta,
         missingMappings: [],
         rows: results
     });
 
   } catch (error: any) {
     console.error(JSON.stringify({
-      event: 'IMPORT_PREVIEW', actor: req.user?.userId,
+      event: 'IMPORT_PREVIEW', requestId, actor: req.user?.userId,
       filename: req.file?.originalname, outcome: 'failed',
       error: error.message, durationMs: Date.now() - startTime
     }));
-    res.status(500).json({ error: "Failed to process excel file" });
+    res.status(500).json({ error: "Failed to process excel file", requestId });
   }
 });
 
+// ── Commit ──
 router.post("/import/commit", requireAuth, async (req: any, res: any) => {
     const startTime = Date.now();
+    const requestId = crypto.randomUUID();
     try {
-        const { rows, filename } = req.body; // Expects the array of valid rows from preview
-        if (!Array.isArray(rows)) return res.status(400).json({ error: "Invalid payload format" });
+        const { rows, filename } = req.body;
+        if (!Array.isArray(rows)) return res.status(400).json({ error: "Invalid payload format", requestId });
 
         const validRows = rows.filter((r: any) => r.isValid);
-        if (validRows.length === 0) return res.status(400).json({ error: "No valid rows to import" });
+        if (validRows.length === 0) return res.status(400).json({ error: "No valid rows to import", requestId });
 
         let created = 0;
         let updated = 0;
@@ -308,7 +387,6 @@ router.post("/import/commit", requireAuth, async (req: any, res: any) => {
 
         try {
             await prisma.$transaction(async (tx) => {
-                // Bulk Insert for newly identified buses
                 if (toCreate.length > 0) {
                     const createResult = await tx.bus.createMany({
                         data: toCreate.map(bus => ({
@@ -323,7 +401,6 @@ router.post("/import/commit", requireAuth, async (req: any, res: any) => {
                     created += createResult.count;
                 }
 
-                // Batch updates using Promise.all
                 if (toUpdate.length > 0) {
                     const updatePromises = toUpdate.map(bus => 
                         tx.bus.update({
@@ -345,6 +422,7 @@ router.post("/import/commit", requireAuth, async (req: any, res: any) => {
                   data: {
                     action: 'IMPORT_COMMIT', entity: 'fleet', entityId: 'bulk',
                     userId: req.user?.userId ?? 'system',
+                    before: { requestId },
                     after: {
                       filename: filename || 'unknown',
                       totalRows: rows.length, created, updated, skipped, failed,
@@ -356,16 +434,16 @@ router.post("/import/commit", requireAuth, async (req: any, res: any) => {
 
             const durationMs = Date.now() - startTime;
             console.log(JSON.stringify({
-              event: 'IMPORT_COMMIT', actor: req.user?.userId,
+              event: 'IMPORT_COMMIT', requestId, actor: req.user?.userId,
               filename: filename || 'unknown', totalRows: rows.length,
               created, updated, skipped, failed, durationMs, outcome: 'success'
             }));
 
-            res.json({ success: true, created, updated, skipped, failed });
+            res.json({ success: true, requestId, created, updated, skipped, failed });
         } catch (txError: any) {
             const durationMs = Date.now() - startTime;
             console.error(JSON.stringify({
-              event: 'IMPORT_COMMIT', actor: req.user?.userId,
+              event: 'IMPORT_COMMIT', requestId, actor: req.user?.userId,
               filename: filename || 'unknown', totalRows: rows.length,
               durationMs, outcome: 'failed', error: txError.message
             }));
@@ -375,20 +453,58 @@ router.post("/import/commit", requireAuth, async (req: any, res: any) => {
               data: {
                 action: 'IMPORT_COMMIT', entity: 'fleet', entityId: 'bulk',
                 userId: req.user?.userId ?? 'system',
+                before: { requestId },
                 after: { filename: filename || 'unknown', status: 'FAILED', error: txError.message }
               }
             }).catch(() => {});
 
-            res.status(500).json({ error: "Import transaction failed" });
+            res.status(500).json({ error: "Import transaction failed", requestId });
         }
     } catch (error: any) {
         console.error(JSON.stringify({
-          event: 'IMPORT_COMMIT', actor: req.user?.userId,
+          event: 'IMPORT_COMMIT', requestId, actor: req.user?.userId,
           outcome: 'failed', error: error.message,
           durationMs: Date.now() - startTime
         }));
-        res.status(500).json({ error: "Import transaction failed" });
+        res.status(500).json({ error: "Import transaction failed", requestId });
     }
+});
+
+// ── Import History ──
+router.get("/import/history", requireAuth, async (req: any, res: any) => {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      where: {
+        entity: 'fleet',
+        action: 'IMPORT_COMMIT'
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: { user: { select: { name: true, email: true } } }
+    });
+
+    const history = logs.map(log => {
+      const after = (log.after || {}) as any;
+      const before = (log.before || {}) as any;
+      return {
+        id: log.id,
+        requestId: before.requestId || null,
+        filename: after.filename || 'unknown',
+        user: log.user?.name || log.user?.email || log.userId,
+        createdAt: log.createdAt,
+        totalRows: after.totalRows || 0,
+        created: after.created || 0,
+        updated: after.updated || 0,
+        failed: after.failed || 0,
+        status: after.status || 'UNKNOWN'
+      };
+    });
+
+    res.json(history);
+  } catch (error: any) {
+    console.error('Import history error:', error.message);
+    res.status(500).json({ error: 'Failed to fetch import history' });
+  }
 });
 
 export default router;
