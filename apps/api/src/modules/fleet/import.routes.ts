@@ -25,6 +25,16 @@ router.get("/import/template", requireAuth, (req, res) => {
 router.post("/import/preview", requireAuth, upload.single('file'), async (req: any, res: any) => {
   try {
     const mode = req.body.mode || 'UPSERT'; // UPSERT, CREATE_ONLY, UPDATE_ONLY
+    // Accept optional manual column mapping from the wizard (JSON string)
+    let columnMapping: Record<string, string | null> = {};
+    try {
+      if (req.body.columnMapping) {
+        columnMapping = typeof req.body.columnMapping === 'string'
+          ? JSON.parse(req.body.columnMapping)
+          : req.body.columnMapping;
+      }
+    } catch (e) { /* ignore bad JSON */ }
+
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
@@ -43,29 +53,52 @@ router.post("/import/preview", requireAuth, upload.single('file'), async (req: a
     // Intra-file duplicate tracker
     const fileSeenFleetNumbers = new Set<string>();
 
+    // Default alias lookup tables
+    const DEFAULT_ALIASES: Record<string, string[]> = {
+      fleetNumber: ["fleet #", "fleet number", "fleetnumber"],
+      model: ["model", "bus model"],
+      manufacturer: ["manufacturer", "make"],
+      garage: ["garage", "garage name", "garage / depot", "depot"],
+      status: ["status"]
+    };
+
     for (let i = 0; i < rawRows.length; i++) {
         const row = rawRows[i];
 
-        // Normalize incoming header keys to lower-case, trimmed
-        const normalizedRow: Record<string, any> = {};
-        for (const key of Object.keys(row)) {
-            normalizedRow[key.trim().toLowerCase()] = row[key];
-        }
+        // Build a lookup that tries manual mapping first, then alias detection
+        const getField = (systemField: string): string => {
+            // 1. If manual mapping provides a column name for this field, use it directly
+            const manualCol = columnMapping[systemField];
+            if (manualCol) {
+                // Try exact match first, then case-insensitive
+                if (row[manualCol] !== undefined && row[manualCol] !== null) {
+                    return String(row[manualCol]).trim();
+                }
+                // Case-insensitive fallback on raw keys
+                for (const key of Object.keys(row)) {
+                    if (key.trim().toLowerCase() === manualCol.trim().toLowerCase()) {
+                        return String(row[key]).trim();
+                    }
+                }
+            }
 
-        const getField = (aliases: string[]) => {
+            // 2. Fall back to alias detection (original behavior)
+            const aliases = DEFAULT_ALIASES[systemField] || [];
             for (const alias of aliases) {
-                if (normalizedRow[alias] !== undefined && normalizedRow[alias] !== null) {
-                    return String(normalizedRow[alias]).trim();
+                for (const key of Object.keys(row)) {
+                    if (key.trim().toLowerCase() === alias) {
+                        return String(row[key]).trim();
+                    }
                 }
             }
             return '';
         };
 
-        const fleetNum = getField(["fleet #", "fleet number", "fleetnumber"]);
-        const model = getField(["model", "bus model"]);
-        const mfg = getField(["manufacturer", "make"]);
-        const garageInput = getField(["garage", "garage name"]).toUpperCase();
-        let status = getField(["status"]).toUpperCase() || 'ACTIVE';
+        const fleetNum = getField("fleetNumber");
+        const model = getField("model");
+        const mfg = getField("manufacturer");
+        const garageInput = getField("garage").toUpperCase();
+        let status = getField("status").toUpperCase() || 'ACTIVE';
         
         const errors = [];
         
@@ -138,11 +171,32 @@ router.post("/import/preview", requireAuth, upload.single('file'), async (req: a
         });
     }
 
+    // Build header mapping info for the wizard
+    const rawHeaders = rawRows.length > 0 ? Object.keys(rawRows[0]) : [];
+    const HEADER_ALIASES: Record<string, string[]> = {
+      fleetNumber: ["fleet #", "fleet number", "fleetnumber"],
+      model: ["model", "bus model"],
+      manufacturer: ["manufacturer", "make"],
+      garage: ["garage", "garage name", "garage / depot", "depot"],
+      status: ["status"]
+    };
+
+    const mappedHeaders: Record<string, string | null> = {};
+    for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
+      const match = rawHeaders.find(h => aliases.includes(h.trim().toLowerCase()));
+      mappedHeaders[field] = match || null;
+    }
+
     res.json({
         totalRows: rawRows.length,
         validRows: validCount,
         errorRows: errorCount,
         duplicateRows: duplicateCount,
+        skippedRows: rawRows.length - validCount - errorCount,
+        createRows: results.filter(r => r.action === 'CREATE').length,
+        updateRows: results.filter(r => r.action === 'UPDATE').length,
+        detectedHeaders: rawHeaders,
+        mappedHeaders,
         rows: results
     });
 

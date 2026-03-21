@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { Bus, Garage } from "@sams/types";
 import { FleetStatsWidget } from "../components/FleetStatsWidget";
-import { BusImportModal } from "../components/BusImportModal";
+import { BusImportWizard } from "../components/BusImportWizard";
 import "./FleetPage.css";
 
 // Debounce helper
@@ -384,7 +384,7 @@ export function FleetPage() {
 
       {/* Bulk Import Modal */}
       {isImportModalOpen && (
-        <BusImportModal 
+        <BusImportWizard 
           onClose={() => setIsImportModalOpen(false)} 
           onSuccess={() => {
             setIsImportModalOpen(false);
