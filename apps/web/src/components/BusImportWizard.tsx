@@ -134,7 +134,16 @@ export function BusImportWizard({ onClose, onSuccess }: BusImportWizardProps) {
       // If file just uploaded, go to mapping step
       if (step === 'upload') setStep('mapping');
     } catch (err: any) {
-      setErrorMsg(err.response?.data?.error || "Failed to parse the file. Please check the format.");
+      const data = err.response?.data;
+      if (data?.missingFields?.length) {
+        // 422: Required column mappings are missing
+        setDetectedHeaders(data.detectedHeaders || []);
+        setMappedHeaders(data.mappedHeaders || {});
+        setErrorMsg(`Could not auto-detect required columns: ${data.missingFields.map((f: string) => f.replace(/([A-Z])/g, ' $1').replace(/^./, (s: string) => s.toUpperCase()).trim()).join(', ')}. Please map them manually.`);
+        if (step === 'upload') setStep('mapping');
+      } else {
+        setErrorMsg(data?.error || "Failed to parse the file. Please check the format.");
+      }
     } finally {
       setLoading(false);
     }
@@ -147,7 +156,7 @@ export function BusImportWizard({ onClose, onSuccess }: BusImportWizardProps) {
     setErrorMsg(null);
 
     try {
-      const res = await api.post("/buses/import/commit", { rows: previewData.rows });
+      const res = await api.post("/buses/import/commit", { rows: previewData.rows, filename: file?.name });
       setCommitResult(res.data);
       setStep('result');
     } catch (err: any) {
@@ -165,8 +174,13 @@ export function BusImportWizard({ onClose, onSuccess }: BusImportWizardProps) {
 
     const csvLines = ['Row Number,Fleet Number,Model,Manufacturer,Garage,Status,Errors'];
     for (const row of errorRows) {
+      const errStr = row.errors
+        ? (typeof row.errors === 'object' && !Array.isArray(row.errors)
+            ? Object.entries(row.errors).map(([k, v]) => `${k}: ${v}`).join('; ')
+            : Array.isArray(row.errors) ? row.errors.join('; ') : String(row.errors))
+        : '';
       csvLines.push(
-        `${row.rowNumber},"${row.data.fleetNumber || ''}","${row.data.model || ''}","${row.data.manufacturer || ''}","${row.data.garageName || ''}","${row.data.status || ''}","${(row.errors || []).join('; ')}"`
+        `${row.rowNumber},"${row.data.fleetNumber || ''}","${row.data.model || ''}","${row.data.manufacturer || ''}","${row.data.garageName || ''}","${row.data.status || ''}","${errStr}"`
       );
     }
 
@@ -379,8 +393,14 @@ export function BusImportWizard({ onClose, onSuccess }: BusImportWizardProps) {
                   <td>{row.data?.garageName || '—'}</td>
                   <td>{row.data?.status || '—'}</td>
                   <td style={{ maxWidth: '180px', fontSize: '0.75rem' }}>
-                    {row.errors?.length > 0 ? (
-                      <span style={{ color: '#dc2626' }}>{row.errors.join(', ')}</span>
+                    {row.errors && (typeof row.errors === 'object' && !Array.isArray(row.errors)
+                      ? Object.keys(row.errors).length > 0
+                      : row.errors.length > 0) ? (
+                      <span style={{ color: '#dc2626' }}>
+                        {typeof row.errors === 'object' && !Array.isArray(row.errors)
+                          ? Object.entries(row.errors).filter(([k]) => k !== '_mode').map(([k, v]) => `${k}: ${v}`).join(', ')
+                          : Array.isArray(row.errors) ? row.errors.join(', ') : String(row.errors)}
+                      </span>
                     ) : (
                       <span style={{ color: '#16a34a' }}>Valid</span>
                     )}

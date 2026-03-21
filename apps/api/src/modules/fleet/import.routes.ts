@@ -30,6 +30,63 @@ export const IMPORT_COLUMNS = {
   STATUS: "Status"
 };
 
+// ── Unified alias table (single source of truth) ──
+const FIELD_ALIASES: Record<string, string[]> = {
+  fleetNumber: ['fleet number', 'fleetnumber', 'fleet no', 'fleet no.', 'fleet #', 'fleet#', 'bus number', 'bus no', 'bus #', 'bus#', 'vehicle number', 'vehicle no', 'vehicle #'],
+  model: ['model', 'bus model', 'vehicle model'],
+  manufacturer: ['manufacturer', 'make', 'brand', 'oem', 'mfg'],
+  garage: ['garage', 'garage name', 'garage / depot', 'depot', 'yard', 'facility', 'location', 'base'],
+  status: ['status', 'bus status', 'vehicle status']
+};
+
+const REQUIRED_FIELDS = ['fleetNumber', 'model', 'manufacturer'];
+
+/** Normalize a header for alias matching: lowercase, trim, strip symbols */
+function normalizeHeader(h: string): string {
+  return h.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Resolve the column map: for each system field find the best matching raw header.
+ * Manual mapping overrides alias detection.
+ */
+function resolveColumnMap(
+  rawHeaders: string[],
+  manualMapping: Record<string, string | null>
+): Record<string, string | null> {
+  const resolved: Record<string, string | null> = {};
+  const usedHeaders = new Set<string>();
+
+  for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
+    // 1. Manual mapping takes priority
+    const manual = manualMapping[field];
+    if (manual) {
+      // Verify the manual mapping actually exists in the raw headers (case-insensitive)
+      const match = rawHeaders.find(h => h.trim().toLowerCase() === manual.trim().toLowerCase());
+      if (match) {
+        resolved[field] = match;
+        usedHeaders.add(match);
+        continue;
+      }
+    }
+
+    // 2. Alias detection with normalized matching
+    let bestMatch: string | null = null;
+    for (const rawHeader of rawHeaders) {
+      if (usedHeaders.has(rawHeader)) continue; // don't double-map
+      const normalized = normalizeHeader(rawHeader);
+      if (aliases.some(a => normalizeHeader(a) === normalized)) {
+        bestMatch = rawHeader;
+        break; // first match wins (deterministic)
+      }
+    }
+    resolved[field] = bestMatch;
+    if (bestMatch) usedHeaders.add(bestMatch);
+  }
+
+  return resolved;
+}
+
 router.get("/import/template", requireAuth, (req, res) => {
   const csvContent = "fleetNumber,model,manufacturer,garage,status\n,,,,,";
   res.setHeader('Content-Type', 'text/csv');
@@ -40,12 +97,12 @@ router.get("/import/template", requireAuth, (req, res) => {
 router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: any) => {
   const startTime = Date.now();
   try {
-    const mode = req.body.mode || 'UPSERT'; // UPSERT, CREATE_ONLY, UPDATE_ONLY
+    const mode = req.body.mode || 'UPSERT';
     // Accept optional manual column mapping from the wizard (JSON string)
-    let columnMapping: Record<string, string | null> = {};
+    let manualMapping: Record<string, string | null> = {};
     try {
       if (req.body.columnMapping) {
-        columnMapping = typeof req.body.columnMapping === 'string'
+        manualMapping = typeof req.body.columnMapping === 'string'
           ? JSON.parse(req.body.columnMapping)
           : req.body.columnMapping;
       }
@@ -57,6 +114,27 @@ router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: 
     const sheetName = workbook.SheetNames[0];
     const rawRows = xlsx.utils.sheet_to_json<any>(workbook.Sheets[sheetName]);
 
+    // ── Resolve column mapping ONCE before processing rows ──
+    const rawHeaders = rawRows.length > 0 ? Object.keys(rawRows[0]) : [];
+    const columnMap = resolveColumnMap(rawHeaders, manualMapping);
+
+    // ── Early fail if required fields are not mapped ──
+    const missingMappings = REQUIRED_FIELDS.filter(f => !columnMap[f]);
+    if (missingMappings.length > 0) {
+      const filename = req.file?.originalname || 'unknown';
+      console.log(JSON.stringify({
+        event: 'IMPORT_PREVIEW', actor: req.user?.userId, filename,
+        fileSize: req.file?.size, totalRows: rawRows.length,
+        mappedColumns: columnMap, missingMappings, outcome: 'blocked'
+      }));
+      return res.status(422).json({
+        error: 'Missing required column mappings',
+        missingFields: missingMappings,
+        detectedHeaders: rawHeaders,
+        mappedHeaders: columnMap
+      });
+    }
+
     const garages = await prisma.garage.findMany();
     const existingBuses = await prisma.bus.findMany({ select: { fleetNumber: true } });
     const existingFleetSet = new Set(existingBuses.map(b => b.fleetNumber));
@@ -65,84 +143,53 @@ router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: 
     let validCount = 0;
     let errorCount = 0;
     let duplicateCount = 0;
-    
-    // Intra-file duplicate tracker
     const fileSeenFleetNumbers = new Set<string>();
 
-    // Default alias lookup tables
-    const DEFAULT_ALIASES: Record<string, string[]> = {
-      fleetNumber: ["fleet #", "fleet number", "fleetnumber"],
-      model: ["model", "bus model"],
-      manufacturer: ["manufacturer", "make"],
-      garage: ["garage", "garage name", "garage / depot", "depot"],
-      status: ["status"]
+    /** Extract a field value from a row using the resolved column map */
+    const getField = (row: any, systemField: string): string => {
+      const col = columnMap[systemField];
+      if (!col) return '';
+      const val = row[col];
+      return val !== undefined && val !== null ? String(val).trim() : '';
     };
 
     for (let i = 0; i < rawRows.length; i++) {
         const row = rawRows[i];
 
-        // Build a lookup that tries manual mapping first, then alias detection
-        const getField = (systemField: string): string => {
-            // 1. If manual mapping provides a column name for this field, use it directly
-            const manualCol = columnMapping[systemField];
-            if (manualCol) {
-                // Try exact match first, then case-insensitive
-                if (row[manualCol] !== undefined && row[manualCol] !== null) {
-                    return String(row[manualCol]).trim();
-                }
-                // Case-insensitive fallback on raw keys
-                for (const key of Object.keys(row)) {
-                    if (key.trim().toLowerCase() === manualCol.trim().toLowerCase()) {
-                        return String(row[key]).trim();
-                    }
-                }
-            }
-
-            // 2. Fall back to alias detection (original behavior)
-            const aliases = DEFAULT_ALIASES[systemField] || [];
-            for (const alias of aliases) {
-                for (const key of Object.keys(row)) {
-                    if (key.trim().toLowerCase() === alias) {
-                        return String(row[key]).trim();
-                    }
-                }
-            }
-            return '';
-        };
-
-        const fleetNum = getField("fleetNumber");
-        const model = getField("model");
-        const mfg = getField("manufacturer");
-        const garageInput = getField("garage").toUpperCase();
-        let status = getField("status").toUpperCase() || 'ACTIVE';
+        const fleetNum = getField(row, 'fleetNumber');
+        const model = getField(row, 'model');
+        const mfg = getField(row, 'manufacturer');
+        const garageInput = getField(row, 'garage').toUpperCase();
+        let status = getField(row, 'status').toUpperCase() || 'ACTIVE';
         
-        const errors = [];
+        // Structured errors: field → reason
+        const errors: Record<string, string> = {};
         
-        if (!fleetNum) errors.push("Missing Fleet Number");
-        if (!model) errors.push("Missing Model");
-        if (!mfg) errors.push("Missing Manufacturer");
+        if (!fleetNum) errors.fleetNumber = 'Missing';
+        if (!model) errors.model = 'Missing';
+        if (!mfg) errors.manufacturer = 'Missing';
 
         if (!['ACTIVE', 'MAINTENANCE', 'RETIRED'].includes(status)) {
             status = 'ACTIVE';
         }
 
         let garageId = null;
-        let matchedGarageName = "Unknown";
+        let matchedGarageName = 'Unknown';
         if (garageInput) {
             const match = garages.find(g => g.code.toUpperCase() === garageInput || g.name.toUpperCase() === garageInput);
             if (match) {
                 garageId = match.id;
                 matchedGarageName = match.name;
             } else {
-                errors.push(`Garage '${garageInput}' not found`);
+                errors.garage = `Not found: '${garageInput}'`;
             }
         } else {
-            errors.push("Missing Garage");
+            errors.garage = 'Missing';
         }
 
         // Intra-file duplicate check
         if (fleetNum && fileSeenFleetNumbers.has(fleetNum)) {
-            errors.push("Duplicate fleet number within the same file");
+            errors.fleetNumber = 'Duplicate within file';
             duplicateCount++;
         }
         if (fleetNum) {
@@ -150,20 +197,21 @@ router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: 
         }
 
         const isExisting = existingFleetSet.has(fleetNum);
+        const errorKeys = Object.keys(errors);
         
         let action = 'ERROR';
-        if (errors.length === 0) {
+        if (errorKeys.length === 0) {
             if (isExisting) {
                 if (mode === 'CREATE_ONLY') {
                     action = 'SKIP';
-                    errors.push("Bus already exists (Create Only mode)");
+                    errors._mode = 'Bus already exists (Create Only mode)';
                 } else {
                     action = 'UPDATE';
                 }
             } else {
                 if (mode === 'UPDATE_ONLY') {
                     action = 'SKIP';
-                    errors.push("Bus not found in database (Update Only mode)");
+                    errors._mode = 'Bus not found in database (Update Only mode)';
                 } else {
                     action = 'CREATE';
                 }
@@ -179,7 +227,7 @@ router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: 
         }
 
         results.push({
-            rowNumber: i + 2, // Accounting for 0-index + Header row
+            rowNumber: i + 2,
             action,
             data: { fleetNumber: fleetNum, model, manufacturer: mfg, status, garageId, garageName: matchedGarageName },
             errors,
@@ -187,31 +235,19 @@ router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: 
         });
     }
 
-    // Build header mapping info for the wizard
-    const rawHeaders = rawRows.length > 0 ? Object.keys(rawRows[0]) : [];
-    const HEADER_ALIASES: Record<string, string[]> = {
-      fleetNumber: ["fleet #", "fleet number", "fleetnumber"],
-      model: ["model", "bus model"],
-      manufacturer: ["manufacturer", "make"],
-      garage: ["garage", "garage name", "garage / depot", "depot"],
-      status: ["status"]
-    };
-
-    const mappedHeaders: Record<string, string | null> = {};
-    for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
-      const match = rawHeaders.find(h => aliases.includes(h.trim().toLowerCase()));
-      mappedHeaders[field] = match || null;
-    }
-
     const durationMs = Date.now() - startTime;
     const filename = req.file?.originalname || 'unknown';
+    const totalRows = rawRows.length;
+    const successRate = totalRows > 0 ? Math.round((validCount / totalRows) * 100) : 0;
 
     // Structured log
     console.log(JSON.stringify({
       event: 'IMPORT_PREVIEW', actor: req.user?.userId, filename,
-      fileSize: req.file?.size, totalRows: rawRows.length,
+      fileSize: req.file?.size, totalRows,
       validRows: validCount, errorRows: errorCount,
-      duplicateRows: duplicateCount, durationMs, outcome: 'previewed'
+      duplicateRows: duplicateCount, successRate,
+      mappedColumns: columnMap, missingMappings: [],
+      durationMs, outcome: 'previewed'
     }));
 
     // Audit log (non-blocking)
@@ -219,20 +255,22 @@ router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: 
       data: {
         action: 'IMPORT_PREVIEW', entity: 'fleet', entityId: 'bulk',
         userId: req.user?.userId ?? 'system',
-        after: { filename, totalRows: rawRows.length, validRows: validCount, errorRows: errorCount, duplicateRows: duplicateCount }
+        after: { filename, totalRows, validRows: validCount, errorRows: errorCount, duplicateRows: duplicateCount, mappedColumns: columnMap }
       }
     }).catch(() => {});
 
     res.json({
-        totalRows: rawRows.length,
+        totalRows,
         validRows: validCount,
         errorRows: errorCount,
         duplicateRows: duplicateCount,
-        skippedRows: rawRows.length - validCount - errorCount,
+        successRate,
+        skippedRows: totalRows - validCount - errorCount,
         createRows: results.filter(r => r.action === 'CREATE').length,
         updateRows: results.filter(r => r.action === 'UPDATE').length,
         detectedHeaders: rawHeaders,
-        mappedHeaders,
+        mappedHeaders: columnMap,
+        missingMappings: [],
         rows: results
     });
 
