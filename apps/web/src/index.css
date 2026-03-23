@@ -1,0 +1,262 @@
+:root {
+  /* Colors - App Layout */
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-alt: #f1f5f9;
+  --bg-sidebar: #0f172a;
+  --bg-sidebar-hover: #1e293b;
+
+  /* Colors - Lines & Borders */
+  --border-color: #e2e8f0;
+
+  /* Colors - Text */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --text-inverse: #f8fafc;
+
+  /* Colors - Actions & Semantic */
+  --color-primary: #2563eb;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-danger: #dc2626;
+
+  /* Typography */
+  --font-family: Inter, Arial, sans-serif;
+  --font-page-title: bold 36px var(--font-family);
+  --font-section-title: 600 24px var(--font-family);
+  --font-card-title: 600 16px var(--font-family);
+  --font-body: 400 14px var(--font-family);
+  --font-label: 400 12px var(--font-family);
+
+  /* Spacing */
+  --spacing-4: 4px;
+  --spacing-8: 8px;
+  --spacing-12: 12px;
+  --spacing-16: 16px;
+  --spacing-20: 20px;
+  --spacing-24: 24px;
+  --spacing-32: 32px;
+
+  /* Components: Card */
+  --card-padding: var(--spacing-16);
+  --card-radius: 12px;
+  --card-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  --card-shadow-hover: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+
+  /* Page */
+  --page-padding: var(--spacing-24);
+}
+
+/* Global Reset & Base */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font: var(--font-body);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1 {
+  font: var(--font-page-title);
+  margin-top: 0;
+  margin-bottom: var(--spacing-24);
+}
+
+h2 {
+  font: var(--font-section-title);
+  margin-top: 0;
+  margin-bottom: var(--spacing-16);
+}
+
+/* Shell Layout */
+.shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: var(--bg-sidebar);
+  color: var(--text-inverse);
+  padding: var(--spacing-24);
+}
+
+.sidebar a {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  color: #cbd5e1;
+}
+
+.sidebar a.active, .sidebar a:hover {
+  background: var(--bg-sidebar-hover);
+  color: var(--text-inverse);
+}
+
+.login {
+  max-width: 400px;
+  margin: 80px auto;
+  background: var(--bg-surface);
+  padding: var(--spacing-24);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+
+/* Shared Components CSS Classes */
+.shared-page-container {
+  padding: var(--page-padding);
+}
+
+.shared-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
+  box-shadow: var(--card-shadow);
+  transition: box-shadow 0.2s ease;
+}
+
+.shared-card:hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+.shared-card.dark {
+  background: var(--bg-sidebar);
+  color: var(--text-inverse);
+  border-color: var(--bg-sidebar);
+}
+
+.shared-data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.shared-data-table th, .shared-data-table td {
+  text-align: left;
+  padding: var(--spacing-12) var(--spacing-16);
+  border-bottom: 1px solid var(--border-color);
+  font: var(--font-body);
+  color: var(--text-primary);
+}
+
+.shared-data-table th {
+  color: var(--text-muted);
+  font: var(--font-label);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--bg-surface-alt);
+}
+
+.shared-data-table tr:hover td {
+  background: var(--bg-surface-alt);
+}
+
+.shared-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font: var(--font-label);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.shared-badge.success {
+  background: #dcfce7;
+  color: var(--color-success);
+}
+
+.shared-badge.warning {
+  background: #fef3c7;
+  color: var(--color-warning);
+}
+
+.shared-badge.danger {
+  background: #fee2e2;
+  color: var(--color-danger);
+}
+
+.shared-badge.neutral {
+  background: var(--bg-surface-alt);
+  color: var(--text-secondary);
+}
+
+.shared-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-8) var(--spacing-16);
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.shared-button.primary {
+  background: var(--color-primary);
+  color: var(--text-inverse);
+}
+
+.shared-button.primary:hover {
+  background: #1d4ed8; /* darken primary */
+}
+
+.shared-button.secondary {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.shared-button.secondary:hover {
+  background: var(--bg-surface-alt);
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  font: var(--font-body);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+/* Utilities */
+.text-muted {
+  color: var(--text-muted);
+  font: var(--font-label);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.font-card-title {
+  font: var(--font-card-title);
+}
+
+.grid {
+  display: grid;
+  gap: var(--spacing-16);
+}
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+}

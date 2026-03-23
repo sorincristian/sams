@@ -1,0 +1,77 @@
+# Incident Analytics + Reporting
+
+Add operational reporting and analytics on top of the runtime-verified incident lifecycle. All additive — no schema changes, no modifications to existing incident submission/review flow.
+
+## Proposed Changes
+
+---
+
+### Backend Analytics
+
+#### [NEW] [incidentAnalyticsRoutes.js](file:///c:/dev/sams-platform/backend/routes/incidentAnalyticsRoutes.js)
+
+All endpoints use [authenticateToken](file:///c:/dev/sams-platform/backend/middleware/auth.js#29-55), support optional query filters (`dateFrom`, `dateTo`, `status`, `severity`, `category`, `incidentType`, `driverId`, `vehicleId`), and aggregate in SQL.
+
+**Endpoints:**
+
+| Endpoint | Returns |
+|---|---|
+| `GET /analytics/summary` | KPI counts (total, open, under review, resolved, dismissed), avg resolution time, counts by severity/category/type |
+| `GET /analytics/trends` | Time-series: incidents per day/week/month, groupable by severity/category/status/type |
+| `GET /analytics/by-driver` | Ranked driver list: incident count, open count, severity-weighted score. Uses snapshot `driverName` as fallback |
+| `GET /analytics/by-vehicle` | Vehicle breakdown: incident count, open count, by-category. Uses `vehicleLabel` as fallback |
+| `GET /analytics/aging` | Age buckets (0-1d, 2-7d, 8-30d, 31+d) for open + under-review incidents |
+| `GET /analytics/export` | CSV stream of filtered incidents with snapshot-safe fields |
+
+All queries use `Incident.findAll()` with `where` clauses, `sequelize.fn('COUNT')`, `sequelize.fn('DATE')`, and `GROUP BY`. No raw SQL needed for portability.
+
+#### [MODIFY] [server.js](file:///c:/dev/sams-platform/backend/server.js)
+
+Mount analytics routes under existing incident route namespace:
+```js
+apiRouter.use('/incidents', require('./routes/incidentAnalyticsRoutes'));
+```
+
+---
+
+### Admin UI
+
+#### [NEW] [IncidentAnalytics.jsx](file:///c:/dev/sams-platform/admin-portal/src/pages/IncidentAnalytics.jsx)
+
+Dashboard page with:
+
+1. **Filter bar** — date range, status, severity, category dropdowns
+2. **KPI cards** — total, open, under review, resolved, dismissed, avg resolution time
+3. **Trend section** — visual bars showing incidents per period, colored by severity
+4. **Severity breakdown** — horizontal bars or table
+5. **Category breakdown** — horizontal bars or table
+6. **Top drivers** — table sorted by incident count
+7. **Top vehicles** — table sorted by incident count
+8. **Aging table** — bucket counts for open/under-review incidents
+9. **CSV export button** — triggers `/analytics/export` endpoint
+
+All widgets handle empty data gracefully (`No data available` message). Uses `axiosInstance` consistent with other report pages. Tailwind styling matching existing admin portal.
+
+#### [MODIFY] [Sidebar.jsx](file:///c:/dev/sams-platform/admin-portal/src/components/Sidebar.jsx)
+
+Add "Incident Analytics" link under Incidents section (or Reports section).
+
+#### [MODIFY] [App.jsx](file:///c:/dev/sams-platform/admin-portal/src/App.jsx)
+
+Add route:
+```jsx
+<Route path="/incident-analytics" element={<IncidentAnalytics />} />
+```
+
+---
+
+## Verification Plan
+
+### Automated
+- Run existing [e2e-verify/verify_incident_local.js](file:///c:/dev/sams-platform/e2e-verify/verify_incident_local.js) — confirm 63/63 still passes (no regression)
+- Hit each analytics endpoint locally and verify response shape
+
+### Manual
+- Load Incident Analytics page in browser
+- Confirm KPI cards render with correct counts
+- Confirm empty-state renders safely
