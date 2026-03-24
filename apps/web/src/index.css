@@ -283,3 +283,34 @@ input:focus, select:focus, textarea:focus {
   user-select: text;
   background: transparent !important;
 }
+
+/* Layout Utilities (no inline styles allowed) */
+.u-flex { display: flex; }
+.u-justify-end { justify-content: flex-end; }
+.u-gap-4 { gap: var(--spacing-4); }
+.u-gap-8 { gap: var(--spacing-8); }
+.u-gap-12 { gap: var(--spacing-12); }
+.u-mt-24 { margin-top: var(--spacing-24); }
+.u-ml-4 { margin-left: var(--spacing-4); }
+.u-mr-12 { margin-right: var(--spacing-12); }
+.u-border-none { border-bottom: none !important; }
+
+/* Text Utilities */
+.text-danger { color: var(--color-danger); }
+
+/* Shared Modal Container */
+.shared-modal-container {
+  width: 100%;
+  max-width: 500px;
+  margin: auto;
+}
+
+/* Resource Links */
+.resource-link {
+  font-weight: bold;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.resource-link:hover {
+  text-decoration: underline;
+}

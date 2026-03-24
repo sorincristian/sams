@@ -252,8 +252,8 @@ export function FleetPage() {
       <SectionCard title="Fleet Roster" action={
         !loadingBuses && total > 0 && (
           <div className="pagination">
-            <span className="text-muted" style={{ marginRight: "12px" }}>Page {page} of {totalPages} ({total} total)</span>
-            <div style={{ display: "flex", gap: "8px" }}>
+            <span className="text-muted u-mr-12">Page {page} of {totalPages} ({total} total)</span>
+            <div className="u-flex u-gap-8">
               <Button disabled={page <= 1} onClick={() => setPage(p => p - 1)} variant="secondary">Previous</Button>
               <Button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} variant="secondary">Next</Button>
             </div>
@@ -272,7 +272,7 @@ export function FleetPage() {
                 busItems.map((bus: any) => (
                   <tr key={bus?.id} className={editingRowId === bus?.id ? "editing-row" : ""}>
                     <td>
-                      <a href={`/fleet/buses/${bus.id}`} style={{ fontWeight: "bold", color: "#2563eb", textDecoration: "none" }}>
+                      <a href={`/fleet/buses/${bus.id}`} className="resource-link">
                         {bus.fleetNumber}
                       </a>
                     </td>
@@ -294,7 +294,7 @@ export function FleetPage() {
                         </td>
                         <td>
                           <button onClick={() => saveInlineEdit(bus.id)} className="btn btn-sm btn-primary" disabled={submitting}>Save</button>
-                          <button onClick={() => setEditingRowId(null)} className="btn btn-sm btn-secondary" style={{ marginLeft: "4px" }} disabled={submitting}>Cancel</button>
+                          <button onClick={() => setEditingRowId(null)} className="btn btn-sm btn-secondary u-ml-4" disabled={submitting}>Cancel</button>
                         </td>
                       </>
                     ) : (
@@ -308,10 +308,10 @@ export function FleetPage() {
                             variant={(bus?.status === "MAINTENANCE") ? "warning" : (bus?.status === "RETIRED" ? "neutral" : "success")} 
                           />
                         </td>
-                        <td style={{ display: "flex", gap: "8px", borderBottom: "none" }}>
+                        <td className="u-flex u-gap-8 u-border-none">
                           <Button onClick={() => startInlineEdit(bus)} variant="secondary" disabled={submitting || editingRowId !== null}>Edit</Button>
                           <Button onClick={() => handleDeleteBus(bus.id, bus.fleetNumber)} variant="secondary" disabled={submitting || editingRowId !== null}>
-                            <span style={{ color: "var(--color-danger)" }}>Delete</span>
+                            <span className="color-danger text-danger">Delete</span>
                           </Button>
                         </td>
                       </>
@@ -327,7 +327,7 @@ export function FleetPage() {
       {/* Add Bus Modal */}
       {isBusModalOpen && (
         <div className="modal-backdrop">
-          <div style={{ width: "100%", maxWidth: "500px", margin: "auto" }}>
+          <div className="shared-modal-container">
             <SectionCard title="Add New Bus">
               <form onSubmit={handleSaveAddBus}>
                 <FormField label="Fleet Number" required>
@@ -352,7 +352,7 @@ export function FleetPage() {
                     <option value="RETIRED">RETIRED</option>
                   </select>
                 </FormField>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "var(--spacing-12)", marginTop: "var(--spacing-24)" }}>
+                <div className="u-flex u-justify-end u-gap-12 u-mt-24">
                   <Button onClick={() => { setIsBusModalOpen(false); setAddingBus(null); }} variant="secondary" disabled={submitting}>Cancel</Button>
                   <button type="submit" className="shared-button primary" disabled={submitting}>{submitting ? "Saving..." : "Add Bus"}</button>
                 </div>
