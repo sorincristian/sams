@@ -1,13 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
-import { PageContainer, PageHeader } from "../components/shared/Page";
-import { SectionCard } from "../components/shared/Card";
-import { Button } from "../components/shared/Button";
-import { DataTable } from "../components/shared/DataTable";
-import { StatusBadge } from "../components/shared/StatusBadge";
-import { FormField } from "../components/shared/FormField";
-import { LoadingState, EmptyState } from "../components/shared/State";
 
 interface CatalogPart {
   id: string;
@@ -124,10 +117,9 @@ function PartModal({ initial, onClose, onSaved }: {
             <input type="checkbox" checked={form.active} onChange={(e) => set("active", e.target.checked)} />
             <span>Active</span>
           </label>
-          <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "16px" }}>
-            <Button variant="secondary" onClick={onClose}>Cancel</Button>
-            {/* Using a native button with shared classes to retain the submit behavior */}
-            <button type="submit" className="shared-button primary" disabled={saving}>{saving ? "Saving..." : initial ? "Save Changes" : "Create Part"}</button>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
+            <button type="button" style={{ width: "auto", background: "#374151" }} onClick={onClose}>Cancel</button>
+            <button type="submit" style={{ width: "auto" }} disabled={saving}>{saving ? "Saving..." : initial ? "Save Changes" : "Create Part"}</button>
           </div>
         </form>
       </div>
@@ -158,7 +150,7 @@ function DetailPanel({ partId, onClose }: { partId: string; onClose: () => void 
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={{ margin: 0 }}>Part Detail</h3>
-        <Button variant="secondary" onClick={onClose}>✕ Close</Button>
+        <button style={{ width: "auto", padding: "4px 12px", background: "#374151" }} onClick={onClose}>✕ Close</button>
       </div>
 
       {loading && <div className="muted">Loading...</div>}
@@ -337,40 +329,52 @@ export function SeatInsertCatalogPage() {
   };
 
   return (
-    <PageContainer>
-      <PageHeader title="Seat Insert Catalog">
-        <Button variant="primary" onClick={() => setEditing("new")}>
+    <div className="grid" style={{ gap: 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <h1 style={{ margin: 0 }}>Seat Insert Catalog</h1>
+        <button style={{ width: "auto", padding: "6px 16px", marginLeft: "auto" }} onClick={() => setEditing("new")}>
           + Add Part
-        </Button>
-      </PageHeader>
+        </button>
+      </div>
 
-      <SectionCard title="Filters & Search">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "center" }}>
-          <input type="text" placeholder="Search part #, description, vendor…" value={search}
-            onChange={(e) => setSearch(e.target.value)} style={{ flex: "1 1 220px", minWidth: 180, padding: "8px", border: "1px solid var(--border-color)", borderRadius: "4px" }} />
-          <select value={activeFilter} onChange={(e) => setActiveFilter(e.target.value as any)} style={{ ...selectStyle, padding: "8px", border: "1px solid var(--border-color)" }}>
-            <option value="active">Active only</option>
-            <option value="inactive">Inactive only</option>
-            <option value="all">All parts</option>
-          </select>
-          <span className="text-muted" style={{ marginLeft: "auto", fontSize: "0.85rem" }}>
-            {visible.length} / {parts.length} parts
-          </span>
-        </div>
-      </SectionCard>
+      <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+        <input type="text" placeholder="Search part #, description, vendor…" value={search}
+          onChange={(e) => setSearch(e.target.value)} style={{ flex: "1 1 220px", minWidth: 180 }} />
+        <select value={activeFilter} onChange={(e) => setActiveFilter(e.target.value as any)} style={selectStyle}>
+          <option value="active">Active only</option>
+          <option value="inactive">Inactive only</option>
+          <option value="all">All parts</option>
+        </select>
+        <span className="muted" style={{ marginLeft: "auto", fontSize: "0.85rem" }}>
+          {visible.length} / {parts.length} parts
+        </span>
+      </div>
 
-      <SectionCard title="Catalog Inventory">
-        {loading ? <LoadingState message="Loading catalog parts..." /> :
+      <div className="card">
+        {loading ? <div className="muted">Loading...</div> :
           visible.length === 0 ? (
-            <EmptyState message={parts.length === 0 ? "No parts in catalog yet." : "No parts match the current filters."} />
+            <div className="muted">{parts.length === 0 ? "No parts in catalog yet." : "No parts match the current filters."}</div>
           ) : (
             <div style={{ overflowX: "auto" }}>
-              <DataTable headers={["Part #", "Description", "Type", "Vendor", "Min Stock", "Unit Cost", "Status", "Actions"]}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Part #</th>
+                    <th>Description</th>
+                    <th>Type</th>
+                    <th>Vendor</th>
+                    <th style={{ textAlign: "right" }}>Min Stock</th>
+                    <th style={{ textAlign: "right" }}>Unit Cost</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {visible.map((part) => (
                     <tr key={part.id} style={{ opacity: part.active ? 1 : 0.5 }}>
                       <td>
                         <button
-                          style={{ background: "none", border: "none", color: "var(--color-primary)", fontWeight: 700, cursor: "pointer", padding: 0, fontSize: "inherit" }}
+                          style={{ background: "none", border: "none", color: "#60a5fa", fontWeight: 700, cursor: "pointer", padding: 0, fontSize: "inherit" }}
                           onClick={() => setDetailId(part.id)}
                           title="View detail"
                         >
@@ -385,27 +389,31 @@ export function SeatInsertCatalogPage() {
                             color: part.componentType === "BACK" ? "#60a5fa" : "#c084fc",
                             borderRadius: 4, padding: "1px 7px", fontSize: "0.72rem", fontWeight: 700,
                           }}>{part.componentType}</span>
-                        ) : <span className="text-muted">—</span>}
+                        ) : <span className="muted">—</span>}
                       </td>
-                      <td>{part.vendor || <span className="text-muted">—</span>}</td>
+                      <td>{part.vendor || <span className="muted">—</span>}</td>
                       <td style={{ textAlign: "right" }}>{part.minStockLevel}</td>
                       <td style={{ textAlign: "right" }}>${Number(part.unitCost).toFixed(2)}</td>
                       <td>
-                        <StatusBadge 
-                           status={part.active ? "ACTIVE" : "INACTIVE"}
-                           variant={part.active ? "success" : "neutral"}
-                        />
+                        <span style={{
+                          background: part.active ? "#16a34a" : "#374151",
+                          color: "#fff", borderRadius: 4, padding: "2px 8px",
+                          fontSize: "0.75rem", fontWeight: 700,
+                        }}>{part.active ? "ACTIVE" : "INACTIVE"}</span>
                       </td>
-                      <td style={{ display: "flex", gap: "8px", borderBottom: "none" }}>
-                        <Button variant="secondary" onClick={() => setEditing(part)}>Edit</Button>
-                        <Button variant="secondary" onClick={() => setDetailId(part.id)}>Detail</Button>
+                      <td style={{ display: "flex", gap: 6 }}>
+                        <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#374151" }}
+                          onClick={() => setEditing(part)}>Edit</button>
+                        <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#1e3a5f" }}
+                          onClick={() => setDetailId(part.id)}>Detail</button>
                       </td>
                     </tr>
                   ))}
-              </DataTable>
+                </tbody>
+              </table>
             </div>
           )}
-      </SectionCard>
+      </div>
 
       {editing !== null && (
         <PartModal initial={editing === "new" ? null : editing} onClose={() => setEditing(null)} onSaved={handleSaved} />
@@ -421,7 +429,7 @@ export function SeatInsertCatalogPage() {
           <DetailPanel partId={detailId} onClose={() => setDetailId(null)} />
         </>
       )}
-    </PageContainer>
+    </div>
   );
 }
 

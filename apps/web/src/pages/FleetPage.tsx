@@ -4,13 +4,6 @@ import { api } from "../api";
 import type { Bus, Garage } from "@sams/types";
 import { FleetStatsWidget } from "../components/FleetStatsWidget";
 import { BusImportWizard } from "../components/BusImportWizard";
-import { PageContainer, PageHeader } from "../components/shared/Page";
-import { SectionCard } from "../components/shared/Card";
-import { Button } from "../components/shared/Button";
-import { DataTable } from "../components/shared/DataTable";
-import { StatusBadge } from "../components/shared/StatusBadge";
-import { FormField } from "../components/shared/Form";
-import { LoadingState, ErrorState, EmptyState } from "../components/shared/States";
 import "./FleetPage.css";
 
 // Debounce helper
@@ -199,26 +192,29 @@ export function FleetPage() {
   const garageItems = Array.isArray(garages) ? garages : [];
   const totalItems = typeof (buses as any)?.total === "number" ? (buses as any).total : (typeof total === "number" ? total : 0);
 
-  if (loadingBuses && busItems.length === 0) return <PageContainer><LoadingState message="Loading fleet roster..." /></PageContainer>;
-  if (apiError && busItems.length === 0) return <PageContainer><ErrorState message="Failed to load fleet data. Please try again." onRetry={fetchBuses} /></PageContainer>;
+  if (loadingBuses && busItems.length === 0) return <div style={{ padding: "2rem", textAlign: "center", fontSize: "1.25rem" }}>Loading fleet...</div>;
+  if (apiError && busItems.length === 0) return <div style={{ padding: "2rem", textAlign: "center", fontSize: "1.25rem", color: "#dc2626" }}>Failed to load fleet.</div>;
 
   return (
-    <PageContainer>
-      <PageHeader title="Fleet Management">
-        <Button variant="secondary" onClick={() => setIsImportModalOpen(true)}>
-          Bulk Import
-        </Button>
-        <Button variant="primary" onClick={() => { setAddingBus({ status: "ACTIVE" }); setIsBusModalOpen(true); }}>
-          Add Bus
-        </Button>
-      </PageHeader>
+    <div className="fleet-page-container">
+      <div className="header-actions">
+        <h1>Fleet Management</h1>
+        <div className="button-group">
+          <button onClick={() => setIsImportModalOpen(true)} className="btn btn-secondary">
+            Bulk Import
+          </button>
+          <button onClick={() => { setAddingBus({ status: "ACTIVE" }); setIsBusModalOpen(true); }} className="btn btn-primary">
+            Add Bus
+          </button>
+        </div>
+      </div>
 
       {/* <FleetStatsWidget /> */}
 
       {errorMsg && <div className="toast toast-error">{errorMsg}</div>}
       {successMsg && <div className="toast toast-success">{successMsg}</div>}
 
-      <SectionCard title="Filters & Actions" action={null}>
+      <div className="card filters-card">
         <div className="filters-row">
           <input
             type="text"
@@ -247,21 +243,22 @@ export function FleetPage() {
             ))}
           </select>
         </div>
-      </SectionCard>
+      </div>
 
-      <SectionCard title="Fleet Roster" action={
-        !loadingBuses && total > 0 && (
-          <div className="pagination">
-            <span className="text-muted u-mr-12">Page {page} of {totalPages} ({total} total)</span>
-            <div className="u-flex u-gap-8">
-              <Button disabled={page <= 1} onClick={() => setPage(p => p - 1)} variant="secondary">Previous</Button>
-              <Button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} variant="secondary">Next</Button>
-            </div>
-          </div>
-        )
-      }>
+      <div className="card table-card">
         <div className="table-responsive">
-          <DataTable headers={["Fleet #", "Model", "Manufacturer", "Garage", "Status", "Actions"]}>
+          <table className="fleet-table">
+            <thead>
+              <tr>
+                <th>Fleet #</th>
+                <th>Model</th>
+                <th>Manufacturer</th>
+                <th>Garage</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
               {loadingBuses ? (
                 <tr><td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>Loading...</td></tr>
               ) : apiError ? (
@@ -272,7 +269,7 @@ export function FleetPage() {
                 busItems.map((bus: any) => (
                   <tr key={bus?.id} className={editingRowId === bus?.id ? "editing-row" : ""}>
                     <td>
-                      <a href={`/fleet/buses/${bus.id}`} className="resource-link">
+                      <a href={`/fleet/buses/${bus.id}`} style={{ fontWeight: "bold", color: "#2563eb", textDecoration: "none" }}>
                         {bus.fleetNumber}
                       </a>
                     </td>
@@ -294,7 +291,7 @@ export function FleetPage() {
                         </td>
                         <td>
                           <button onClick={() => saveInlineEdit(bus.id)} className="btn btn-sm btn-primary" disabled={submitting}>Save</button>
-                          <button onClick={() => setEditingRowId(null)} className="btn btn-sm btn-secondary u-ml-4" disabled={submitting}>Cancel</button>
+                          <button onClick={() => setEditingRowId(null)} className="btn btn-sm btn-secondary" style={{ marginLeft: "4px" }} disabled={submitting}>Cancel</button>
                         </td>
                       </>
                     ) : (
@@ -303,61 +300,84 @@ export function FleetPage() {
                         <td>{bus?.manufacturer ?? "—"}</td>
                         <td>{bus?.garage?.name ?? "—"}</td>
                         <td>
-                          <StatusBadge 
-                            status={bus?.status || "ACTIVE"} 
-                            variant={(bus?.status === "MAINTENANCE") ? "warning" : (bus?.status === "RETIRED" ? "neutral" : "success")} 
-                          />
+                          <span className={`status-badge status-${(bus?.status || "ACTIVE").toLowerCase()}`}>
+                            {bus?.status || "ACTIVE"}
+                          </span>
                         </td>
-                        <td className="u-flex u-gap-8 u-border-none">
-                          <Button onClick={() => startInlineEdit(bus)} variant="secondary" disabled={submitting || editingRowId !== null}>Edit</Button>
-                          <Button onClick={() => handleDeleteBus(bus.id, bus.fleetNumber)} variant="secondary" disabled={submitting || editingRowId !== null}>
-                            <span className="color-danger text-danger">Delete</span>
-                          </Button>
+                        <td>
+                          <button onClick={() => startInlineEdit(bus)} className="btn btn-sm btn-link" disabled={submitting || editingRowId !== null}>Edit</button>
+                          <button onClick={() => handleDeleteBus(bus.id, bus.fleetNumber)} className="btn btn-sm btn-danger-link" disabled={submitting || editingRowId !== null}>Delete</button>
                         </td>
                       </>
                     )}
                   </tr>
                 ))
               )}
-          </DataTable>
+            </tbody>
+          </table>
         </div>
-      </SectionCard>
-
+        
+        {!loadingBuses && total > 0 && (
+          <div className="pagination">
+            <span className="pagination-info">Page {page} of {totalPages} ({total} total buses)</span>
+            <div className="pagination-controls">
+              <button 
+                disabled={page <= 1} 
+                onClick={() => setPage(p => p - 1)}
+                className="btn btn-pagination"
+              >
+                Previous
+              </button>
+              <button 
+                disabled={page >= totalPages} 
+                onClick={() => setPage(p => p + 1)}
+                className="btn btn-pagination"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Add Bus Modal */}
       {isBusModalOpen && (
         <div className="modal-backdrop">
-          <div className="shared-modal-container">
-            <SectionCard title="Add New Bus">
-              <form onSubmit={handleSaveAddBus}>
-                <FormField label="Fleet Number" required>
-                  <input required type="text" className="filter-input" value={addingBus?.fleetNumber || ""} onChange={e => setAddingBus({ ...addingBus, fleetNumber: e.target.value })} disabled={submitting} />
-                </FormField>
-                <FormField label="Model" required>
-                  <input required type="text" className="filter-input" value={addingBus?.model || ""} onChange={e => setAddingBus({ ...addingBus, model: e.target.value })} disabled={submitting} />
-                </FormField>
-                <FormField label="Manufacturer" required>
-                  <input required type="text" className="filter-input" value={addingBus?.manufacturer || ""} onChange={e => setAddingBus({ ...addingBus, manufacturer: e.target.value })} disabled={submitting} />
-                </FormField>
-                <FormField label="Garage" required>
-                  <select required className="filter-input" value={addingBus?.garageId || ""} onChange={e => setAddingBus({ ...addingBus, garageId: e.target.value })} disabled={submitting}>
-                    <option value="" disabled>Select a garage...</option>
-                    {garageItems.map((g: any) => <option key={g.id} value={g.id}>{g?.name ?? "Unknown"}</option>)}
-                  </select>
-                </FormField>
-                <FormField label="Status" required>
-                  <select required className="filter-input" value={addingBus?.status || "ACTIVE"} onChange={e => setAddingBus({ ...addingBus, status: e.target.value })} disabled={submitting}>
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="MAINTENANCE">MAINTENANCE</option>
-                    <option value="RETIRED">RETIRED</option>
-                  </select>
-                </FormField>
-                <div className="u-flex u-justify-end u-gap-12 u-mt-24">
-                  <Button onClick={() => { setIsBusModalOpen(false); setAddingBus(null); }} variant="secondary" disabled={submitting}>Cancel</Button>
-                  <button type="submit" className="shared-button primary" disabled={submitting}>{submitting ? "Saving..." : "Add Bus"}</button>
-                </div>
-              </form>
-            </SectionCard>
+          <div className="modal">
+            <h2>Add New Bus</h2>
+            <form onSubmit={handleSaveAddBus}>
+              <div className="form-group">
+                <label>Fleet Number</label>
+                <input required type="text" value={addingBus?.fleetNumber || ""} onChange={e => setAddingBus({ ...addingBus, fleetNumber: e.target.value })} disabled={submitting} />
+              </div>
+              <div className="form-group">
+                <label>Model</label>
+                <input required type="text" value={addingBus?.model || ""} onChange={e => setAddingBus({ ...addingBus, model: e.target.value })} disabled={submitting} />
+              </div>
+              <div className="form-group">
+                <label>Manufacturer</label>
+                <input required type="text" value={addingBus?.manufacturer || ""} onChange={e => setAddingBus({ ...addingBus, manufacturer: e.target.value })} disabled={submitting} />
+              </div>
+              <div className="form-group">
+                <label>Garage</label>
+                <select required value={addingBus?.garageId || ""} onChange={e => setAddingBus({ ...addingBus, garageId: e.target.value })} disabled={submitting}>
+                  <option value="" disabled>Select a garage...</option>
+                  {garageItems.map((g: any) => <option key={g.id} value={g.id}>{g?.name ?? "Unknown"}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Status</label>
+                <select required value={addingBus?.status || "ACTIVE"} onChange={e => setAddingBus({ ...addingBus, status: e.target.value })} disabled={submitting}>
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="MAINTENANCE">MAINTENANCE</option>
+                  <option value="RETIRED">RETIRED</option>
+                </select>
+              </div>
+              <div className="modal-actions">
+                <button type="button" onClick={() => { setIsBusModalOpen(false); setAddingBus(null); }} className="btn btn-secondary" disabled={submitting}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? "Saving..." : "Add Bus"}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -373,6 +393,6 @@ export function FleetPage() {
           }} 
         />
       )}
-    </PageContainer>
+    </div>
   );
 }
