@@ -4,6 +4,11 @@ import { api } from "../api";
 import type { Bus, Garage } from "@sams/types";
 import { FleetStatsWidget } from "../components/FleetStatsWidget";
 import { BusImportWizard } from "../components/BusImportWizard";
+import { PageContainer, PageHeader } from "../components/shared/Page";
+import { SectionCard } from "../components/shared/Card";
+import { Button } from "../components/shared/Button";
+import { DataTable } from "../components/shared/DataTable";
+import { StatusBadge } from "../components/shared/StatusBadge";
 import "./FleetPage.css";
 
 // Debounce helper
@@ -196,25 +201,22 @@ export function FleetPage() {
   if (apiError && busItems.length === 0) return <div style={{ padding: "2rem", textAlign: "center", fontSize: "1.25rem", color: "#dc2626" }}>Failed to load fleet.</div>;
 
   return (
-    <div className="fleet-page-container">
-      <div className="header-actions">
-        <h1>Fleet Management</h1>
-        <div className="button-group">
-          <button onClick={() => setIsImportModalOpen(true)} className="btn btn-secondary">
-            Bulk Import
-          </button>
-          <button onClick={() => { setAddingBus({ status: "ACTIVE" }); setIsBusModalOpen(true); }} className="btn btn-primary">
-            Add Bus
-          </button>
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader title="Fleet Management">
+        <Button variant="secondary" onClick={() => setIsImportModalOpen(true)}>
+          Bulk Import
+        </Button>
+        <Button variant="primary" onClick={() => { setAddingBus({ status: "ACTIVE" }); setIsBusModalOpen(true); }}>
+          Add Bus
+        </Button>
+      </PageHeader>
 
       {/* <FleetStatsWidget /> */}
 
       {errorMsg && <div className="toast toast-error">{errorMsg}</div>}
       {successMsg && <div className="toast toast-success">{successMsg}</div>}
 
-      <div className="card filters-card">
+      <SectionCard title="Filters & Actions" action={null}>
         <div className="filters-row">
           <input
             type="text"
@@ -243,22 +245,21 @@ export function FleetPage() {
             ))}
           </select>
         </div>
-      </div>
+      </SectionCard>
 
-      <div className="card table-card">
+      <SectionCard title="Fleet Roster" action={
+        !loadingBuses && total > 0 && (
+          <div className="pagination">
+            <span className="text-muted" style={{ marginRight: "12px" }}>Page {page} of {totalPages} ({total} total)</span>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <Button disabled={page <= 1} onClick={() => setPage(p => p - 1)} variant="secondary">Previous</Button>
+              <Button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} variant="secondary">Next</Button>
+            </div>
+          </div>
+        )
+      }>
         <div className="table-responsive">
-          <table className="fleet-table">
-            <thead>
-              <tr>
-                <th>Fleet #</th>
-                <th>Model</th>
-                <th>Manufacturer</th>
-                <th>Garage</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+          <DataTable headers={["Fleet #", "Model", "Manufacturer", "Garage", "Status", "Actions"]}>
               {loadingBuses ? (
                 <tr><td colSpan={6} style={{ textAlign: "center", padding: "2rem" }}>Loading...</td></tr>
               ) : apiError ? (
@@ -300,45 +301,26 @@ export function FleetPage() {
                         <td>{bus?.manufacturer ?? "—"}</td>
                         <td>{bus?.garage?.name ?? "—"}</td>
                         <td>
-                          <span className={`status-badge status-${(bus?.status || "ACTIVE").toLowerCase()}`}>
-                            {bus?.status || "ACTIVE"}
-                          </span>
+                          <StatusBadge 
+                            status={bus?.status || "ACTIVE"} 
+                            variant={(bus?.status === "MAINTENANCE") ? "warning" : (bus?.status === "RETIRED" ? "neutral" : "success")} 
+                          />
                         </td>
-                        <td>
-                          <button onClick={() => startInlineEdit(bus)} className="btn btn-sm btn-link" disabled={submitting || editingRowId !== null}>Edit</button>
-                          <button onClick={() => handleDeleteBus(bus.id, bus.fleetNumber)} className="btn btn-sm btn-danger-link" disabled={submitting || editingRowId !== null}>Delete</button>
+                        <td style={{ display: "flex", gap: "8px", borderBottom: "none" }}>
+                          <Button onClick={() => startInlineEdit(bus)} variant="secondary" disabled={submitting || editingRowId !== null}>Edit</Button>
+                          <Button onClick={() => handleDeleteBus(bus.id, bus.fleetNumber)} variant="secondary" disabled={submitting || editingRowId !== null}>
+                            <span style={{ color: "var(--color-danger)" }}>Delete</span>
+                          </Button>
                         </td>
                       </>
                     )}
                   </tr>
                 ))
               )}
-            </tbody>
-          </table>
+          </DataTable>
         </div>
-        
-        {!loadingBuses && total > 0 && (
-          <div className="pagination">
-            <span className="pagination-info">Page {page} of {totalPages} ({total} total buses)</span>
-            <div className="pagination-controls">
-              <button 
-                disabled={page <= 1} 
-                onClick={() => setPage(p => p - 1)}
-                className="btn btn-pagination"
-              >
-                Previous
-              </button>
-              <button 
-                disabled={page >= totalPages} 
-                onClick={() => setPage(p => p + 1)}
-                className="btn btn-pagination"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
+      </SectionCard>
+
 
       {/* Add Bus Modal */}
       {isBusModalOpen && (
@@ -374,8 +356,9 @@ export function FleetPage() {
                 </select>
               </div>
               <div className="modal-actions">
-                <button type="button" onClick={() => { setIsBusModalOpen(false); setAddingBus(null); }} className="btn btn-secondary" disabled={submitting}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? "Saving..." : "Add Bus"}</button>
+                <Button onClick={() => { setIsBusModalOpen(false); setAddingBus(null); }} variant="secondary" disabled={submitting}>Cancel</Button>
+                {/* We use a native button to retain the submit behavior easily, but style it like Button */}
+                <button type="submit" className="shared-button primary" disabled={submitting}>{submitting ? "Saving..." : "Add Bus"}</button>
               </div>
             </form>
           </div>
@@ -393,6 +376,6 @@ export function FleetPage() {
           }} 
         />
       )}
-    </div>
+    </PageContainer>
   );
 }

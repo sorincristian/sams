@@ -18,7 +18,7 @@ export function SectionCard({ title, children, action }: { title: React.ReactNod
 
 export function InfoCard({ label, value, dark = false, style }: { label: React.ReactNode; value: React.ReactNode; dark?: boolean; style?: React.CSSProperties }) {
   return (
-    <Card className={dark ? "dark" : ""} style={{ display: "flex", flexDirection: "column", gap: "var(--spacing-4)", ...style }}>
+    <Card className={`shared-info-card ${dark ? "dark" : ""}`} style={{ display: "flex", flexDirection: "column", gap: "var(--spacing-4)", ...style }}>
       <div className={dark ? "" : "text-muted"} style={{ fontSize: "var(--font-label)" }}>{label}</div>
       <div className="font-card-title">{value}</div>
     </Card>

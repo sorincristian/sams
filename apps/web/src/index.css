@@ -248,6 +248,7 @@ input:focus, select:focus, textarea:focus {
   color: var(--text-secondary);
 }
 
+
 .font-card-title {
   font: var(--font-card-title);
 }
@@ -259,4 +260,26 @@ input:focus, select:focus, textarea:focus {
 
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
+}
+
+/* HARD OVERRIDE FIXES */
+.shared-info-card {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.shared-info-card span {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+::selection {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.shared-info-card * {
+  user-select: text;
+  background: transparent !important;
 }
