@@ -125,11 +125,7 @@ export function SeatChangeReportPage() {
       <PageHeader 
         title="Seat Change Report" 
         description="View created and updated seat inventory records over specific periods."
-        actions={
-          data.length > 0 ? (
-            <button onClick={handleExportCsv}>Export CSV</button>
-          ) : null
-        }
+        actions={<button onClick={handleExportCsv} disabled={data.length === 0}>Export CSV</button>}
       />
 
       <SectionCard>
