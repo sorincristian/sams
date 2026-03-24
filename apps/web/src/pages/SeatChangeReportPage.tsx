@@ -80,7 +80,7 @@ export function SeatChangeReportPage() {
   }, [data]);
 
   const handleExportCsv = () => {
-    if (data.length === 0) return;
+    if (!data || data.length === 0) return;
     
     const headers = ['Part Number', 'Description', 'Facility', 'Status', 'Quantity', 'Change Type', 'Changed By', 'Changed At', 'Notes'];
     const rows = data.map(item => [
@@ -125,7 +125,15 @@ export function SeatChangeReportPage() {
       <PageHeader 
         title="Seat Change Report" 
         description="View created and updated seat inventory records over specific periods."
-        actions={<button onClick={handleExportCsv} disabled={data.length === 0}>Export CSV</button>}
+        actions={
+          <button 
+            onClick={handleExportCsv} 
+            disabled={loading || !data || data.length === 0}
+            title={(!data || data.length === 0) ? "No data to export" : "Export CSV"}
+          >
+            Export CSV
+          </button>
+        }
       />
 
       <SectionCard>
