@@ -19,7 +19,13 @@ router.post("/login", async (req, res) => {
 
     console.log("LOGIN ATTEMPT:", { email: parsed.data.email });
 
-    const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+    const user = await prisma.user.findUnique({ 
+      where: { email: parsed.data.email },
+      include: {
+        roleRelation: { include: { permissions: true } },
+        scopes: true
+      }
+    });
     if (!user) {
       console.error("LOGIN FAILED: User not found", parsed.data.email);
       return res.status(401).json({ message: "Invalid credentials" });
@@ -43,14 +49,56 @@ router.post("/login", async (req, res) => {
     }
 
     const expiresIn = (process.env.JWT_EXPIRES_IN || "12h") as SignOptions["expiresIn"];
-    const payload = { sub: user.id, email: user.email, role: user.role };
+    
+    const permissions: Record<string, string> = {};
+    if (user.roleRelation?.permissions) {
+      user.roleRelation.permissions.forEach(p => {
+        permissions[p.module] = p.access;
+      });
+    }
+    
+    // Auto-grant "manage" if legacy role is ADMIN, they have NO role relation explicitly configured, and permissions are empty.
+    if (user.role === "ADMIN" && !user.roleId && Object.keys(permissions).length === 0) {
+      permissions["inventory"] = "manage";
+      permissions["fleet"] = "manage";
+      permissions["reports"] = "manage";
+      permissions["catalog"] = "manage";
+      permissions["work_orders"] = "manage";
+      permissions["dashboard"] = "manage";
+      permissions["transactions"] = "manage";
+    }
+
+    const scope = {
+      garages: user.scopes.map(s => s.garageId)
+    };
+
+    // Auto-grant all garages if legacy role is ADMIN, no relation exists, and scopes are empty
+    if (user.role === "ADMIN" && !user.roleId && scope.garages.length === 0) {
+      const allGarages = await prisma.garage.findMany({ select: { id: true } });
+      scope.garages = allGarages.map(g => g.id);
+    }
+
+    const payload = { 
+      sub: user.id, 
+      email: user.email, 
+      role: user.roleRelation?.name || user.role,
+      permissions,
+      scope
+    };
     const token = jwt.sign(payload, jwtSecret, { expiresIn });
 
     console.log("LOGIN SUCCESS:", { email: user.email });
 
     res.json({
       token,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        name: user.name, 
+        role: user.roleRelation?.name || user.role,
+        permissions,
+        scope
+      }
     });
   } catch (err) {
     console.error("LOGIN ROUTE ERROR:", err);
@@ -61,9 +109,27 @@ router.post("/login", async (req, res) => {
 router.get("/me", requireAuth, async (req: AuthRequest, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
-    const user = await prisma.user.findUnique({ where: { id: req.user.sub } });
+    const user = await prisma.user.findUnique({ 
+      where: { id: req.user.sub },
+      include: {
+        roleRelation: { include: { permissions: true } },
+        scopes: true
+      }
+    });
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json({ id: user.id, email: user.email, name: user.name, role: user.role });
+
+    // Format matches login payload structurally to ensure consistency
+    const permissions = req.user.permissions;
+    const scope = req.user.scope;
+
+    res.json({ 
+      id: user.id, 
+      email: user.email, 
+      name: user.name, 
+      role: user.roleRelation?.name || user.role,
+      permissions,
+      scope 
+    });
   } catch (err) {
     console.error("GET /me ERROR:", err);
     res.status(500).json({ error: "Internal server error" });

@@ -1,12 +1,16 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../../prisma.js";
-import { requireAuth } from "../../auth.js";
+import { requireAuth, AuthRequest } from "../../auth.js";
+import { requirePermission } from "../../middleware/rbac.js";
+import { Prisma } from "@prisma/client";
 
 const router = Router();
 
-router.get("/", requireAuth, async (req, res) => {
+router.get("/", requireAuth, requirePermission("inventory", "view"), async (req: AuthRequest, res) => {
+  const allowedGarages = req.user?.scope?.garages || [];
   const inventory = await prisma.inventoryItem.findMany({
+    where: { garageId: { in: allowedGarages } },
     include: { garage: true, seatInsertType: true },
     orderBy: [{ garage: { name: "asc" } }, { seatInsertType: { partNumber: "asc" } }]
   });
@@ -17,7 +21,7 @@ router.get("/", requireAuth, async (req, res) => {
   res.json(mapped);
 });
 
-router.post("/transaction", requireAuth, async (req, res) => {
+router.post("/transaction", requireAuth, requirePermission("inventory", "manage"), async (req: AuthRequest, res) => {
   const schema = z.object({
     inventoryItemId: z.string(),
     type: z.enum(["RECEIVE", "ISSUE", "TRANSFER_OUT", "TRANSFER_IN", "ADJUST_IN", "ADJUST_OUT", "RETURN", "SCRAP"]),
@@ -48,6 +52,11 @@ router.post("/transaction", requireAuth, async (req, res) => {
       });
 
       if (!item) throw new Error("Inventory item not found");
+
+      const allowedGarages = req.user?.scope?.garages || [];
+      if (!allowedGarages.includes(item.garageId)) {
+        throw new Error("Forbidden: Attempting to modify stock in a strictly prohibited facility.");
+      }
 
       // 2. Calculate newly requested quantityOnHand
       const isDeduction = ["ISSUE", "TRANSFER_OUT", "ADJUST_OUT", "SCRAP"].includes(parsed.data.type);
@@ -102,9 +111,15 @@ router.post("/transaction", requireAuth, async (req, res) => {
   }
 });
 
-router.get("/transactions", requireAuth, async (req, res) => {
+router.get("/transactions", requireAuth, requirePermission("inventory", "view"), async (req: AuthRequest, res) => {
   const { referenceId } = req.query;
-  const where = referenceId ? { referenceId: String(referenceId) } : {};
+  const allowedGarages = req.user?.scope?.garages || [];
+  
+  const where: Prisma.InventoryTransactionWhereInput = { garageId: { in: allowedGarages } };
+  if (referenceId) {
+    where.referenceId = String(referenceId);
+  }
+
   const transactions = await prisma.inventoryTransaction.findMany({
     where,
     include: {

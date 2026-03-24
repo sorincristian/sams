@@ -28,15 +28,16 @@ model Garage {
   workOrders            WorkOrder[]
   inventoryTransactions InventoryTransaction[]
   workOrderPartUsages   WorkOrderPartUsage[]
+  userScopes            UserScope[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 }
 
 model Bus {
-  id           String      @id @default(cuid())
-  fleetNumber  String      @unique
-  model        String
-  manufacturer String
+  id                 String            @id @default(cuid())
+  fleetNumber        String            @unique
+  model              String
+  manufacturer       String
   status             String            @default("ACTIVE")
   garageId           String
   busCompatibilityId String?
@@ -44,7 +45,7 @@ model Bus {
   busCompatibility   BusCompatibility? @relation(fields: [busCompatibilityId], references: [id])
   workOrders         WorkOrder[]
   createdAt          DateTime          @default(now())
-  updatedAt    DateTime    @updatedAt
+  updatedAt          DateTime          @updatedAt
 }
 
 model SeatInsertType {
@@ -60,7 +61,7 @@ model SeatInsertType {
   // Phase 2: catalog import fields
   manufacturerPartNumber String?
   alternatePartNumbers   String[]               @default([])
-  componentType          String?                // BACK | CUSHION
+  componentType          String? // BACK | CUSHION
   trimSpec               String?
   inventoryItems         InventoryItem[]
   inventoryTransactions  InventoryTransaction[]
@@ -92,21 +93,21 @@ model BusCompatibility {
 }
 
 model CatalogAttachment {
-  id                 String             @id @default(cuid())
+  id                 String            @id @default(cuid())
   seatInsertTypeId   String?
   busCompatibilityId String?
   fileName           String
   fileType           String
-  attachmentType     String             // DIAGRAM | PHOTO | INSTALL_GUIDE
+  attachmentType     String // DIAGRAM | PHOTO | INSTALL_GUIDE
   urlOrPath          String
-  previewImageUrl    String?            // PNG/WebP preview for hotspot overlay
+  previewImageUrl    String? // PNG/WebP preview for hotspot overlay
   busTypeLabel       String?
   fleetRangeLabel    String?
   notes              String?
-  seatInsertType     SeatInsertType?    @relation(fields: [seatInsertTypeId], references: [id])
-  busCompatibility   BusCompatibility?  @relation(fields: [busCompatibilityId], references: [id])
+  seatInsertType     SeatInsertType?   @relation(fields: [seatInsertTypeId], references: [id])
+  busCompatibility   BusCompatibility? @relation(fields: [busCompatibilityId], references: [id])
   hotspots           DiagramHotspot[]
-  createdAt          DateTime           @default(now())
+  createdAt          DateTime          @default(now())
 }
 
 model DiagramHotspot {
@@ -115,7 +116,7 @@ model DiagramHotspot {
   seatLabel           String
   partNumber          String
   seatInsertTypeId    String?
-  x                   Float             // normalized 0..1
+  x                   Float // normalized 0..1
   y                   Float
   width               Float
   height              Float
@@ -126,8 +127,6 @@ model DiagramHotspot {
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
 }
-
-
 
 model InventoryItem {
   id               String         @id @default(cuid())
@@ -146,20 +145,20 @@ model InventoryItem {
 }
 
 model InventoryTransaction {
-  id               String                   @id @default(cuid())
-  seatInsertTypeId String
-  garageId         String
-  quantity         Int
-  type             InventoryTransactionType
-  notes            String?
-  referenceType    String?
-  referenceId      String?
+  id                String                   @id @default(cuid())
+  seatInsertTypeId  String
+  garageId          String
+  quantity          Int
+  type              InventoryTransactionType
+  notes             String?
+  referenceType     String?
+  referenceId       String?
   performedByUserId String
-  seatInsertType   SeatInsertType           @relation(fields: [seatInsertTypeId], references: [id])
-  garage           Garage                   @relation(fields: [garageId], references: [id])
-  performedByUser  User                     @relation(fields: [performedByUserId], references: [id])
-  workOrderUsages  WorkOrderPartUsage[]
-  createdAt        DateTime                 @default(now())
+  seatInsertType    SeatInsertType           @relation(fields: [seatInsertTypeId], references: [id])
+  garage            Garage                   @relation(fields: [garageId], references: [id])
+  performedByUser   User                     @relation(fields: [performedByUserId], references: [id])
+  workOrderUsages   WorkOrderPartUsage[]
+  createdAt         DateTime                 @default(now())
 }
 
 model WorkOrder {
@@ -201,12 +200,15 @@ model User {
   email                 String                 @unique
   passwordHash          String
   role                  String
+  roleId                String?
+  roleRelation          Role?                  @relation(fields: [roleId], references: [id])
   garageId              String?
   garage                Garage?                @relation(fields: [garageId], references: [id])
   inventoryTransactions InventoryTransaction[]
   workOrderPartUsages   WorkOrderPartUsage[]
   auditLogs             AuditLog[]
   importMappings        ImportMapping[]
+  scopes                UserScope[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 }
@@ -234,6 +236,7 @@ model ImportMapping {
 
   @@unique([userId, entity])
 }
+
 // FUTURE PHASES STUBS
 model Vendor {
   id   String @id @default(cuid())
@@ -248,4 +251,33 @@ model PurchaseOrder {
 model PurchaseOrderLine {
   id              String @id @default(cuid())
   purchaseOrderId String
+}
+
+// Phase 10: RBAC & Scopes
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  permissions RolePermission[]
+  users       User[]
+  createdAt   DateTime         @default(now())
+}
+
+model RolePermission {
+  id     String @id @default(cuid())
+  roleId String
+  module String
+  access String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, module])
+}
+
+model UserScope {
+  id       String @id @default(cuid())
+  userId   String
+  garageId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  garage   Garage @relation(fields: [garageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, garageId])
 }

@@ -5,12 +5,13 @@ import type { InventoryRow } from "@sams/types";
 import { ReceiveInventoryModal } from "./ReceiveInventoryModal";
 import { AdjustInventoryModal } from "./AdjustInventoryModal";
 import { IssueInventoryModal } from "./IssueInventoryModal";
+import { canManage } from "../lib/rbac";
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
-export function InventoryPage() {
+export function InventoryPage({ user }: { user?: any }) {
   const query = useQuery();
   const navigate = useNavigate();
 
@@ -190,9 +191,15 @@ export function InventoryPage() {
                     <td>{row.quantityReserved}</td>
                     <td>{row.binLocation ?? <span className="muted">—</span>}</td>
                     <td style={{ display: "flex", gap: 8 }}>
-                      <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#dc2626" }} onClick={() => setIssueTarget(row)}>Issue</button>
-                      <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => setReceiveTarget(row)}>Receive</button>
-                      <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#374151" }} onClick={() => setAdjustTarget(row)}>Adjust</button>
+                      {canManage(user, 'inventory') ? (
+                        <>
+                          <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#dc2626" }} onClick={() => setIssueTarget(row)}>Issue</button>
+                          <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => setReceiveTarget(row)}>Receive</button>
+                          <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#374151" }} onClick={() => setAdjustTarget(row)}>Adjust</button>
+                        </>
+                      ) : (
+                        <span className="muted" style={{ fontSize: "0.8rem" }}>View Only</span>
+                      )}
                     </td>
                   </tr>
                 ))}

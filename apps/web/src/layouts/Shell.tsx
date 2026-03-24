@@ -10,8 +10,9 @@ import { SeatInsertCatalogPage } from "../pages/SeatInsertCatalogPage";
 import { DiagramViewerPage } from "../pages/DiagramViewerPage";
 import { HelpPage } from "../pages/HelpPage";
 import { SeatChangeReportPage } from "../pages/SeatChangeReportPage";
+import { canView } from "../lib/rbac";
 
-export function Shell({ user, onLogout }: { user: { name: string; role: string } | null; onLogout: () => void }) {
+export function Shell({ user, onLogout }: { user: any; onLogout: () => void }) {
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -22,14 +23,18 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
           <span style={{ fontSize: "0.72rem", color: "#93c5fd", marginLeft: 6 }}>Inventory Module</span>
         </div>
         <nav>
-          <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>Dashboard</NavLink>
-          <NavLink to="/fleet" className={({ isActive }) => (isActive ? "active" : "")}>Fleet</NavLink>
+          {canView(user, 'dashboard') && <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>Dashboard</NavLink>}
+          {canView(user, 'fleet') && <NavLink to="/fleet" className={({ isActive }) => (isActive ? "active" : "")}>Fleet</NavLink>}
           <NavLink to="/garages" className={({ isActive }) => (isActive ? "active" : "")}>Garages</NavLink>
-          <NavLink to="/inventory" end className={({ isActive }) => (isActive ? "active" : "")}>Inventory</NavLink>
-          <NavLink to="/inventory/seat-changes" className={({ isActive }) => (isActive ? "active" : "")}>Seat Change Report</NavLink>
-          <NavLink to="/transactions" className={({ isActive }) => (isActive ? "active" : "")}>Ledger</NavLink>
-          <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>Catalog</NavLink>
-          <NavLink to="/work-orders" className={({ isActive }) => (isActive ? "active" : "")}>Work Orders</NavLink>
+          {canView(user, 'inventory') && (
+            <>
+              <NavLink to="/inventory" end className={({ isActive }) => (isActive ? "active" : "")}>Inventory</NavLink>
+              {canView(user, 'reports') && <NavLink to="/inventory/seat-changes" className={({ isActive }) => (isActive ? "active" : "")}>Seat Change Report</NavLink>}
+            </>
+          )}
+          {canView(user, 'transactions') && <NavLink to="/transactions" className={({ isActive }) => (isActive ? "active" : "")}>Ledger</NavLink>}
+          {canView(user, 'catalog') && <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>Catalog</NavLink>}
+          {canView(user, 'work_orders') && <NavLink to="/work-orders" className={({ isActive }) => (isActive ? "active" : "")}>Work Orders</NavLink>}
           <NavLink to="/import-history" className={({ isActive }) => (isActive ? "active" : "")}>Import History</NavLink>
           <NavLink to="/help" className={({ isActive }) => (isActive ? "active" : "")}>Help</NavLink>
         </nav>
@@ -55,7 +60,7 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
               {React.createElement(React.lazy(() => import('../pages/GarageDashboard').then(m => ({ default: m.GarageDashboard }))))}
             </React.Suspense>
           } />
-          <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/inventory" element={<InventoryPage user={user} />} />
           <Route path="/inventory/seat-changes" element={<SeatChangeReportPage />} />
           <Route path="/transactions" element={<TransactionsLedgerPage />} />
           <Route path="/work-orders" element={<WorkOrdersPage />} />

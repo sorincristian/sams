@@ -2,7 +2,14 @@ import type { Request, Response, NextFunction } from "express";
 import jwt, { type SignOptions } from "jsonwebtoken";
 
 export interface AuthRequest extends Request {
-  user?: { sub: string; userId: string; email: string; role: string };
+  user?: { 
+    sub: string; 
+    userId: string; 
+    email: string; 
+    role: string;
+    permissions: Record<string, string>;
+    scope: { garages: string[] };
+  };
 }
 
 export function signToken(payload: { sub: string; email: string; role: string }) {
@@ -30,7 +37,13 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
 
   try {
     const token = header.slice(7);
-    const decoded = jwt.verify(token, process.env.JWT_SECRET) as { sub: string; email: string; role: string };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET) as { 
+      sub: string; 
+      email: string; 
+      role: string;
+      permissions: Record<string, string>;
+      scope: { garages: string[] };
+    };
     req.user = { ...decoded, userId: decoded.sub };
     next();
   } catch {

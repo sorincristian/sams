@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../../prisma.js";
-import { requireAuth } from "../../auth.js";
+import { requireAuth, AuthRequest } from "../../auth.js";
+import { requirePermission } from "../../middleware/rbac.js";
 import { Prisma } from "@prisma/client";
 
 const router = Router();
@@ -21,7 +22,7 @@ const endOfWeek = (d: Date) => {
 const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
 const endOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
 
-router.get("/seat-changes", requireAuth, async (req, res) => {
+router.get("/seat-changes", requireAuth, requirePermission("reports", "view"), async (req: AuthRequest, res) => {
   try {
     const { date, period, facility, search } = req.query;
 
@@ -46,16 +47,19 @@ router.get("/seat-changes", requireAuth, async (req, res) => {
       end = endOfDay(target);
     }
 
+    const allowedGarages = req.user?.scope?.garages || [];
+
+    if (facility && !allowedGarages.includes(String(facility))) {
+      return res.status(403).json({ error: "Forbidden: Strict scope bounds violated." });
+    }
+
     const whereClause: Prisma.InventoryItemWhereInput = {
+      garageId: facility ? String(facility) : { in: allowedGarages },
       updatedAt: {
         gte: start,
         lte: end,
       },
     };
-
-    if (facility) {
-      whereClause.garageId = String(facility);
-    }
 
     if (search) {
       const searchStr = String(search);
