@@ -25,7 +25,8 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
           <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>Dashboard</NavLink>
           <NavLink to="/fleet" className={({ isActive }) => (isActive ? "active" : "")}>Fleet</NavLink>
           <NavLink to="/garages" className={({ isActive }) => (isActive ? "active" : "")}>Garages</NavLink>
-          <NavLink to="/inventory" className={({ isActive }) => (isActive ? "active" : "")}>Inventory</NavLink>
+          <NavLink to="/inventory" end className={({ isActive }) => (isActive ? "active" : "")}>Inventory</NavLink>
+          <NavLink to="/inventory/seat-changes" className={({ isActive }) => (isActive ? "active" : "")}>Seat Change Report</NavLink>
           <NavLink to="/transactions" className={({ isActive }) => (isActive ? "active" : "")}>Ledger</NavLink>
           <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>Catalog</NavLink>
           <NavLink to="/work-orders" className={({ isActive }) => (isActive ? "active" : "")}>Work Orders</NavLink>
