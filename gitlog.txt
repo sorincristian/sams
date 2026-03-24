@@ -1,0 +1,10 @@
+7a86b5b fix(catalog): recover catalog page with shared design system components
+fb449b3 refactor(ui): purge all remaining inline styles from FleetPage.tsx
+4c06af2 refactor(ui): full compliance for Fleet page with Form fields and States
+2e7be34 chore: add missing recharts dependency to fix build
+5c86e67 fix(ui): apply hard CSS overrides for InfoCards to fix Help page styling
+1ba7532 refactor(ui): standardize admin UI with reusable components, tokens, and refactor Dashboard and Help pages
+df1108a feat(fleet): add Import History page with mapping decisions + confidence display
+ef3cb1a feat(fleet): enterprise import — mapping persistence, confidence scoring, import history
+df6a945 fix(fleet): robust column mapping with expanded aliases, normalization, and early-fail
+4687b0c chore(fleet): harden import flow with limits, logging, and audit trail

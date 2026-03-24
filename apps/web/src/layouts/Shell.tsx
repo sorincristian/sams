@@ -9,6 +9,7 @@ import { WorkOrderDetailPage } from "../pages/WorkOrderDetailPage";
 import { SeatInsertCatalogPage } from "../pages/SeatInsertCatalogPage";
 import { DiagramViewerPage } from "../pages/DiagramViewerPage";
 import { HelpPage } from "../pages/HelpPage";
+import { SeatChangeReportPage } from "../pages/SeatChangeReportPage";
 
 export function Shell({ user, onLogout }: { user: { name: string; role: string } | null; onLogout: () => void }) {
   return (
@@ -54,6 +55,7 @@ export function Shell({ user, onLogout }: { user: { name: string; role: string }
             </React.Suspense>
           } />
           <Route path="/inventory" element={<InventoryPage />} />
+          <Route path="/inventory/seat-changes" element={<SeatChangeReportPage />} />
           <Route path="/transactions" element={<TransactionsLedgerPage />} />
           <Route path="/work-orders" element={<WorkOrdersPage />} />
           <Route path="/work-orders/:id" element={<WorkOrderDetailPage />} />

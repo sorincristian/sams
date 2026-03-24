@@ -79,7 +79,12 @@ export function InventoryPage() {
 
   return (
     <div className="grid" style={{ gap: 20 }}>
-      <h1>Inventory Control</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+        <h1 style={{ margin: 0 }}>Inventory Control</h1>
+        <button style={{ width: "auto", padding: "8px 16px", background: "#fff", color: "#334155", border: "1px solid #e2e8f0", borderRadius: "8px", fontWeight: 600, cursor: "pointer" }} onClick={() => navigate("/inventory/seat-changes")}>
+          View Seat Change Report
+        </button>
+      </div>
 
       {/* Filters bar */}
       <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
