@@ -66,6 +66,7 @@ router.post("/login", async (req, res) => {
       permissions["work_orders"] = "manage";
       permissions["dashboard"] = "manage";
       permissions["transactions"] = "manage";
+      permissions["admin"] = "manage";
     }
 
     const scope = {

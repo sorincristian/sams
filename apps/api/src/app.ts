@@ -13,6 +13,7 @@ import inventoryRoutes from "./modules/inventory/inventory.routes.js";
 import workOrdersRoutes from "./modules/workOrders/workOrders.routes.js";
 import catalogRoutes from "./modules/catalog/catalog.routes.js";
 import reportsRoutes from "./modules/reports/reports.routes.js";
+import adminRoutes from "./modules/admin/admin.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -85,5 +86,6 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/work-orders", workOrdersRoutes);
 app.use("/api/catalog", catalogRoutes);
 app.use("/api/v1/reports", reportsRoutes);
+app.use("/api/v1/admin", adminRoutes);
 
 export default app;

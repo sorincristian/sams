@@ -37,6 +37,16 @@ export function Shell({ user, onLogout }: { user: any; onLogout: () => void }) {
           {canView(user, 'work_orders') && <NavLink to="/work-orders" className={({ isActive }) => (isActive ? "active" : "")}>Work Orders</NavLink>}
           <NavLink to="/import-history" className={({ isActive }) => (isActive ? "active" : "")}>Import History</NavLink>
           <NavLink to="/help" className={({ isActive }) => (isActive ? "active" : "")}>Help</NavLink>
+          {canView(user, 'admin') && (
+            <>
+              <div style={{ marginTop: 16, marginBottom: 8, padding: "4px 8px", background: "#1e293b", borderRadius: 5, display: "inline-block" }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#94a3b8", letterSpacing: "0.04em" }}>SYSTEM</span>
+                <span style={{ fontSize: "0.72rem", color: "#64748b", marginLeft: 6 }}>Admin</span>
+              </div>
+              <NavLink to="/admin/users" className={({ isActive }) => (isActive ? "active" : "")}>Users</NavLink>
+              <NavLink to="/admin/roles" className={({ isActive }) => (isActive ? "active" : "")}>Roles</NavLink>
+            </>
+          )}
         </nav>
       </aside>
       <main className="content">
@@ -73,6 +83,16 @@ export function Shell({ user, onLogout }: { user: any; onLogout: () => void }) {
           } />
           <Route path="/diagram/:attachmentId" element={<DiagramViewerPage />} />
           <Route path="/help" element={<HelpPage />} />
+          <Route path="/admin/users" element={
+            <React.Suspense fallback={<div>Loading Users...</div>}>
+              {React.createElement(React.lazy(() => import('../pages/admin/UsersPage').then(m => ({ default: m.UsersPage }))), { user })}
+            </React.Suspense>
+          } />
+          <Route path="/admin/roles" element={
+            <React.Suspense fallback={<div>Loading Roles...</div>}>
+              {React.createElement(React.lazy(() => import('../pages/admin/RolesPage').then(m => ({ default: m.RolesPage }))), { user })}
+            </React.Suspense>
+          } />
         </Routes>
       </main>
     </div>
