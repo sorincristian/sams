@@ -9,6 +9,8 @@ import { SectionCard } from "../components/shared/Card";
 import { Button } from "../components/shared/Button";
 import { DataTable } from "../components/shared/DataTable";
 import { StatusBadge } from "../components/shared/StatusBadge";
+import { FormField } from "../components/shared/Form";
+import { LoadingState, ErrorState, EmptyState } from "../components/shared/States";
 import "./FleetPage.css";
 
 // Debounce helper
@@ -197,8 +199,8 @@ export function FleetPage() {
   const garageItems = Array.isArray(garages) ? garages : [];
   const totalItems = typeof (buses as any)?.total === "number" ? (buses as any).total : (typeof total === "number" ? total : 0);
 
-  if (loadingBuses && busItems.length === 0) return <div style={{ padding: "2rem", textAlign: "center", fontSize: "1.25rem" }}>Loading fleet...</div>;
-  if (apiError && busItems.length === 0) return <div style={{ padding: "2rem", textAlign: "center", fontSize: "1.25rem", color: "#dc2626" }}>Failed to load fleet.</div>;
+  if (loadingBuses && busItems.length === 0) return <PageContainer><LoadingState message="Loading fleet roster..." /></PageContainer>;
+  if (apiError && busItems.length === 0) return <PageContainer><ErrorState message="Failed to load fleet data. Please try again." onRetry={fetchBuses} /></PageContainer>;
 
   return (
     <PageContainer>
@@ -325,42 +327,37 @@ export function FleetPage() {
       {/* Add Bus Modal */}
       {isBusModalOpen && (
         <div className="modal-backdrop">
-          <div className="modal">
-            <h2>Add New Bus</h2>
-            <form onSubmit={handleSaveAddBus}>
-              <div className="form-group">
-                <label>Fleet Number</label>
-                <input required type="text" value={addingBus?.fleetNumber || ""} onChange={e => setAddingBus({ ...addingBus, fleetNumber: e.target.value })} disabled={submitting} />
-              </div>
-              <div className="form-group">
-                <label>Model</label>
-                <input required type="text" value={addingBus?.model || ""} onChange={e => setAddingBus({ ...addingBus, model: e.target.value })} disabled={submitting} />
-              </div>
-              <div className="form-group">
-                <label>Manufacturer</label>
-                <input required type="text" value={addingBus?.manufacturer || ""} onChange={e => setAddingBus({ ...addingBus, manufacturer: e.target.value })} disabled={submitting} />
-              </div>
-              <div className="form-group">
-                <label>Garage</label>
-                <select required value={addingBus?.garageId || ""} onChange={e => setAddingBus({ ...addingBus, garageId: e.target.value })} disabled={submitting}>
-                  <option value="" disabled>Select a garage...</option>
-                  {garageItems.map((g: any) => <option key={g.id} value={g.id}>{g?.name ?? "Unknown"}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Status</label>
-                <select required value={addingBus?.status || "ACTIVE"} onChange={e => setAddingBus({ ...addingBus, status: e.target.value })} disabled={submitting}>
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="MAINTENANCE">MAINTENANCE</option>
-                  <option value="RETIRED">RETIRED</option>
-                </select>
-              </div>
-              <div className="modal-actions">
-                <Button onClick={() => { setIsBusModalOpen(false); setAddingBus(null); }} variant="secondary" disabled={submitting}>Cancel</Button>
-                {/* We use a native button to retain the submit behavior easily, but style it like Button */}
-                <button type="submit" className="shared-button primary" disabled={submitting}>{submitting ? "Saving..." : "Add Bus"}</button>
-              </div>
-            </form>
+          <div style={{ width: "100%", maxWidth: "500px", margin: "auto" }}>
+            <SectionCard title="Add New Bus">
+              <form onSubmit={handleSaveAddBus}>
+                <FormField label="Fleet Number" required>
+                  <input required type="text" className="filter-input" value={addingBus?.fleetNumber || ""} onChange={e => setAddingBus({ ...addingBus, fleetNumber: e.target.value })} disabled={submitting} />
+                </FormField>
+                <FormField label="Model" required>
+                  <input required type="text" className="filter-input" value={addingBus?.model || ""} onChange={e => setAddingBus({ ...addingBus, model: e.target.value })} disabled={submitting} />
+                </FormField>
+                <FormField label="Manufacturer" required>
+                  <input required type="text" className="filter-input" value={addingBus?.manufacturer || ""} onChange={e => setAddingBus({ ...addingBus, manufacturer: e.target.value })} disabled={submitting} />
+                </FormField>
+                <FormField label="Garage" required>
+                  <select required className="filter-input" value={addingBus?.garageId || ""} onChange={e => setAddingBus({ ...addingBus, garageId: e.target.value })} disabled={submitting}>
+                    <option value="" disabled>Select a garage...</option>
+                    {garageItems.map((g: any) => <option key={g.id} value={g.id}>{g?.name ?? "Unknown"}</option>)}
+                  </select>
+                </FormField>
+                <FormField label="Status" required>
+                  <select required className="filter-input" value={addingBus?.status || "ACTIVE"} onChange={e => setAddingBus({ ...addingBus, status: e.target.value })} disabled={submitting}>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="MAINTENANCE">MAINTENANCE</option>
+                    <option value="RETIRED">RETIRED</option>
+                  </select>
+                </FormField>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "var(--spacing-12)", marginTop: "var(--spacing-24)" }}>
+                  <Button onClick={() => { setIsBusModalOpen(false); setAddingBus(null); }} variant="secondary" disabled={submitting}>Cancel</Button>
+                  <button type="submit" className="shared-button primary" disabled={submitting}>{submitting ? "Saving..." : "Add Bus"}</button>
+                </div>
+              </form>
+            </SectionCard>
           </div>
         </div>
       )}
