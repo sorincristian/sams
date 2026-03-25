@@ -85,6 +85,7 @@ app.use("/api/buses", fleetImportRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/work-orders", workOrdersRoutes);
 app.use("/api/catalog", catalogRoutes);
+app.use("/api/v1/catalog", catalogRoutes);
 app.use("/api/v1/reports", reportsRoutes);
 app.use("/api/v1/admin", adminRoutes);
 

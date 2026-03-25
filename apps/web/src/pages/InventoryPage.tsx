@@ -21,8 +21,15 @@ export function InventoryPage({ user }: { user?: any }) {
   const [adjustTarget, setAdjustTarget] = React.useState<InventoryRow | null>(null);
   const [issueTarget, setIssueTarget] = React.useState<InventoryRow | null>(null);
 
-  // Filters
-  const [search, setSearch] = React.useState("");
+  // Autocomplete State
+  const [catalogParts, setCatalogParts] = React.useState<any[]>([]);
+  const [queryLocal, setQueryLocal] = React.useState("");
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [highlightedIndex, setHighlightedIndex] = React.useState(0);
+  const [selectedPartId, setSelectedPartId] = React.useState<string | null>(null);
+  const autocompleteRef = React.useRef<HTMLDivElement>(null);
+
+  // Other Filters
   const [lowStockOnly, setLowStockOnly] = React.useState(query.get("lowStock") === "1");
   const [garageFilter, setGarageFilter] = React.useState("");
   const [sortByQty, setSortByQty] = React.useState(false);
@@ -32,9 +39,61 @@ export function InventoryPage({ user }: { user?: any }) {
     api.get("/inventory")
       .then((res) => setRows(res.data))
       .finally(() => setLoading(false));
+    api.get("/v1/catalog")
+      .then((res) => {
+        console.log("RAW catalog response:", res);
+        console.log("Catalog data:", res.data);
+
+        const data = res.data;
+
+        // TEMP: handle both shapes
+        const parts = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.items)
+          ? data.items
+          : [];
+
+        console.log("Normalized catalogParts:", parts.length);
+        setCatalogParts(parts);
+      })
+      .catch((err) => console.error("Failed to load catalog for autocomplete", err));
   }
 
   React.useEffect(() => { load(); }, []);
+
+  // Click outside listener
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (autocompleteRef.current && !autocompleteRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Sync highlight index
+  React.useEffect(() => {
+    setHighlightedIndex(0);
+  }, [queryLocal]);
+
+  const filteredCatalogParts = React.useMemo(() => {
+    const q = queryLocal.trim().toLowerCase();
+
+    if (!q) return catalogParts;
+
+    return catalogParts.filter((p) => {
+      const partNumber = (p.partNumber || "").toLowerCase();
+      const description = (p.description || "").toLowerCase();
+      const type = (p.componentType || "").toLowerCase();
+
+      return (
+        partNumber.includes(q) ||
+        description.includes(q) ||
+        type.includes(q)
+      );
+    });
+  }, [catalogParts, queryLocal]);
 
   function handleTransactionDone() {
     setReceiveTarget(null);
@@ -56,14 +115,20 @@ export function InventoryPage({ user }: { user?: any }) {
   // Filtered + sorted rows
   const visible = React.useMemo(() => {
     let out = rows;
-    const q = search.toLowerCase().trim();
-    if (q) {
-      out = out.filter(
-        (r) =>
-          r.seatInsertType.partNumber.toLowerCase().includes(q) ||
-          r.seatInsertType.description.toLowerCase().includes(q)
-      );
+    
+    if (selectedPartId) {
+      out = out.filter((r) => r.seatInsertType.id === selectedPartId);
+    } else {
+      const q = queryLocal.toLowerCase().trim();
+      if (q) {
+        out = out.filter(
+          (r) =>
+            r.seatInsertType.partNumber.toLowerCase().includes(q) ||
+            r.seatInsertType.description.toLowerCase().includes(q)
+        );
+      }
     }
+
     if (garageFilter) {
       out = out.filter((r) => r.garage.id === garageFilter);
     }
@@ -74,7 +139,7 @@ export function InventoryPage({ user }: { user?: any }) {
       out = [...out].sort((a, b) => a.quantityOnHand - b.quantityOnHand);
     }
     return out;
-  }, [rows, search, garageFilter, lowStockOnly, sortByQty]);
+  }, [rows, queryLocal, selectedPartId, garageFilter, lowStockOnly, sortByQty]);
 
   const lowStockCount = rows.filter((r) => r.quantityOnHand <= r.seatInsertType.minStockLevel).length;
 
@@ -89,13 +154,95 @@ export function InventoryPage({ user }: { user?: any }) {
 
       {/* Filters bar */}
       <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-        <input
-          type="text"
-          placeholder="Search part # or description…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: "1 1 220px", minWidth: 180 }}
-        />
+        <div ref={autocompleteRef} style={{ position: "relative", flex: "1 1 220px", minWidth: 260 }}>
+          <input
+            type="text"
+            placeholder="Search part #, description, or type…"
+            value={queryLocal}
+            onChange={(e) => {
+              const val = e.target.value;
+              setQueryLocal(val);
+              setIsOpen(true);
+              if (selectedPartId) {
+                const selectedPart = catalogParts.find(p => p.id === selectedPartId);
+                const expectedLabel = selectedPart ? `${selectedPart.partNumber} — ${selectedPart.description}` : "";
+                if (val !== expectedLabel) {
+                  setSelectedPartId(null);
+                }
+              }
+            }}
+            onFocus={() => setIsOpen(true)}
+            onClick={() => setIsOpen(true)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setHighlightedIndex(prev => Math.min(prev + 1, Math.max(0, filteredCatalogParts.length - 1)));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setHighlightedIndex(prev => Math.max(prev - 1, 0));
+              } else if (e.key === "Enter") {
+                e.preventDefault();
+                if (isOpen && filteredCatalogParts[highlightedIndex]) {
+                  const part = filteredCatalogParts[highlightedIndex];
+                  setSelectedPartId(part.id);
+                  setQueryLocal(`${part.partNumber} — ${part.description}`);
+                  setIsOpen(false);
+                }
+              } else if (e.key === "Escape") {
+                setIsOpen(false);
+              }
+            }}
+            style={{ width: "100%", padding: "8px 12px", borderRadius: 6, border: "1px solid #374151", background: "#111827", color: "#f9fafb" }}
+          />
+
+          {isOpen && (
+            <div style={{
+              position: "absolute", top: "100%", left: 0, right: 0, marginTop: 4,
+              background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6,
+              boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+              maxHeight: 300, overflowY: "auto", zIndex: 100
+            }}>
+              {filteredCatalogParts.length === 0 ? (
+                <div style={{ padding: "10px 14px", color: "#64748b", fontSize: "0.85rem" }}>
+                  No matching parts found.
+                </div>
+              ) : (
+                filteredCatalogParts.map((part, index) => {
+                  const isHighlighted = index === highlightedIndex;
+                  return (
+                    <div
+                      key={part.id}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                      onClick={() => {
+                        setSelectedPartId(part.id);
+                        setQueryLocal(`${part.partNumber} — ${part.description}`);
+                        setIsOpen(false);
+                      }}
+                      style={{
+                        padding: "8px 14px", cursor: "pointer",
+                        background: isHighlighted ? "#f1f5f9" : "#fff",
+                        borderBottom: index < filteredCatalogParts.length - 1 ? "1px solid #f1f5f9" : "none",
+                        color: "#0f172a"
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                        <strong style={{ fontSize: "0.9rem" }}>{part.partNumber}</strong>
+                        {part.componentType && (
+                          <span style={{ fontSize: "0.7rem", padding: "2px 6px", background: "#e2e8f0", color: "#475569", borderRadius: 4, fontWeight: 600 }}>
+                            {part.componentType}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: "0.85rem", color: "#64748b", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {part.description}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
 
         <select
           value={garageFilter}
@@ -138,10 +285,10 @@ export function InventoryPage({ user }: { user?: any }) {
           Sort by lowest qty
         </label>
 
-        {(search || garageFilter || lowStockOnly || sortByQty) && (
+        {(queryLocal || garageFilter || lowStockOnly || sortByQty) && (
           <button
             style={{ width: "auto", padding: "6px 12px", background: "#374151", fontSize: "0.8rem" }}
-            onClick={() => { setSearch(""); setGarageFilter(""); setLowStockOnly(false); setSortByQty(false); navigate({ search: "" }, { replace: true }); }}
+            onClick={() => { setQueryLocal(""); setSelectedPartId(null); setGarageFilter(""); setLowStockOnly(false); setSortByQty(false); navigate({ search: "" }, { replace: true }); }}
           >
             Clear filters
           </button>
