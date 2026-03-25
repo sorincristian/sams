@@ -294,7 +294,7 @@ model UserScope {
 // Phase 13: Invitations & User Onboarding
 model UserInvite {
   id              String   @id @default(cuid())
-  email           String   @unique
+  email           String
   token           String   @unique
   roleId          String
   garageIds       String[] @default([])
@@ -305,6 +305,4 @@ model UserInvite {
   createdByUser   User     @relation(fields: [createdByUserId], references: [id])
   role            Role     @relation(fields: [roleId], references: [id])
   createdAt       DateTime @default(now())
-
-  @@index([token])
 }
