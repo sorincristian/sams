@@ -73,10 +73,11 @@ export class SeatInsertsService {
   /**
    * Inventory by location matrix
    */
-  async getInventoryByLocation(params: { fleetType?: string; seatType?: string }) {
+  async getInventoryByLocation(params: { fleetType?: string; seatType?: string; locationId?: string }) {
     const whereClause: any = {};
     if (params.fleetType) whereClause.fleetType = params.fleetType;
     if (params.seatType) whereClause.seatType = params.seatType;
+    if (params.locationId) whereClause.locationId = params.locationId;
 
     // We need grouping by locationId and status. 
     // Prisma grouping:
@@ -89,6 +90,7 @@ export class SeatInsertsService {
     // We also need location metadata (name, thresholds)
     // Fetch all locations to map names and thresholds
     const locations = await prisma.garage.findMany({
+      where: params.locationId ? { id: params.locationId } : undefined,
       select: { id: true, name: true, thresholdNewInventory: true, thresholdDirtyInventory: true },
     });
 
@@ -126,10 +128,13 @@ export class SeatInsertsService {
   /**
    * Reupholstery Batches Tracker Map
    */
-  async getReupholsteryBatches(params: { status?: string }) {
-    // Return detailed batches with relational data
+  async getReupholsteryBatches(params: { status?: string; locationId?: string }) {
+    const where: any = {};
+    if (params.status) where.status = params.status as any;
+    if (params.locationId) where.locationId = params.locationId;
+
     return await prisma.reupholsteryBatch.findMany({
-      where: params.status ? { status: params.status as any } : undefined,
+      where,
       include: {
         location: { select: { name: true } },
         vendor: { select: { name: true } },

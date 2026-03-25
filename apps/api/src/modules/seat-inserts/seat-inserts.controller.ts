@@ -29,6 +29,7 @@ export class SeatInsertsController {
       const parsed = z.object({
         fleetType: z.string().optional(),
         seatType: z.string().optional(),
+        locationId: z.string().optional(),
       }).parse(req.query);
 
       const inventory = await seatInsertsService.getInventoryByLocation(parsed);
@@ -42,9 +43,10 @@ export class SeatInsertsController {
     try {
       const parsed = z.object({
         status: z.enum(["AWAITING_PICKUP", "IN_TRANSIT", "IN_PRODUCTION", "RETURNED"]).optional(),
+        locationId: z.string().optional(),
       }).parse(req.query);
 
-      const batches = await seatInsertsService.getReupholsteryBatches({ status: parsed.status });
+      const batches = await seatInsertsService.getReupholsteryBatches(parsed);
       res.json(batches);
     } catch (e: any) {
       res.status(400).json({ error: e.message || "Invalid request parameters" });

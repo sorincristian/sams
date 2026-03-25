@@ -2,13 +2,19 @@ import React, { useEffect, useState } from "react";
 import { LayoutDashboard, Settings } from "lucide-react";
 import { api } from "../../api";
 
+import { useSearchParams } from "react-router-dom";
 import { KPIBox } from "./components/KPIBox";
 import { AlertsPanel } from "./components/AlertsPanel";
 import { InventoryTable } from "./components/InventoryTable";
 import { PipelineFlow } from "./components/PipelineFlow";
 import { TrendChart } from "./components/TrendChart";
+import { ConfigureModal } from "./components/ConfigureModal";
 
 export function SeatInsertsDashboard() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const locationId = searchParams.get("locationId") || "";
+  const [isConfigureOpen, setIsConfigureOpen] = useState(false);
+  const [garages, setGarages] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -22,11 +28,12 @@ export function SeatInsertsDashboard() {
     console.log("Fetching seat inserts data...");
     try {
       if (!isBackground) setLoading(true);
+      const query = locationId ? `?locationId=${locationId}` : "";
       const results = await Promise.allSettled([
-        api.get("/seat-inserts/dashboard/summary"),
-        api.get("/seat-inserts/inventory/by-location"),
-        api.get("/seat-inserts/replacements"),
-        api.get("/seat-inserts/disposals"),
+        api.get(`/seat-inserts/dashboard/summary${query}`),
+        api.get(`/seat-inserts/inventory/by-location${query}`),
+        api.get(`/seat-inserts/replacements${query}`),
+        api.get(`/seat-inserts/disposals${query}`),
       ]);
 
       const [sumRes, invRes, repRes, disRes] = results;
@@ -55,12 +62,21 @@ export function SeatInsertsDashboard() {
   };
 
   useEffect(() => {
-    console.log("SeatInsertsDashboard mounted");
+    console.log("SeatInsertsDashboard configured");
     fetchDashboardData(false);
     const interval = setInterval(() => {
       fetchDashboardData(true);
     }, 30000);
     return () => clearInterval(interval);
+  }, [locationId]);
+
+  useEffect(() => {
+    api.get("/garages").then(res => {
+      setGarages(res.data);
+      if (res.data.length === 1 && !searchParams.get("locationId")) {
+        setSearchParams({ locationId: res.data[0].id });
+      }
+    }).catch(console.error);
   }, []);
 
   if (!summary) {
@@ -92,6 +108,8 @@ export function SeatInsertsDashboard() {
     slaPercentage: 100
   };
 
+  const selectedGarageName = locationId ? garages.find(g => g.id === locationId)?.name : null;
+
   return (
     <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
       
@@ -100,7 +118,7 @@ export function SeatInsertsDashboard() {
         <div>
           <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
             <LayoutDashboard className="w-8 h-8 text-primary" />
-            Seat Inserts Command Centre
+            Seat Inserts: {selectedGarageName || "All Garages"}
           </h1>
           <div className="text-muted-foreground mt-2 text-sm flex items-center gap-3">
             <span>Live Executive Overview & Lifecycle Telemetry</span>
@@ -120,7 +138,7 @@ export function SeatInsertsDashboard() {
           >
             {loading ? "Syncing..." : "Sync Telemetry"}
           </button>
-          <button className="bg-card border border-border text-foreground hover:bg-muted px-4 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center gap-2">
+          <button onClick={() => setIsConfigureOpen(true)} className="bg-card border border-border text-foreground hover:bg-muted px-4 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center gap-2">
             <Settings className="w-4 h-4" />
             Configure
           </button>
@@ -188,10 +206,21 @@ export function SeatInsertsDashboard() {
         <div className="bg-white rounded-2xl shadow p-6 h-full min-h-[600px] flex flex-col">
           <h2 className="text-xl font-semibold mb-4">Active Exceptions</h2>
           <div className="flex-1 -mx-2 px-2 overflow-y-auto">
-            <AlertsPanel />
+            <AlertsPanel locationId={locationId} />
           </div>
         </div>
       </div>
+
+      <ConfigureModal 
+        isOpen={isConfigureOpen} 
+        onClose={() => setIsConfigureOpen(false)} 
+        currentLocationId={locationId} 
+        garages={garages} 
+        onApply={(locId) => {
+          if (locId) setSearchParams({ locationId: locId });
+          else setSearchParams({});
+        }} 
+      />
     </div>
   );
 }

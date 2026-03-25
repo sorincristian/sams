@@ -13,7 +13,7 @@ interface Alert {
   location?: { name: string };
 }
 
-export function AlertsPanel() {
+export function AlertsPanel({ locationId }: { locationId?: string }) {
   const [alerts, setAlerts] = React.useState<Alert[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -24,12 +24,13 @@ export function AlertsPanel() {
       fetchAlerts(true);
     }, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [locationId]);
 
   const fetchAlerts = async (isBackground = false) => {
     try {
       if (!isBackground) setLoading(true);
-      const res = await api.get("/seat-inserts/alerts?status=OPEN");
+      const query = locationId ? `?status=OPEN&locationId=${locationId}` : `?status=OPEN`;
+      const res = await api.get(`/seat-inserts/alerts${query}`);
       setAlerts(res.data);
       setError(null);
     } catch (err: any) {
