@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { requirePermission } from '../../middleware/rbac.js';
 import { AuthRequest, requireAuth } from '../../auth.js';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -25,6 +27,71 @@ router.get('/users', requirePermission('admin', 'view'), async (req: AuthRequest
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+router.post('/users', requirePermission('admin', 'manage'), async (req: AuthRequest, res) => {
+  try {
+    const { name, email, roleId, garageIds, password, active } = req.body;
+    if (!name || !email || !roleId || !password) return res.status(400).json({ error: "Missing required fields" });
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const newUser = await prisma.$transaction(async (tx) => {
+      const u = await tx.user.create({
+        data: {
+          name,
+          email,
+          roleId,
+          passwordHash,
+          role: "OPERATOR",
+        }
+      });
+
+      if (Array.isArray(garageIds) && garageIds.length > 0) {
+        await tx.userScope.createMany({
+          data: garageIds.map(gId => ({ userId: u.id, garageId: gId }))
+        });
+      }
+      return tx.user.findUnique({
+        where: { id: u.id },
+        include: { roleRelation: true, scopes: { include: { garage: true } } }
+      });
+    });
+    res.status(201).json(newUser);
+  } catch (err: any) {
+    if (err.code === 'P2002') return res.status(409).json({ error: "Email already exists" });
+    res.status(500).json({ error: "Failed to create user" });
+  }
+});
+
+router.post('/invites', requirePermission('admin', 'manage'), async (req: AuthRequest, res) => {
+  try {
+    const { email, roleId, garageIds } = req.body;
+    if (!email || !roleId) return res.status(400).json({ error: "Missing required fields" });
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    const invite = await prisma.userInvite.create({
+      data: {
+        email,
+        token,
+        roleId,
+        garageIds: Array.isArray(garageIds) ? garageIds : [],
+        expiresAt,
+        status: "PENDING",
+        createdByUserId: req.user!.sub
+      }
+    });
+
+    const baseUrl = process.env.VITE_APP_URL || "http://localhost:5173";
+    const inviteUrl = `${baseUrl}/accept-invite?token=${token}`;
+
+    res.status(201).json({ invite, inviteUrl });
+  } catch (err: any) {
+    if (err.code === 'P2002') return res.status(409).json({ error: "An invite or user with this email already exists" });
+    res.status(500).json({ error: "Failed to create invite" });
   }
 });
 

@@ -2,6 +2,7 @@ import React from "react";
 import { Route, Routes } from "react-router-dom";
 import { api, setAuthToken } from "./api";
 import { Login } from "./pages/Login";
+import { AcceptInvitePage } from "./pages/auth/AcceptInvitePage";
 import { Shell } from "./layouts/Shell";
 
 function useAuth() {
@@ -28,5 +29,14 @@ export function App() {
     auth.setUser(null);
   }
 
-  return auth.token ? <Shell user={auth.user} onLogout={logout} /> : <Routes><Route path="*" element={<Login onLogin={auth.setToken} />} /></Routes>;
+  if (auth.token) {
+    return <Shell user={auth.user} onLogout={logout} />;
+  }
+
+  return (
+    <Routes>
+      <Route path="/accept-invite" element={<AcceptInvitePage />} />
+      <Route path="*" element={<Login onLogin={auth.setToken} />} />
+    </Routes>
+  );
 }

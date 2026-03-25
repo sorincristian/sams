@@ -6,6 +6,8 @@ import { DataTable } from '../../components/ui/DataTable';
 import { FormField } from '../../components/ui/FormField';
 import { api } from '../../api';
 import { canManage } from '../../lib/rbac';
+import { CreateUserModal } from './CreateUserModal';
+import { InviteUserModal } from './InviteUserModal';
 
 export function UsersPage({ user: sessionUser }: { user?: any }) {
   const [users, setUsers] = React.useState<any[]>([]);
@@ -13,6 +15,8 @@ export function UsersPage({ user: sessionUser }: { user?: any }) {
   const [garages, setGarages] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [editingUser, setEditingUser] = React.useState<any | null>(null);
+  const [creatingUser, setCreatingUser] = React.useState(false);
+  const [invitingUser, setInvitingUser] = React.useState(false);
 
   const fetchUsers = () => {
     setLoading(true);
@@ -59,7 +63,18 @@ export function UsersPage({ user: sessionUser }: { user?: any }) {
 
   return (
     <PageContainer>
-      <PageHeader title="Users Management" description="Assign roles and scoped facility access to personnel natively." />
+      <PageHeader 
+        title="Users Management" 
+        description="Assign roles and scoped facility access to personnel natively." 
+        actions={
+          canManage(sessionUser, 'admin') ? (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button style={{ width: 'auto', padding: '6px 16px' }} onClick={() => setCreatingUser(true)}>Create User</button>
+              <button style={{ width: 'auto', padding: '6px 16px', background: '#374151', color: '#fff' }} onClick={() => setInvitingUser(true)}>Invite User</button>
+            </div>
+          ) : undefined
+        }
+      />
       <SectionCard title="System Users">
          <DataTable 
            headers={
@@ -139,6 +154,24 @@ export function UsersPage({ user: sessionUser }: { user?: any }) {
             </div>
           </div>
         </div>
+      )}
+
+      {creatingUser && (
+        <CreateUserModal
+          roles={roles}
+          garages={garages}
+          onClose={() => setCreatingUser(false)}
+          onCreated={() => { setCreatingUser(false); fetchUsers(); }}
+        />
+      )}
+
+      {invitingUser && (
+        <InviteUserModal
+          roles={roles}
+          garages={garages}
+          onClose={() => setInvitingUser(false)}
+          onCreated={() => fetchUsers()}
+        />
       )}
     </PageContainer>
   );

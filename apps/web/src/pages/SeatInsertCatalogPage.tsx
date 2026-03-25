@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { CatalogAutocomplete } from "../components/CatalogAutocomplete";
 
 interface CatalogPart {
   id: string;
@@ -299,6 +300,7 @@ export function SeatInsertCatalogPage() {
   const [detailId, setDetailId] = React.useState<string | null>(null);
 
   const [search, setSearch] = React.useState("");
+  const [selectedPartId, setSelectedPartId] = React.useState<string | null>(null);
   const [activeFilter, setActiveFilter] = React.useState<"all" | "active" | "inactive">("active");
 
   function load() {
@@ -310,16 +312,20 @@ export function SeatInsertCatalogPage() {
 
   const visible = React.useMemo(() => {
     let out = parts;
-    const q = search.toLowerCase().trim();
-    if (q) out = out.filter((p) =>
-      p.partNumber.toLowerCase().includes(q) ||
-      p.description.toLowerCase().includes(q) ||
-      (p.vendor ?? "").toLowerCase().includes(q)
-    );
+    if (selectedPartId) {
+      out = out.filter((p) => p.id === selectedPartId);
+    } else {
+      const q = search.toLowerCase().trim();
+      if (q) out = out.filter((p) =>
+        p.partNumber.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        (p.vendor ?? "").toLowerCase().includes(q)
+      );
+    }
     if (activeFilter === "active") out = out.filter((p) => p.active);
     if (activeFilter === "inactive") out = out.filter((p) => !p.active);
     return out;
-  }, [parts, search, activeFilter]);
+  }, [parts, search, activeFilter, selectedPartId]);
 
   function handleSaved() { setEditing(null); load(); }
 
@@ -338,8 +344,13 @@ export function SeatInsertCatalogPage() {
       </div>
 
       <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-        <input type="text" placeholder="Search part #, description, vendor…" value={search}
-          onChange={(e) => setSearch(e.target.value)} style={{ flex: "1 1 220px", minWidth: 180 }} />
+        <CatalogAutocomplete
+          catalogParts={parts}
+          queryLocal={search}
+          setQueryLocal={setSearch}
+          selectedPartId={selectedPartId}
+          setSelectedPartId={setSelectedPartId}
+        />
         <select value={activeFilter} onChange={(e) => setActiveFilter(e.target.value as any)} style={selectStyle}>
           <option value="active">Active only</option>
           <option value="inactive">Inactive only</option>

@@ -107,6 +107,47 @@ router.post("/login", async (req, res) => {
   }
 });
 
+router.post("/accept-invite", async (req, res) => {
+  try {
+    const { token, name, password } = req.body;
+    if (!token || !name || !password) return res.status(400).json({ error: "Missing required fields" });
+
+    const invite = await prisma.userInvite.findUnique({ where: { token } });
+    if (!invite || invite.status !== "PENDING" || invite.expiresAt < new Date()) {
+      return res.status(400).json({ error: "Invalid or expired invite token" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const newUser = await prisma.$transaction(async (tx) => {
+      const u = await tx.user.create({
+        data: {
+          name,
+          email: invite.email,
+          passwordHash,
+          roleId: invite.roleId,
+          role: "OPERATOR"
+        }
+      });
+      if (invite.garageIds.length > 0) {
+        await tx.userScope.createMany({
+          data: invite.garageIds.map(gId => ({ userId: u.id, garageId: gId }))
+        });
+      }
+      await tx.userInvite.update({
+        where: { id: invite.id },
+        data: { status: "ACCEPTED" }
+      });
+      return u;
+    });
+
+    res.status(201).json({ message: "Account created successfully" });
+  } catch (err: any) {
+    if (err.code === 'P2002') return res.status(409).json({ error: "Email already in use" });
+    res.status(500).json({ error: "Failed to accept invite" });
+  }
+});
+
 router.get("/me", requireAuth, async (req: AuthRequest, res) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });

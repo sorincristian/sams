@@ -209,6 +209,7 @@ model User {
   auditLogs             AuditLog[]
   importMappings        ImportMapping[]
   scopes                UserScope[]
+  createdInvites        UserInvite[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 }
@@ -259,6 +260,7 @@ model Role {
   name        String           @unique
   permissions RolePermission[]
   users       User[]
+  userInvites UserInvite[]
   createdAt   DateTime         @default(now())
 }
 
@@ -280,4 +282,19 @@ model UserScope {
   garage   Garage @relation(fields: [garageId], references: [id], onDelete: Cascade)
 
   @@unique([userId, garageId])
+}
+
+// Phase 13: Invitations & User Onboarding
+model UserInvite {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  token           String   @unique
+  roleId          String
+  garageIds       String[] @default([])
+  expiresAt       DateTime
+  status          String   @default("PENDING") // PENDING, ACCEPTED, EXPIRED, REVOKED
+  createdByUserId String
+  createdByUser   User     @relation(fields: [createdByUserId], references: [id])
+  role            Role     @relation(fields: [roleId], references: [id])
+  createdAt       DateTime @default(now())
 }
