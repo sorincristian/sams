@@ -15,7 +15,11 @@ export function Login({ onLogin }: { onLogin: (token: string) => void }) {
       const res = await api.post("/auth/login", { email, password });
       setAuthToken(res.data.token);
       onLogin(res.data.token);
-      navigate("/");
+      if (window.location.pathname !== "/" && window.location.pathname !== "/login") {
+        navigate(window.location.pathname + window.location.search, { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (err: any) {
       const status = err?.response?.status;
       if (status === 401 || status === 403) {

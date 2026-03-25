@@ -19,6 +19,7 @@ export function SeatInsertsDashboard() {
   const [disposals, setDisposals] = useState<any>({ reasonBreakdown: [] });
 
   const fetchDashboardData = async (isBackground = false) => {
+    console.log("Fetching seat inserts data...");
     try {
       if (!isBackground) setLoading(true);
       const results = await Promise.allSettled([
@@ -62,16 +63,15 @@ export function SeatInsertsDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  if (loading && !summary) {
+  if (!summary) {
     return (
-      <div className="p-8 max-w-[1600px] mx-auto text-center space-y-4">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-        <h2 className="text-xl font-semibold text-muted-foreground animate-pulse">Loading Command Centre...</h2>
+      <div className="p-8 max-w-[1600px] mx-auto text-center font-mono">
+        Seat Inserts Loading...
       </div>
     );
   }
 
-  if (error && !summary) {
+  if (error) {
     return (
       <div className="p-8 max-w-7xl mx-auto flex flex-col items-center justify-center min-h-[500px]">
         <div className="bg-red-50 text-red-600 p-6 rounded-xl border border-red-200">
@@ -128,7 +128,7 @@ export function SeatInsertsDashboard() {
       </div>
 
       {/* Top Section - KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPIBox 
           title="Total Inserts" 
           value={loading && !summary ? "-" : safeSummary.totalInventory} 
@@ -157,24 +157,39 @@ export function SeatInsertsDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Column - Pipeline & Inventory */}
         <div className="lg:col-span-2 space-y-6 flex flex-col">
-          <PipelineFlow metrics={{
-            dirty: safeSummary.dirtyInventory || 0,
-            packed: safeSummary.packedForReturn || 0,
-            inTransit: 0, // Placeholder mapping or extrapolate from Batch
-            returned: safeSummary.returned || 0
-          }} onMutationSuccess={fetchDashboardData} />
+          <div className="bg-white rounded-2xl shadow p-6">
+            <h2 className="text-xl font-semibold mb-4">Logistics Pipeline</h2>
+            <PipelineFlow metrics={{
+              dirty: safeSummary.dirtyInventory || 0,
+              packed: safeSummary.packedForReturn || 0,
+              inTransit: 0,
+              returned: safeSummary.returned || 0
+            }} onMutationSuccess={fetchDashboardData} />
+          </div>
 
-          <InventoryTable data={inventory || []} loading={loading} onMutationSuccess={fetchDashboardData} />
+          <div className="bg-white rounded-2xl shadow p-6">
+            <h2 className="text-xl font-semibold mb-4">Live Inventory by Location</h2>
+            <InventoryTable data={inventory || []} loading={loading} onMutationSuccess={fetchDashboardData} />
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-            <TrendChart title="Disposal Factors" data={disposals?.reasonBreakdown || []} loading={loading} />
-            <TrendChart title="Replacement Factors" data={replacements?.reasonBreakdown || []} loading={loading} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 mt-6">
+            <div className="bg-white rounded-2xl shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Disposals</h2>
+              <TrendChart title="Disposal Factors" data={disposals?.reasonBreakdown || []} loading={loading} />
+            </div>
+            <div className="bg-white rounded-2xl shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Replacements</h2>
+              <TrendChart title="Replacement Factors" data={replacements?.reasonBreakdown || []} loading={loading} />
+            </div>
           </div>
         </div>
 
         {/* Side Column - Alerts */}
-        <div className="h-full min-h-[600px] flex flex-col">
-          <AlertsPanel />
+        <div className="bg-white rounded-2xl shadow p-6 h-full min-h-[600px] flex flex-col">
+          <h2 className="text-xl font-semibold mb-4">Active Exceptions</h2>
+          <div className="flex-1 -mx-2 px-2 overflow-y-auto">
+            <AlertsPanel />
+          </div>
         </div>
       </div>
     </div>

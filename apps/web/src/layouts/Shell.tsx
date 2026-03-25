@@ -10,6 +10,7 @@ import { SeatInsertCatalogPage } from "../pages/SeatInsertCatalogPage";
 import { DiagramViewerPage } from "../pages/DiagramViewerPage";
 import { HelpPage } from "../pages/HelpPage";
 import { SeatChangeReportPage } from "../pages/SeatChangeReportPage";
+import { SeatInsertsDashboard } from "../modules/seat-inserts/SeatInsertsDashboard";
 import { canView } from "../lib/rbac";
 
 export function Shell({ user, onLogout }: { user: any; onLogout: () => void }) {
@@ -82,11 +83,7 @@ export function Shell({ user, onLogout }: { user: any; onLogout: () => void }) {
               {React.createElement(React.lazy(() => import('../pages/ImportHistoryPage').then(m => ({ default: m.ImportHistoryPage }))))}
             </React.Suspense>
           } />
-          <Route path="/seat-inserts" element={
-            <React.Suspense fallback={<div>Loading Command Centre...</div>}>
-              {React.createElement(React.lazy(() => import('../modules/seat-inserts/SeatInsertsDashboard').then(m => ({ default: m.SeatInsertsDashboard }))))}
-            </React.Suspense>
-          } />
+          <Route path="/seat-inserts" element={<SeatInsertsDashboard />} />
           <Route path="/diagram/:attachmentId" element={<DiagramViewerPage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/admin/users" element={
