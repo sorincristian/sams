@@ -7,6 +7,8 @@ interface CatalogAutocompleteProps {
   selectedPartId: string | null;
   setSelectedPartId: (id: string | null) => void;
   placeholder?: string;
+  getDisplayValue?: (part: any) => string;
+  renderItem?: (part: any, isHighlighted: boolean) => React.ReactNode;
 }
 
 export function CatalogAutocomplete({
@@ -15,7 +17,9 @@ export function CatalogAutocomplete({
   setQueryLocal,
   selectedPartId,
   setSelectedPartId,
-  placeholder = "Search part #, description, or type…"
+  placeholder = "Search part #, description, or type…",
+  getDisplayValue = (p) => `${p.partNumber} — ${p.description}`,
+  renderItem
 }: CatalogAutocompleteProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [highlightedIndex, setHighlightedIndex] = React.useState(0);
@@ -67,7 +71,7 @@ export function CatalogAutocomplete({
           setIsOpen(true);
           if (selectedPartId) {
             const selectedPart = catalogParts.find(p => p.id === selectedPartId);
-            const expectedLabel = selectedPart ? `${selectedPart.partNumber} — ${selectedPart.description}` : "";
+            const expectedLabel = selectedPart ? getDisplayValue(selectedPart) : "";
             if (val !== expectedLabel) {
               setSelectedPartId(null);
             }
@@ -87,7 +91,7 @@ export function CatalogAutocomplete({
             if (isOpen && filteredCatalogParts[highlightedIndex]) {
               const part = filteredCatalogParts[highlightedIndex];
               setSelectedPartId(part.id);
-              setQueryLocal(`${part.partNumber} — ${part.description}`);
+              setQueryLocal(getDisplayValue(part));
               setIsOpen(false);
             }
           } else if (e.key === "Escape") {
@@ -117,7 +121,7 @@ export function CatalogAutocomplete({
                   onMouseEnter={() => setHighlightedIndex(index)}
                   onClick={() => {
                     setSelectedPartId(part.id);
-                    setQueryLocal(`${part.partNumber} — ${part.description}`);
+                    setQueryLocal(getDisplayValue(part));
                     setIsOpen(false);
                   }}
                   style={{
@@ -127,17 +131,21 @@ export function CatalogAutocomplete({
                     color: "#0f172a"
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                    <strong style={{ fontSize: "0.9rem" }}>{part.partNumber}</strong>
-                    {part.componentType && (
-                      <span style={{ fontSize: "0.7rem", padding: "2px 6px", background: "#e2e8f0", color: "#475569", borderRadius: 4, fontWeight: 600 }}>
-                        {part.componentType}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: "0.85rem", color: "#64748b", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {part.description}
-                  </div>
+                  {renderItem ? renderItem(part, isHighlighted) : (
+                    <>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                        <strong style={{ fontSize: "0.9rem" }}>{part.partNumber}</strong>
+                        {part.componentType && (
+                          <span style={{ fontSize: "0.7rem", padding: "2px 6px", background: "#e2e8f0", color: "#475569", borderRadius: 4, fontWeight: 600 }}>
+                            {part.componentType}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: "0.85rem", color: "#64748b", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {part.description}
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })

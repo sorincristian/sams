@@ -270,7 +270,7 @@ export function WorkOrderDetailPage() {
 
       {issueTarget && (
         <IssueInventoryModal
-          item={issueTarget}
+          item={(issueTarget as any).__prefilledWorkOrderId ? null : issueTarget}
           prefilledWorkOrderId={id}
           onClose={() => setIssueTarget(null)}
           onDone={handleIssueDone}

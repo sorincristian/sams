@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from "react";
 import { api } from "../api";
+import { CatalogAutocomplete } from "./CatalogAutocomplete";
 import "./BusImportWizard.css";
 
 interface BusImportWizardProps {
@@ -268,6 +269,53 @@ export function BusImportWizard({ onClose, onSuccess }: BusImportWizardProps) {
     </div>
   );
 
+  const MappingRow = ({ field, mapped, detectedHeaders, onChange }: { field: any, mapped: string | null, detectedHeaders: string[], onChange: (val: string | null) => void }) => {
+    const isAuto = !!mapped;
+    const [query, setQuery] = useState(mapped || "");
+
+    React.useEffect(() => {
+      if (mapped && query !== mapped) setQuery(mapped);
+    }, [mapped]);
+
+    const mappingParts = React.useMemo(() => detectedHeaders.map(h => ({
+      id: h,
+      partNumber: h,
+      description: "",
+      vendor: "",
+      componentType: ""
+    })), [detectedHeaders]);
+
+    return (
+      <tr key={field.key}>
+        <td>
+          <strong>{field.label}</strong>
+          {field.required && <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>}
+        </td>
+        <td>
+          <CatalogAutocomplete
+            catalogParts={mappingParts}
+            queryLocal={query}
+            setQueryLocal={setQuery}
+            selectedPartId={mapped || null}
+            setSelectedPartId={onChange}
+            placeholder="— Not mapped —"
+            getDisplayValue={(p) => p.partNumber}
+            renderItem={(p, isHighlighted) => (
+              <div style={{ fontSize: "0.9rem", fontWeight: 600 }}>{p.partNumber}</div>
+            )}
+          />
+        </td>
+        <td>
+          {isAuto ? (
+            <span className="mapping-auto-badge">✓ Auto</span>
+          ) : (
+            <span className="mapping-manual-badge">⚠ Manual</span>
+          )}
+        </td>
+      </tr>
+    );
+  };
+
   // --- STEP 2: Mapping ---
   const renderMapping = () => (
     <div>
@@ -283,38 +331,15 @@ export function BusImportWizard({ onClose, onSuccess }: BusImportWizardProps) {
           </tr>
         </thead>
         <tbody>
-          {SYSTEM_FIELDS.map(field => {
-            const mapped = mappedHeaders[field.key];
-            const isAuto = !!mapped;
-
-            return (
-              <tr key={field.key}>
-                <td>
-                  <strong>{field.label}</strong>
-                  {field.required && <span style={{ color: '#ef4444', marginLeft: '2px' }}>*</span>}
-                </td>
-                <td>
-                  <select
-                    className="mapping-select"
-                    value={mapped || ''}
-                    onChange={(e) => setMappedHeaders(prev => ({ ...prev, [field.key]: e.target.value || null }))}
-                  >
-                    <option value="">— Not mapped —</option>
-                    {detectedHeaders.map(h => (
-                      <option key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-                </td>
-                <td>
-                  {isAuto ? (
-                    <span className="mapping-auto-badge">✓ Auto</span>
-                  ) : (
-                    <span className="mapping-manual-badge">⚠ Manual</span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
+          {SYSTEM_FIELDS.map(field => (
+            <MappingRow
+              key={field.key}
+              field={field}
+              mapped={mappedHeaders[field.key] || null}
+              detectedHeaders={detectedHeaders}
+              onChange={(val) => setMappedHeaders(prev => ({ ...prev, [field.key]: val }))}
+            />
+          ))}
         </tbody>
       </table>
     </div>

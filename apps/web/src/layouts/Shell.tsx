@@ -36,6 +36,7 @@ export function Shell({ user, onLogout }: { user: any; onLogout: () => void }) {
           {canView(user, 'catalog') && <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>Catalog</NavLink>}
           {canView(user, 'work_orders') && <NavLink to="/work-orders" className={({ isActive }) => (isActive ? "active" : "")}>Work Orders</NavLink>}
           <NavLink to="/import-history" className={({ isActive }) => (isActive ? "active" : "")}>Import History</NavLink>
+          <NavLink to="/seat-inserts" className={({ isActive }) => (isActive ? "active" : "")}>Command Centre</NavLink>
           <NavLink to="/help" className={({ isActive }) => (isActive ? "active" : "")}>Help</NavLink>
           {canView(user, 'admin') && (
             <>
@@ -79,6 +80,11 @@ export function Shell({ user, onLogout }: { user: any; onLogout: () => void }) {
           <Route path="/import-history" element={
             <React.Suspense fallback={<div>Loading Import History...</div>}>
               {React.createElement(React.lazy(() => import('../pages/ImportHistoryPage').then(m => ({ default: m.ImportHistoryPage }))))}
+            </React.Suspense>
+          } />
+          <Route path="/seat-inserts" element={
+            <React.Suspense fallback={<div>Loading Command Centre...</div>}>
+              {React.createElement(React.lazy(() => import('../modules/seat-inserts/SeatInsertsDashboard').then(m => ({ default: m.SeatInsertsDashboard }))))}
             </React.Suspense>
           } />
           <Route path="/diagram/:attachmentId" element={<DiagramViewerPage />} />

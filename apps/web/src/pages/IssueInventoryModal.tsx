@@ -1,6 +1,7 @@
 import React from "react";
 import { api } from "../api";
 import type { InventoryRow, InventoryTransactionType } from "@sams/types";
+import { CatalogAutocomplete } from "../components/CatalogAutocomplete";
 
 interface WorkOrder {
   id: string;
@@ -29,6 +30,7 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
   const [notes, setNotes] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [queryLocal, setQueryLocal] = React.useState("");
 
   // Resolved item (from picker or prop)
   const resolvedItem = initialItem ?? inventoryItems.find((i) => i.id === selectedItemId) ?? null;
@@ -49,11 +51,25 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
       api.get("/inventory")
         .then((res) => {
           setInventoryItems(res.data);
-          if (res.data.length > 0) setSelectedItemId(res.data[0].id);
+          if (res.data.length > 0) {
+             const it = res.data[0];
+             setSelectedItemId(it.id);
+             setQueryLocal(`${it.seatInsertType.partNumber} — ${it.seatInsertType.description}`);
+          }
         })
         .finally(() => setLoadingItems(false));
     }
   }, []);
+
+  const mappedCatalogParts = React.useMemo(() => {
+    return inventoryItems.map(item => ({
+      id: item.id,
+      partNumber: item.seatInsertType.partNumber,
+      description: item.seatInsertType.description,
+      componentType: `${item.garage.name} (QOH: ${item.quantityOnHand})`,
+      vendor: ""
+    }));
+  }, [inventoryItems]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -107,18 +123,14 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
               {loadingItems ? (
                 <div className="muted">Loading inventory...</div>
               ) : (
-                <select
-                  value={selectedItemId}
-                  onChange={(e) => setSelectedItemId(e.target.value)}
-                  required
-                  style={selectStyle}
-                >
-                  {inventoryItems.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.seatInsertType.partNumber} — {item.seatInsertType.description} ({item.garage.name}, QOH: {item.quantityOnHand})
-                    </option>
-                  ))}
-                </select>
+                <CatalogAutocomplete
+                  catalogParts={mappedCatalogParts}
+                  queryLocal={queryLocal}
+                  setQueryLocal={setQueryLocal}
+                  selectedPartId={selectedItemId}
+                  setSelectedPartId={(id) => setSelectedItemId(id || "")}
+                  placeholder="Search parts by number, description, or garage..."
+                />
               )}
             </label>
           )}

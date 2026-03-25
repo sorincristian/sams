@@ -14,6 +14,7 @@ import workOrdersRoutes from "./modules/workOrders/workOrders.routes.js";
 import catalogRoutes from "./modules/catalog/catalog.routes.js";
 import reportsRoutes from "./modules/reports/reports.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
+import seatInsertsRoutes from "./modules/seat-inserts/seat-inserts.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -88,5 +89,6 @@ app.use("/api/catalog", catalogRoutes);
 app.use("/api/v1/catalog", catalogRoutes);
 app.use("/api/v1/reports", reportsRoutes);
 app.use("/api/v1/admin", adminRoutes);
+app.use("/api/seat-inserts", seatInsertsRoutes);
 
 export default app;
