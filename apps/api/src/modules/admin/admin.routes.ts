@@ -35,6 +35,12 @@ router.post('/users', requirePermission('admin', 'manage'), async (req: AuthRequ
     const { name, email, roleId, garageIds, password, active } = req.body;
     if (!name || !email || !roleId || !password) return res.status(400).json({ error: "Missing required fields" });
 
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) return res.status(409).json({ error: "User with this email already exists" });
+
+    const existingInvite = await prisma.userInvite.findFirst({ where: { email, status: 'PENDING' } });
+    if (existingInvite) return res.status(409).json({ error: "A pending invite for this email already exists" });
+
     const passwordHash = await bcrypt.hash(password, 10);
 
     const newUser = await prisma.$transaction(async (tx) => {
@@ -70,13 +76,20 @@ router.post('/invites', requirePermission('admin', 'manage'), async (req: AuthRe
     const { email, roleId, garageIds } = req.body;
     if (!email || !roleId) return res.status(400).json({ error: "Missing required fields" });
 
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) return res.status(409).json({ error: "User with this email already exists" });
+
+    const existingInvite = await prisma.userInvite.findFirst({ where: { email, status: 'PENDING' } });
+    if (existingInvite) return res.status(409).json({ error: "A pending invite for this email already exists" });
+
     const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     const invite = await prisma.userInvite.create({
       data: {
         email,
-        token,
+        token: tokenHash,
         roleId,
         garageIds: Array.isArray(garageIds) ? garageIds : [],
         expiresAt,
@@ -85,7 +98,7 @@ router.post('/invites', requirePermission('admin', 'manage'), async (req: AuthRe
       }
     });
 
-    const baseUrl = process.env.VITE_APP_URL || "http://localhost:5173";
+    const baseUrl = process.env.VITE_APP_URL || process.env.VITE_URL || "https://sams-web-emwb.onrender.com";
     const inviteUrl = `${baseUrl}/accept-invite?token=${token}`;
 
     res.status(201).json({ invite, inviteUrl });

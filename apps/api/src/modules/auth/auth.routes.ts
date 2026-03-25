@@ -112,9 +112,22 @@ router.post("/accept-invite", async (req, res) => {
     const { token, name, password } = req.body;
     if (!token || !name || !password) return res.status(400).json({ error: "Missing required fields" });
 
-    const invite = await prisma.userInvite.findUnique({ where: { token } });
-    if (!invite || invite.status !== "PENDING" || invite.expiresAt < new Date()) {
-      return res.status(400).json({ error: "Invalid or expired invite token" });
+    const crypto = await import('crypto');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    const invite = await prisma.userInvite.findUnique({ where: { token: tokenHash } });
+    if (!invite || invite.status !== "PENDING" || invite.usedAt !== null) {
+      return res.status(400).json({ error: "Invalid, consumed, or expired invite token" });
+    }
+
+    if (new Date() > invite.expiresAt) {
+      await prisma.userInvite.update({ where: { id: invite.id }, data: { status: "EXPIRED" } });
+      return res.status(400).json({ error: "Invite token has strictly expired" });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email: invite.email } });
+    if (existingUser) {
+      return res.status(409).json({ error: "An active account with this email already exists" });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -136,15 +149,18 @@ router.post("/accept-invite", async (req, res) => {
       }
       await tx.userInvite.update({
         where: { id: invite.id },
-        data: { status: "ACCEPTED" }
+        data: { 
+          status: "ACCEPTED",
+          usedAt: new Date()
+        }
       });
       return u;
     });
 
-    res.status(201).json({ message: "Account created successfully" });
+    res.status(201).json({ message: "Account setup deployed" });
   } catch (err: any) {
     if (err.code === 'P2002') return res.status(409).json({ error: "Email already in use" });
-    res.status(500).json({ error: "Failed to accept invite" });
+    res.status(500).json({ error: "Failed to cleanly accept invite" });
   }
 });
 

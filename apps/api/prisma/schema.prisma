@@ -18,6 +18,13 @@ enum InventoryTransactionType {
   SCRAP
 }
 
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
+
 model Garage {
   id                    String                 @id @default(cuid())
   code                  String                 @unique
@@ -292,9 +299,12 @@ model UserInvite {
   roleId          String
   garageIds       String[] @default([])
   expiresAt       DateTime
-  status          String   @default("PENDING") // PENDING, ACCEPTED, EXPIRED, REVOKED
+  usedAt          DateTime?
+  status          InviteStatus   @default(PENDING) // PENDING, ACCEPTED, EXPIRED, REVOKED
   createdByUserId String
   createdByUser   User     @relation(fields: [createdByUserId], references: [id])
   role            Role     @relation(fields: [roleId], references: [id])
   createdAt       DateTime @default(now())
+
+  @@index([token])
 }
