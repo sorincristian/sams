@@ -27,17 +27,42 @@ enum InviteStatus {
 
 enum InventoryStatus {
   NEW
+  INSTALLED
   DIRTY
   PACKED_FOR_RETURN
-  RETURNED
+  IN_TRANSIT_TO_VENDOR
+  AT_VENDOR
+  RETURNED_FROM_VENDOR
   DISPOSED
 }
 
 enum ReupholsteryBatchStatus {
-  AWAITING_PICKUP
-  IN_TRANSIT
-  IN_PRODUCTION
+  DRAFT
+  PACKED
+  SHIPPED
+  RECEIVED_BY_VENDOR
+  IN_REUPHOLSTERY
+  READY_TO_RETURN
   RETURNED
+  CLOSED
+}
+
+enum VendorOrderStatus {
+  DRAFT
+  SUBMITTED
+  CONFIRMED
+  IN_TRANSIT
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+enum VendorReceiptStatus {
+  PENDING
+  PARTIAL
+  COMPLETED
+  DISPUTED
 }
 
 enum RecordReason {
@@ -68,6 +93,10 @@ enum AlertType {
   DISPOSAL_SPIKE
   REPLACEMENT_SPIKE
   INVENTORY_DISCREPANCY
+  VENDOR_SLA_BREACH
+  OVERDUE_VENDOR_RETURN
+  OVERDUE_VENDOR_ORDER
+  PARTIAL_RECEIPT_PENDING
 }
 
 model Garage {
@@ -91,6 +120,8 @@ model Garage {
   replacementActivities   ReplacementActivity[]
   disposalRecords         DisposalRecord[]
   alerts                  Alert[]
+  vendorOrders            VendorOrder[]
+  vendorReceipts          VendorReceipt[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -134,6 +165,7 @@ model SeatInsertType {
   busCompatibilities     BusCompatibility[]     @relation("SeatInsertBusCompat")
   catalogAttachments     CatalogAttachment[]
   diagramHotspots        DiagramHotspot[]
+  vendorOrderLines       VendorOrderLine[]
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
 }
@@ -277,6 +309,7 @@ model User {
   createdInvites        UserInvite[]
   replacementActivities ReplacementActivity[]
   disposalRecords       DisposalRecord[]
+  vendorReceipts        VendorReceipt[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 }
@@ -309,11 +342,14 @@ model ImportMapping {
 model Vendor {
   id           String              @id @default(cuid())
   name         String              @unique
+  type         String              @default("REUPHOLSTERY_VENDOR")
   contactName  String?
   contactEmail String?
   contactPhone String?
   active       Boolean             @default(true)
   batches      ReupholsteryBatch[]
+  orders       VendorOrder[]
+  receipts     VendorReceipt[]
   createdAt    DateTime            @default(now())
   updatedAt    DateTime            @updatedAt
   deletedAt    DateTime?
@@ -356,25 +392,81 @@ model SeatInsert {
 model ReupholsteryBatch {
   id                 String                  @id @default(cuid())
   batchNumber        String                  @unique
-  locationId         String
+  garageId           String
   vendorId           String
   seatType           String
   color              String
   packedDate         DateTime
+  shippedDate        DateTime?
   expectedReturnDate DateTime
   actualReturnDate   DateTime?
   onTimeReturn       Boolean?
-  status             ReupholsteryBatchStatus @default(AWAITING_PICKUP)
+  status             ReupholsteryBatchStatus @default(DRAFT)
   trackingNumber     String?
   notes              String?
 
-  location Garage       @relation(fields: [locationId], references: [id])
+  garage   Garage       @relation(fields: [garageId], references: [id])
   vendor   Vendor       @relation(fields: [vendorId], references: [id])
   inserts  SeatInsert[]
+  receipts VendorReceipt[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+}
+
+model VendorOrder {
+  id                   String           @id @default(cuid())
+  orderNumber          String           @unique
+  garageId             String
+  vendorId             String
+  status               VendorOrderStatus @default(DRAFT)
+  submittedAt          DateTime?
+  expectedDeliveryDate DateTime?
+  receivedAt           DateTime?
+  notes                String?
+
+  garage   Garage            @relation(fields: [garageId], references: [id])
+  vendor   Vendor            @relation(fields: [vendorId], references: [id])
+  lines    VendorOrderLine[]
+  receipts VendorReceipt[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model VendorOrderLine {
+  id               String         @id @default(cuid())
+  orderId          String
+  seatInsertTypeId String
+  quantityOrdered  Int
+  quantityReceived Int            @default(0)
+
+  order          VendorOrder    @relation(fields: [orderId], references: [id])
+  seatInsertType SeatInsertType @relation(fields: [seatInsertTypeId], references: [id])
+}
+
+model VendorReceipt {
+  id                  String              @id @default(cuid())
+  type                String              // "BATCH_RETURN" | "ORDER_RECEIPT"
+  reupholsteryBatchId String?
+  vendorOrderId       String?
+  garageId            String
+  vendorId            String
+  receivedAt          DateTime            @default(now())
+  receivedBy          String
+  status              VendorReceiptStatus @default(PENDING)
+  notes               String?
+
+  batch       ReupholsteryBatch? @relation(fields: [reupholsteryBatchId], references: [id])
+  order       VendorOrder?       @relation(fields: [vendorOrderId], references: [id])
+  garage      Garage             @relation(fields: [garageId], references: [id])
+  vendor      Vendor             @relation(fields: [vendorId], references: [id])
+  receivingUser User             @relation(fields: [receivedBy], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model ReplacementActivity {

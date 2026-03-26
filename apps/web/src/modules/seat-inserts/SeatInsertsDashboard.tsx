@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { LayoutDashboard, Settings } from "lucide-react";
+import { LayoutDashboard, Settings, Package } from "lucide-react";
 import { api } from "../../api";
 
 import { useSearchParams } from "react-router-dom";
@@ -9,12 +9,17 @@ import { InventoryTable } from "./components/InventoryTable";
 import { PipelineFlow } from "./components/PipelineFlow";
 import { TrendChart } from "./components/TrendChart";
 import { ConfigureModal } from "./components/ConfigureModal";
+import { VendorOrdersModal } from "./components/VendorOrdersModal";
 
 export function SeatInsertsDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const locationId = searchParams.get("locationId") || "";
+  const vendorId = searchParams.get("vendorId") || "";
+  
   const [isConfigureOpen, setIsConfigureOpen] = useState(false);
+  const [isOrdersOpen, setIsOrdersOpen] = useState(false);
   const [garages, setGarages] = useState<{ id: string; name: string }[]>([]);
+  const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -28,7 +33,12 @@ export function SeatInsertsDashboard() {
     console.log("Fetching seat inserts data...");
     try {
       if (!isBackground) setLoading(true);
-      const query = locationId ? `?locationId=${locationId}` : "";
+      
+      const queryParams = new URLSearchParams();
+      if (locationId) queryParams.set("locationId", locationId);
+      if (vendorId) queryParams.set("vendorId", vendorId);
+      const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
+      
       const results = await Promise.allSettled([
         api.get(`/seat-inserts/dashboard/summary${query}`),
         api.get(`/seat-inserts/inventory/by-location${query}`),
@@ -68,14 +78,22 @@ export function SeatInsertsDashboard() {
       fetchDashboardData(true);
     }, 30000);
     return () => clearInterval(interval);
-  }, [locationId]);
+  }, [locationId, vendorId]);
 
   useEffect(() => {
     api.get("/garages").then(res => {
       setGarages(res.data);
       if (res.data.length === 1 && !searchParams.get("locationId")) {
-        setSearchParams({ locationId: res.data[0].id });
+        setSearchParams(prev => {
+          const next = new URLSearchParams(prev);
+          next.set("locationId", res.data[0].id);
+          return next;
+        });
       }
+    }).catch(console.error);
+
+    api.get("/seat-inserts/vendors").then(res => {
+      setVendors(res.data);
     }).catch(console.error);
   }, []);
 
@@ -108,7 +126,8 @@ export function SeatInsertsDashboard() {
     slaPercentage: 100
   };
 
-  const selectedGarageName = locationId ? garages.find(g => g.id === locationId)?.name : null;
+  const selectedGarageName = locationId ? garages.find(g => g.id === locationId)?.name : "All Garages";
+  const selectedVendorName = vendorId ? vendors.find(v => v.id === vendorId)?.name : "All Vendors";
 
   return (
     <div className="p-6 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500">
@@ -118,16 +137,19 @@ export function SeatInsertsDashboard() {
         <div>
           <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
             <LayoutDashboard className="w-8 h-8 text-primary" />
-            Seat Inserts: {selectedGarageName || "All Garages"}
+            Seat Inserts Command Centre
           </h1>
-          <div className="text-muted-foreground mt-2 text-sm flex items-center gap-3">
-            <span>Live Executive Overview & Lifecycle Telemetry</span>
-            {lastUpdated && (
-              <span className="text-xs opacity-70 bg-muted px-2 py-0.5 rounded-full border border-border flex items-center gap-1.5 shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Updated {lastUpdated.toLocaleTimeString()}
-              </span>
-            )}
+          <div className="text-muted-foreground mt-2 text-sm flex flex-col gap-1">
+            <span className="font-bold text-slate-700">Scope: {selectedGarageName} | {selectedVendorName}</span>
+            <div className="flex items-center gap-3">
+              <span>Live Executive Overview & Lifecycle Telemetry</span>
+              {lastUpdated && (
+                <span className="text-xs opacity-70 bg-muted px-2 py-0.5 rounded-full border border-border flex items-center gap-1.5 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Updated {lastUpdated.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex gap-2">
@@ -137,6 +159,10 @@ export function SeatInsertsDashboard() {
             className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg font-semibold text-sm shadow-sm disabled:opacity-50 transition-colors"
           >
             {loading ? "Syncing..." : "Sync Telemetry"}
+          </button>
+          <button onClick={() => setIsOrdersOpen(true)} className="bg-card border border-border text-foreground hover:bg-muted px-4 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center gap-2">
+            <Package className="w-4 h-4" />
+            Vendor Orders
           </button>
           <button onClick={() => setIsConfigureOpen(true)} className="bg-card border border-border text-foreground hover:bg-muted px-4 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center gap-2">
             <Settings className="w-4 h-4" />
@@ -180,9 +206,11 @@ export function SeatInsertsDashboard() {
             <PipelineFlow metrics={{
               dirty: safeSummary.dirtyInventory || 0,
               packed: safeSummary.packedForReturn || 0,
-              inTransit: 0,
+              inTransit: safeSummary.atVendorCount || 0,
               returned: safeSummary.returned || 0
-            }} onMutationSuccess={fetchDashboardData} />
+            }} 
+            vendorName={vendorId ? selectedVendorName : null}
+            onMutationSuccess={fetchDashboardData} />
           </div>
 
           <div className="bg-white rounded-2xl shadow p-6">
@@ -215,12 +243,25 @@ export function SeatInsertsDashboard() {
         isOpen={isConfigureOpen} 
         onClose={() => setIsConfigureOpen(false)} 
         currentLocationId={locationId} 
+        currentVendorId={vendorId}
         garages={garages} 
-        onApply={(locId) => {
-          if (locId) setSearchParams({ locationId: locId });
-          else setSearchParams({});
+        vendors={vendors}
+        onApply={(locId, vendId) => {
+          const next = new URLSearchParams(searchParams);
+          if (locId) next.set("locationId", locId); else next.delete("locationId");
+          if (vendId) next.set("vendorId", vendId); else next.delete("vendorId");
+          setSearchParams(next);
         }} 
       />
+
+      {isOrdersOpen && locationId && (
+        <VendorOrdersModal 
+          locationId={locationId}
+          vendorId={vendorId}
+          onClose={() => setIsOrdersOpen(false)}
+          onMutationSuccess={fetchDashboardData}
+        />
+      )}
     </div>
   );
 }

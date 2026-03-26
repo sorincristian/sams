@@ -1,0 +1,19 @@
+{
+  "error": "Missing required column mappings",
+  "requestId": "d1f5aa9c-a1a9-4b63-9a27-871bef1b888d",
+  "missingFields": [
+    "fleetNumber",
+    "garage"
+  ],
+  "detectedHeaders": [
+    "Bus Status - Workflow/OOS"
+  ],
+  "mappedHeaders": {
+    "fleetNumber": null,
+    "model": null,
+    "manufacturer": null,
+    "garage": null,
+    "status": null
+  },
+  "mappingMeta": {}
+}

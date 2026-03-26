@@ -33,11 +33,11 @@ export const IMPORT_COLUMNS = {
 
 // ── Unified alias table (single source of truth) ──
 const FIELD_ALIASES: Record<string, string[]> = {
-  fleetNumber: ['fleet number', 'fleetnumber', 'fleet no', 'fleet no.', 'fleet #', 'fleet#', 'bus number', 'bus no', 'bus #', 'bus#', 'vehicle number', 'vehicle no', 'vehicle #'],
-  model: ['model', 'bus model', 'vehicle model'],
+  fleetNumber: ['fleetnumber', 'fleetno', 'busnumber', 'busno', 'vehiclenumber', 'vehicleno', 'bus', 'unit', 'unitnumber', 'vehicle'],
+  model: ['model', 'busmodel', 'vehiclemodel'],
   manufacturer: ['manufacturer', 'make', 'brand', 'oem', 'mfg'],
-  garage: ['garage', 'garage name', 'garage / depot', 'depot', 'yard', 'facility', 'location', 'base'],
-  status: ['status', 'bus status', 'vehicle status']
+  garage: ['garage', 'garagename', 'garagedepot', 'depot', 'yard', 'facility', 'location', 'base', 'division'],
+  status: ['status', 'busstatus', 'vehiclestatus']
 };
 
 const REQUIRED_FIELDS = ['fleetNumber', 'model', 'manufacturer'];
@@ -48,7 +48,9 @@ type MappingMeta = Record<string, { source: MappingSource; confidence: number; m
 
 /** Normalize a header for alias matching: lowercase, trim, strip symbols */
 function normalizeHeader(h: string): string {
-  return h.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+  if (!h) return '';
+  // Removes EVERYTHING except a-z and 0-9. Handles ANY invisible bytes from legacy XLS CFB binaries.
+  return String(h).toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 /**
@@ -109,6 +111,7 @@ function resolveColumnMap(
       // Alias match
       for (const alias of aliases) {
         const normalizedAlias = normalizeHeader(alias);
+        console.log(`DEBUG comparing: raw=[${rawHeader}] norm=[${normalized}] alias=[${alias}] normAlias=[${normalizedAlias}]`);
         if (normalized === normalizedAlias) {
           // Score: exact alias text → 0.95, normalized match → 0.85
           const score = rawHeader.trim().toLowerCase() === alias ? 0.95 : 0.85;
@@ -505,6 +508,170 @@ router.get("/import/history", requireAuth, async (req: any, res: any) => {
     console.error('Import history error:', error.message);
     res.status(500).json({ error: 'Failed to fetch import history' });
   }
+});
+
+// ── Allocation Import Preview ──
+router.post("/import/allocation/preview", requireAuth, handleUpload, async (req: any, res: any) => {
+  const startTime = Date.now();
+  const requestId = crypto.randomUUID();
+  try {
+    const userId = req.user?.userId;
+    console.log("====== HELLO FROM ALLOCATION PREVIEW! ======");
+    console.log("DEBUG FIELD_ALIASES keys =", Object.keys(FIELD_ALIASES));
+    let manualMapping: Record<string, string | null> = {};
+    try {
+      if (req.body.columnMapping) manualMapping = typeof req.body.columnMapping === 'string' ? JSON.parse(req.body.columnMapping) : req.body.columnMapping;
+      console.log("DEBUG manualMapping =", manualMapping);
+    } catch (e) {
+      console.error("DEBUG JSON parse error", e);
+    }
+
+    if (!req.file) return res.status(400).json({ error: "No file uploaded", requestId });
+
+    const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const rawRows = xlsx.utils.sheet_to_json<any>(workbook.Sheets[sheetName]);
+    const rawHeaders = rawRows.length > 0 ? Object.keys(rawRows[0]) : [];
+
+    // Use same column mapping utility
+    const { mapping: columnMap, meta: mappingMeta } = resolveColumnMap(rawHeaders, manualMapping, null);
+
+    const missingMappings = ['fleetNumber', 'garage'].filter(f => !columnMap[f]);
+    if (missingMappings.length > 0) {
+      return res.status(422).json({
+        error: 'Missing required column mappings', requestId, missingFields: missingMappings,
+        detectedHeaders: rawHeaders, 
+        mappedHeaders: columnMap, 
+        mappingMeta,
+        hexHeaders: rawHeaders.map(h => String(h).split('').map(c => c.charCodeAt(0).toString(16)).join(' ')),
+        normalizedHeaders: rawHeaders.map(h => normalizeHeader(h))
+      });
+    }
+
+    const results = [];
+    let validCount = 0; let errorCount = 0; let duplicateCount = 0;
+    const fileSeenFleetNumbers = new Set<string>();
+
+    const getField = (row: any, systemField: string): string => {
+      const col = columnMap[systemField];
+      if (!col) return '';
+      const val = row[col];
+      return val !== undefined && val !== null ? String(val).trim() : '';
+    };
+
+    for (let i = 0; i < rawRows.length; i++) {
+        const row = rawRows[i];
+        const fleetNum = getField(row, 'fleetNumber');
+        const garageInput = getField(row, 'garage');
+        const errors: Record<string, string> = {};
+        
+        if (!fleetNum) errors.fleetNumber = 'Missing';
+        if (!garageInput) errors.garage = 'Missing';
+
+        if (fleetNum && fileSeenFleetNumbers.has(fleetNum)) {
+            errors.fleetNumber = 'Duplicate within file (only the last exact allocation will be executed)';
+            duplicateCount++;
+        }
+        if (fleetNum) fileSeenFleetNumbers.add(fleetNum);
+
+        const errorKeys = Object.keys(errors);
+        // Explicitly tolerate intra-file duplicates since we collapse them defensively later
+        const isValid = errorKeys.length === 0 || (errorKeys.length === 1 && errors.fleetNumber?.includes('Duplicate'));
+
+        if (!isValid) errorCount++;
+        else validCount++;
+
+        results.push({
+            rowNumber: i + 2,
+            action: isValid ? 'UPSERT' : 'ERROR',
+            data: { fleetNumber: fleetNum, garageName: garageInput },
+            errors, isValid
+        });
+    }
+
+    res.json({
+        requestId, totalRows: rawRows.length, validRows: validCount, errorRows: errorCount, duplicateRows: duplicateCount,
+        detectedHeaders: rawHeaders, mappedHeaders: columnMap, mappingMeta, missingMappings: [], rows: results
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to process allocation preview dataset", requestId });
+  }
+});
+
+// ── Allocation Import Commit ──
+router.post("/import/allocation/commit", requireAuth, async (req: any, res: any) => {
+    const startTime = Date.now();
+    const requestId = crypto.randomUUID();
+    try {
+        const { rows, filename } = req.body;
+        if (!Array.isArray(rows)) return res.status(400).json({ error: "Invalid payload format", requestId });
+
+        const validRows = rows.filter((r: any) => r.isValid);
+        if (validRows.length === 0) return res.status(400).json({ error: "No valid rows to apply allocation matrices", requestId });
+
+        // Overwrite map safely ensuring duplicates naturally fall to the terminating dataset loop constraint
+        const allocationMap = new Map<string, string>(); 
+        for (const row of validRows) {
+            allocationMap.set(row.data.fleetNumber, row.data.garageName);
+        }
+
+        let createdGarages = 0; let matchedGarages = 0;
+        let createdBuses = 0; let updatedBuses = 0;
+        let skipped = rows.length - validRows.length; let failed = 0;
+
+        try {
+            await prisma.$transaction(async (tx) => {
+                const uniqueGarageNames = Array.from(new Set(Array.from(allocationMap.values())));
+                const garageIdMap = new Map<string, string>();
+
+                for (const gName of uniqueGarageNames) {
+                    const normalized = gName.trim();
+                    let garage = await tx.garage.findFirst({ where: { name: { equals: normalized, mode: 'insensitive' } } });
+                    if (!garage) {
+                        garage = await tx.garage.create({
+                            data: { name: normalized, code: `G-${crypto.randomUUID().substring(0, 5).toUpperCase()}` }
+                        });
+                        createdGarages++;
+                    } else {
+                        matchedGarages++;
+                    }
+                    garageIdMap.set(gName, garage.id);
+                }
+
+                for (const [fleetNumber, gName] of allocationMap.entries()) {
+                    const garageId = garageIdMap.get(gName)!;
+                    const existingBus = await tx.bus.findUnique({ where: { fleetNumber } });
+                    if (existingBus) {
+                        await tx.bus.update({ where: { fleetNumber }, data: { garageId } });
+                        updatedBuses++;
+                    } else {
+                        await tx.bus.create({
+                            data: { fleetNumber, garageId, model: 'Unknown', manufacturer: 'Unknown', status: 'ACTIVE' }
+                        });
+                        createdBuses++;
+                    }
+                }
+
+                await tx.auditLog.create({
+                  data: {
+                    action: 'IMPORT_ALLOCATION_COMMIT', entity: 'fleet', entityId: 'bulk', userId: req.user?.userId ?? 'system',
+                    before: { requestId },
+                    after: { filename: filename || 'unknown', totalRows: rows.length, createdGarages, matchedGarages, createdBuses, updatedBuses, skipped, failed, status: 'SUCCESS' }
+                  }
+                });
+            });
+
+            res.json({ success: true, requestId, createdGarages, matchedGarages, createdBuses, updatedBuses, skipped, failed });
+        } catch (txError: any) {
+            await prisma.auditLog.create({
+              data: { action: 'IMPORT_ALLOCATION_COMMIT', entity: 'fleet', entityId: 'bulk', userId: req.user?.userId ?? 'system',
+              before: { requestId }, after: { filename: filename || 'unknown', status: 'FAILED', error: txError.message } }
+            }).catch(() => {});
+            res.status(500).json({ error: "Allocation transaction failed dynamically", requestId });
+        }
+    } catch (error: any) {
+        res.status(500).json({ error: "System failure executing transaction", requestId });
+    }
 });
 
 export default router;

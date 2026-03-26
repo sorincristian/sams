@@ -72,9 +72,9 @@ export function OperationsModal({ locationId, locationName, onClose, onMutationS
 
   const handleCreateBatch = async (vendorId: string, expectedReturnDate: string) => {
     try {
-      await api.post(`/seat-inserts/batches`, {
+      await api.post(`/seat-inserts/batches/send-to-vendor`, {
         insertIds: Array.from(selected),
-        locationId,
+        garageId: locationId,
         vendorId,
         expectedReturnDate,
       });
@@ -208,10 +208,12 @@ function CreateBatchForm({ onCancel, onSubmit, count }: any) {
   const [vendors, setVendors] = useState<any[]>([]);
 
   useEffect(() => {
-    // Quick inline fetch for valid vendors. Production would have a dedicated endpoint.
-    // Assuming we have `/api/vendors` globally or we can type raw.
-    // For now we will allow manual entry or mock standard vendors if no endpoint exists explicitly for it.
-    // Actually we will provide standard selection.
+    api.get("/seat-inserts/vendors").then(res => {
+      setVendors(res.data);
+      if (res.data.length === 1) {
+        setVendorId(res.data[0].id);
+      }
+    }).catch(console.error);
   }, []);
 
   return (
@@ -220,14 +222,18 @@ function CreateBatchForm({ onCancel, onSubmit, count }: any) {
         <h3 className="text-lg font-bold mb-4">Create Reupholstery Batch</h3>
         <p className="text-sm text-slate-500 mb-4">Packing {count} items for external processing.</p>
         
-        <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">Vendor ID</label>
-        <input 
+        <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">Vendor</label>
+        <select 
           autoFocus
           className="w-full border border-input bg-background px-3 py-2 rounded-md mb-4 text-sm" 
-          placeholder="e.g. VENDOR-1" 
           value={vendorId} 
           onChange={e => setVendorId(e.target.value)} 
-        />
+        >
+          <option value="">Select Vendor...</option>
+          {vendors.map(v => (
+            <option key={v.id} value={v.id}>{v.name}</option>
+          ))}
+        </select>
         
         <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">Expected Return</label>
         <input 

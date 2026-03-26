@@ -6,20 +6,28 @@ export function ConfigureModal({
   onClose,
   onApply,
   currentLocationId,
-  garages
+  currentVendorId,
+  garages,
+  vendors
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onApply: (locationId: string) => void;
+  onApply: (locationId: string, vendorId: string) => void;
   currentLocationId: string | null;
+  currentVendorId: string | null;
   garages: { id: string; name: string }[];
+  vendors: { id: string; name: string }[];
 }) {
-  const [selected, setSelected] = useState<string>(currentLocationId || "");
+  const [selectedGarage, setSelectedGarage] = useState<string>(currentLocationId || "");
+  const [selectedVendor, setSelectedVendor] = useState<string>(currentVendorId || "");
 
   // Sync state if modal opens
   useEffect(() => {
-    if (isOpen) setSelected(currentLocationId || "");
-  }, [isOpen, currentLocationId]);
+    if (isOpen) {
+      setSelectedGarage(currentLocationId || "");
+      setSelectedVendor(currentVendorId || "");
+    }
+  }, [isOpen, currentLocationId, currentVendorId]);
 
   if (!isOpen) return null;
 
@@ -37,13 +45,27 @@ export function ConfigureModal({
           <div className="space-y-3">
             <label className="block text-sm font-medium text-gray-700">Scope to Location (Required)</label>
             <select
-              value={selected}
-              onChange={(e) => setSelected(e.target.value)}
+              value={selectedGarage}
+              onChange={(e) => setSelectedGarage(e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Garages</option>
               {garages.map(g => (
                 <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-700">Scope to Vendor (Optional)</label>
+            <select
+              value={selectedVendor}
+              onChange={(e) => setSelectedVendor(e.target.value)}
+              className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">All Vendors</option>
+              {vendors?.map(v => (
+                <option key={v.id} value={v.id}>{v.name}</option>
               ))}
             </select>
           </div>
@@ -57,14 +79,14 @@ export function ConfigureModal({
 
         <div className="bg-gray-50 px-6 py-4 flex items-center justify-end gap-3 border-t">
           <button 
-            onClick={() => setSelected("")} 
+            onClick={() => { setSelectedGarage(""); setSelectedVendor(""); }} 
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
           >
             Reset
           </button>
           <button 
             onClick={() => {
-              onApply(selected);
+              onApply(selectedGarage, selectedVendor);
               onClose();
             }} 
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"

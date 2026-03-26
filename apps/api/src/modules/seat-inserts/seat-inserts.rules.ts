@@ -132,7 +132,7 @@ export class SeatInsertsRuleEngine {
       where: {
         status: { not: "RETURNED" },
       },
-      include: { location: true },
+      include: { garage: true },
     });
 
     const now = new Date();
@@ -141,9 +141,9 @@ export class SeatInsertsRuleEngine {
       const isOverdue = batch.expectedReturnDate < now;
 
       await this.triggerOrResolve({
-        type: "OVERDUE_REUPHOLSTERY_BATCH",
+        type: "OVERDUE_VENDOR_RETURN" as any,
         severity: "HIGH",
-        locationId: batch.locationId,
+        locationId: batch.garageId,
         entityType: "ReupholsteryBatch",
         entityId: batch.id,
         title: `Overdue Batch: ${batch.batchNumber}`,
@@ -216,12 +216,99 @@ export class SeatInsertsRuleEngine {
   }
 
   /**
+   * Evaluates VENDOR_SLA_BREACH
+   */
+  async evaluateVendorSlaAlerts() {
+    const vendors = await prisma.vendor.findMany({
+      where: { active: true }
+    });
+    
+    const now = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(now.getDate() - 30);
+
+    for (const vendor of vendors) {
+      const returnedBatches = await prisma.reupholsteryBatch.findMany({
+        where: {
+          vendorId: vendor.id,
+          status: "RETURNED",
+          actualReturnDate: { gte: thirtyDaysAgo }
+        },
+        select: { onTimeReturn: true, batchNumber: true }
+      });
+
+      if (returnedBatches.length > 0) {
+        const onTimeBatches = returnedBatches.filter(b => b.onTimeReturn).length;
+        const slaPercentage = Math.round((onTimeBatches / returnedBatches.length) * 100);
+        
+        // Threshold of 90% fixed for now
+        const isSpike = slaPercentage < 90;
+
+        // Note: For vendor-level alerts, we might not have a single locationId. 
+        // Alert requires locationId in DB schema unless it's optional. Let's check schema. (locationId String?) Yes it's optional!
+        await this.triggerOrResolve({
+          type: "VENDOR_SLA_BREACH" as any, // fallback cast if enum out of sync natively
+          severity: "HIGH",
+          locationId: undefined as any,
+          entityType: "Vendor",
+          entityId: vendor.id,
+          title: `SLA Breach: ${vendor.name}`,
+          description: `Vendor on-time return rate is ${slaPercentage}% (below 90% threshold for last 30 days).`,
+          metadata: { vendorId: vendor.id, vendorName: vendor.name, slaPercentage, totalReturned: returnedBatches.length },
+          isTriggered: isSpike,
+        });
+      }
+    }
+  }
+
+  async evaluateVendorOrderAlerts() {
+    const activeOrders = await prisma.vendorOrder.findMany({
+      where: {
+        status: { in: ["SUBMITTED", "CONFIRMED", "IN_TRANSIT", "PARTIALLY_RECEIVED"] },
+      },
+    });
+
+    const now = new Date();
+
+    for (const order of activeOrders) {
+      const isOverdue = order.expectedDeliveryDate && order.expectedDeliveryDate < now;
+      const isPartial = order.status === "PARTIALLY_RECEIVED" && order.expectedDeliveryDate && (now.getTime() - order.expectedDeliveryDate.getTime() > 7 * 24 * 60 * 60 * 1000); // 7 days post-partial wait
+
+      await this.triggerOrResolve({
+        type: "OVERDUE_VENDOR_ORDER" as any,
+        severity: "HIGH",
+        locationId: order.garageId,
+        entityType: "VendorOrder",
+        entityId: order.id,
+        title: `Overdue Vendor Order: ${order.orderNumber}`,
+        description: `Order expected on ${order.expectedDeliveryDate?.toISOString().split("T")[0] || "Unknown"} is overdue.`,
+        metadata: { orderNumber: order.orderNumber, status: order.status },
+        isTriggered: !!isOverdue && order.status !== "PARTIALLY_RECEIVED",
+      });
+
+      await this.triggerOrResolve({
+        type: "PARTIAL_RECEIPT_PENDING" as any,
+        severity: "MEDIUM",
+        locationId: order.garageId,
+        entityType: "VendorOrder",
+        entityId: order.id,
+        title: `Partial Receipt Pending: ${order.orderNumber}`,
+        description: `Order is partially received and outstanding items are delayed over 7 days.`,
+        metadata: { orderNumber: order.orderNumber, status: order.status },
+        isTriggered: !!isPartial,
+      });
+    }
+  }
+
+  /**
    * Master runner evaluating all conditions securely
    */
   async runAllRules() {
     await this.evaluateInventoryAlerts();
     await this.evaluateBatchAlerts();
     await this.evaluateActivityAlerts();
+    await this.evaluateVendorSlaAlerts();
+    await this.evaluateVendorOrderAlerts();
   }
 }
 

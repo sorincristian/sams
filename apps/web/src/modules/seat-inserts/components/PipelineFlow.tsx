@@ -9,16 +9,17 @@ interface PipelineFlowProps {
     inTransit: number;
     returned: number;
   };
+  vendorName?: string | null;
   onMutationSuccess: () => void;
 }
 
-export function PipelineFlow({ metrics, onMutationSuccess }: PipelineFlowProps) {
+export function PipelineFlow({ metrics, vendorName, onMutationSuccess }: PipelineFlowProps) {
   const [modalOpen, setModalOpen] = useState(false);
 
   const nodes = [
     { id: "dirty", label: "Gross Dirty", count: metrics.dirty, icon: <MapPin className="w-5 h-5 text-orange-500" />, color: "border-orange-200 bg-orange-50/50" },
     { id: "packed", label: "Packed at Garage", count: metrics.packed, icon: <Package className="w-5 h-5 text-yellow-500" />, color: "border-yellow-200 bg-yellow-50/50" },
-    { id: "transit", label: "In Reupholstery", count: metrics.inTransit, icon: <Truck className="w-5 h-5 text-blue-500" />, color: "border-blue-200 bg-blue-50/50" },
+    { id: "transit", label: vendorName ? `At ${vendorName}` : "In Reupholstery", count: metrics.inTransit, icon: <Truck className="w-5 h-5 text-blue-500" />, color: "border-blue-200 bg-blue-50/50" },
     { id: "returned", label: "Returned Clean", count: metrics.returned, icon: <Hammer className="w-5 h-5 text-emerald-500" />, color: "border-emerald-200 bg-emerald-50/50" }
   ];
 

@@ -4,6 +4,7 @@ import { api } from "../api";
 import type { Bus, Garage } from "@sams/types";
 import { FleetStatsWidget } from "../components/FleetStatsWidget";
 import { BusImportWizard } from "../components/BusImportWizard";
+import { AllocationImportWizard } from "../components/AllocationImportWizard";
 import "./FleetPage.css";
 
 // Debounce helper
@@ -48,6 +49,7 @@ export function FleetPage() {
   // Modals / Edit state
   const [isBusModalOpen, setIsBusModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isAllocationModalOpen, setIsAllocationModalOpen] = useState(false);
   const [addingBus, setAddingBus] = useState<Partial<Bus> | null>(null);
   
   // Inline editing state
@@ -201,7 +203,10 @@ export function FleetPage() {
         <h1>Fleet Management</h1>
         <div className="button-group">
           <button onClick={() => setIsImportModalOpen(true)} className="btn btn-secondary">
-            Bulk Import
+            Fleet Specs Import
+          </button>
+          <button onClick={() => setIsAllocationModalOpen(true)} className="btn btn-secondary" style={{ marginLeft: "4px" }}>
+            Allocation Map Import
           </button>
           <button onClick={() => { setAddingBus({ status: "ACTIVE" }); setIsBusModalOpen(true); }} className="btn btn-primary">
             Add Bus
@@ -390,6 +395,19 @@ export function FleetPage() {
             setIsImportModalOpen(false);
             setPage(1);
             fetchBuses();
+          }} 
+        />
+      )}
+
+      {/* Allocation Import Modal */}
+      {isAllocationModalOpen && (
+        <AllocationImportWizard 
+          onClose={() => setIsAllocationModalOpen(false)} 
+          onSuccess={() => {
+            setIsAllocationModalOpen(false);
+            setPage(1);
+            fetchBuses();
+            fetchGarages(); // Refresh Garage scope bounds dynamically
           }} 
         />
       )}

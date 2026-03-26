@@ -30,7 +30,7 @@ export function BatchesModal({ onClose, onMutationSuccess }: BatchesModalProps) 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     if (!window.confirm(`Transition batch to ${newStatus}?`)) return;
     try {
-      await api.put(`/seat-inserts/batches/${id}/status`, { status: newStatus });
+      await api.patch(`/seat-inserts/batches/${id}/status`, { status: newStatus });
       onMutationSuccess();
       fetchBatches();
     } catch (e: any) {
@@ -39,9 +39,9 @@ export function BatchesModal({ onClose, onMutationSuccess }: BatchesModalProps) 
   };
 
   const handleMarkReturned = async (id: string) => {
-    if (!window.confirm(`Mark batch as RETURNED and restore inventory?`)) return;
+    if (!window.confirm(`Receive batch back into local inventory?`)) return;
     try {
-      await api.post(`/seat-inserts/batches/${id}/return`);
+      await api.post(`/seat-inserts/batches/${id}/receive`, { notes: "Received via Modal UI" });
       onMutationSuccess();
       fetchBatches();
     } catch (e: any) {
@@ -51,9 +51,11 @@ export function BatchesModal({ onClose, onMutationSuccess }: BatchesModalProps) 
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "AWAITING_PICKUP": return <span className="text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded text-xs font-bold border border-yellow-200">AWAITING PICKUP</span>;
-      case "IN_TRANSIT": return <span className="text-blue-700 bg-blue-100 px-2 py-0.5 rounded text-xs font-bold border border-blue-200">IN TRANSIT</span>;
-      case "IN_PRODUCTION": return <span className="text-purple-700 bg-purple-100 px-2 py-0.5 rounded text-xs font-bold border border-purple-200">IN PRODUCTION</span>;
+      case "PACKED": return <span className="text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded text-xs font-bold border border-yellow-200">PACKED</span>;
+      case "SHIPPED": return <span className="text-blue-700 bg-blue-100 px-2 py-0.5 rounded text-xs font-bold border border-blue-200">SHIPPED</span>;
+      case "RECEIVED_BY_VENDOR": return <span className="text-purple-700 bg-purple-100 px-2 py-0.5 rounded text-xs font-bold border border-purple-200">AT VENDOR</span>;
+      case "IN_REUPHOLSTERY": return <span className="text-orange-700 bg-orange-100 px-2 py-0.5 rounded text-xs font-bold border border-orange-200">IN REUPHOLSTERY</span>;
+      case "READY_TO_RETURN": return <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-xs font-bold border border-emerald-200">READY</span>;
       case "RETURNED": return <span className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-xs font-bold border border-emerald-200">RETURNED</span>;
       default: return <span className="text-slate-700 bg-slate-100 px-2 py-0.5 rounded text-xs font-bold">{status}</span>;
     }
@@ -115,19 +117,24 @@ export function BatchesModal({ onClose, onMutationSuccess }: BatchesModalProps) 
                       <td className="px-4 py-4 whitespace-nowrap">{getStatusBadge(batch.status)}</td>
                       <td className="px-4 py-4 text-right whitespace-nowrap">
                         <div className="flex justify-end gap-2">
-                          {batch.status === "AWAITING_PICKUP" && (
-                            <button onClick={() => handleUpdateStatus(batch.id, "IN_TRANSIT")} className="px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium text-xs rounded flex items-center gap-1 transition-colors">
+                          {batch.status === "PACKED" && (
+                            <button onClick={() => handleUpdateStatus(batch.id, "SHIPPED")} className="px-3 py-1.5 bg-blue-100 text-blue-700 hover:bg-blue-200 font-medium text-xs rounded flex items-center gap-1 transition-colors">
                               <Truck className="w-3 h-3" /> Ship
                             </button>
                           )}
-                          {batch.status === "IN_TRANSIT" && (
-                            <button onClick={() => handleUpdateStatus(batch.id, "IN_PRODUCTION")} className="px-3 py-1.5 bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium text-xs rounded flex items-center gap-1 transition-colors">
-                              <Hammer className="w-3 h-3" /> Arrived
+                          {batch.status === "SHIPPED" && (
+                            <button onClick={() => handleUpdateStatus(batch.id, "RECEIVED_BY_VENDOR")} className="px-3 py-1.5 bg-purple-100 text-purple-700 hover:bg-purple-200 font-medium text-xs rounded flex items-center gap-1 transition-colors">
+                              <Hammer className="w-3 h-3" /> Vendor Arrived
                             </button>
                           )}
-                          {batch.status === "IN_PRODUCTION" && (
+                          {batch.status === "RECEIVED_BY_VENDOR" && (
+                            <button onClick={() => handleUpdateStatus(batch.id, "IN_REUPHOLSTERY")} className="px-3 py-1.5 bg-orange-100 text-orange-700 hover:bg-orange-200 font-medium text-xs rounded flex items-center gap-1 transition-colors">
+                              <Package className="w-3 h-3" /> Start Work
+                            </button>
+                          )}
+                          {(batch.status === "IN_REUPHOLSTERY" || batch.status === "READY_TO_RETURN") && (
                             <button onClick={() => handleMarkReturned(batch.id)} className="px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 font-medium text-xs rounded flex items-center gap-1 transition-colors shadow-sm">
-                              <CheckCircle2 className="w-3 h-3" /> Mark Returned
+                              <CheckCircle2 className="w-3 h-3" /> Receive Back
                             </button>
                           )}
                         </div>

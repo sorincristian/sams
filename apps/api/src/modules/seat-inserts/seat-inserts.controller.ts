@@ -5,17 +5,28 @@ import { seatInsertsService } from "./seat-inserts.service.js";
 // Common query schemas
 const DashboardQuerySchema = z.object({
   locationId: z.string().optional(),
+  vendorId: z.string().optional(),
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
 });
 
 export class SeatInsertsController {
   
+  async getVendors(req: Request, res: Response) {
+    try {
+      const vendors = await seatInsertsService.getVendors();
+      res.json(vendors);
+    } catch (e: any) {
+      res.status(400).json({ error: e.message || "Invalid request parameters" });
+    }
+  }
+
   async getDashboardSummary(req: Request, res: Response) {
     try {
       const parsed = DashboardQuerySchema.parse(req.query);
       const summary = await seatInsertsService.getDashboardSummary({
         locationId: parsed.locationId,
+        vendorId: parsed.vendorId,
         dateRange: parsed.startDate && parsed.endDate ? { start: parsed.startDate, end: parsed.endDate } : undefined
       });
       res.json(summary);
@@ -42,8 +53,9 @@ export class SeatInsertsController {
   async getReupholsteryBatches(req: Request, res: Response) {
     try {
       const parsed = z.object({
-        status: z.enum(["AWAITING_PICKUP", "IN_TRANSIT", "IN_PRODUCTION", "RETURNED"]).optional(),
+        status: z.enum(["DRAFT", "PACKED", "SHIPPED", "RECEIVED_BY_VENDOR", "IN_REUPHOLSTERY", "READY_TO_RETURN", "RETURNED", "CLOSED"]).optional(),
         locationId: z.string().optional(),
+        vendorId: z.string().optional(),
       }).parse(req.query);
 
       const batches = await seatInsertsService.getReupholsteryBatches(parsed);
@@ -108,15 +120,15 @@ export class SeatInsertsController {
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   }
 
-  async createBatch(req: Request, res: Response) {
+  async sendToVendor(req: Request, res: Response) {
     try {
       const parsed = z.object({
         insertIds: z.array(z.string()),
-        locationId: z.string(),
+        garageId: z.string(),
         vendorId: z.string(),
         expectedReturnDate: z.string(),
       }).parse(req.body);
-      const data = await seatInsertsService.createBatch(parsed);
+      const data = await seatInsertsService.sendToVendor(parsed);
       res.json({ success: true, data });
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   }
@@ -124,16 +136,19 @@ export class SeatInsertsController {
   async updateBatchStatus(req: Request, res: Response) {
     try {
       const parsed = z.object({
-        status: z.enum(["AWAITING_PICKUP", "IN_TRANSIT", "IN_PRODUCTION", "RETURNED"]),
+        status: z.enum(["PACKED", "SHIPPED", "RECEIVED_BY_VENDOR", "IN_REUPHOLSTERY", "READY_TO_RETURN"]),
       }).parse(req.body);
       const data = await seatInsertsService.updateBatchStatus(req.params.id as string, parsed.status);
       res.json({ success: true, data });
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   }
 
-  async markBatchReturned(req: Request, res: Response) {
+  async receiveBatch(req: Request, res: Response) {
     try {
-      const data = await seatInsertsService.markBatchReturned(req.params.id as string);
+      const parsed = z.object({
+        notes: z.string().optional()
+      }).optional().parse(req.body) || {};
+      const data = await seatInsertsService.receiveBatch(req.params.id as string, { userId: (req as any).user?.id || 'system', notes: parsed.notes });
       res.json({ success: true, data });
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   }
@@ -161,6 +176,65 @@ export class SeatInsertsController {
   async resolveAlert(req: Request, res: Response) {
     try {
       const data = await seatInsertsService.resolveAlert(req.params.id as string);
+      res.json({ success: true, data });
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  }
+
+  // --- Vendor Orders APIs --- //
+  
+  async createVendorOrder(req: Request, res: Response) {
+    try {
+      const parsed = z.object({
+        garageId: z.string(),
+        vendorId: z.string(),
+        expectedDeliveryDate: z.string(),
+        items: z.array(z.object({
+          seatInsertTypeId: z.string(),
+          quantity: z.number().int().positive()
+        })),
+        notes: z.string().optional()
+      }).parse(req.body);
+      const data = await seatInsertsService.createVendorOrder(parsed);
+      res.json({ success: true, data });
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  }
+
+  async getVendorOrders(req: Request, res: Response) {
+    try {
+      const parsed = z.object({
+        garageId: z.string().optional(),
+        vendorId: z.string().optional(),
+        status: z.string().optional()
+      }).parse(req.query);
+      const data = await seatInsertsService.getVendorOrders(parsed);
+      res.json(data);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  }
+
+  async updateVendorOrderStatus(req: Request, res: Response) {
+    try {
+      const parsed = z.object({
+        status: z.enum(["SUBMITTED", "CONFIRMED", "IN_TRANSIT", "CANCELLED", "CLOSED"])
+      }).parse(req.body);
+      const data = await seatInsertsService.updateVendorOrderStatus(req.params.id as string, parsed.status);
+      res.json({ success: true, data });
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  }
+
+  async receiveVendorOrder(req: Request, res: Response) {
+    try {
+      const parsed = z.object({
+        lines: z.array(z.object({
+          lineId: z.string(),
+          receiveQuantity: z.number().int().min(0)
+        })),
+        notes: z.string().optional()
+      }).parse(req.body);
+      const data = await seatInsertsService.receiveVendorOrder(req.params.id as string, {
+        userId: (req as any).user?.id || 'system',
+        lines: parsed.lines,
+        notes: parsed.notes
+      });
       res.json({ success: true, data });
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   }

@@ -2,11 +2,20 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export class SeatInsertsService {
+  async getVendors() {
+    return await prisma.vendor.findMany({
+      where: { active: true },
+      select: { id: true, name: true, type: true },
+      orderBy: { name: "asc" }
+    });
+  }
+
   /**
    * Executive Command Centre Summary KPI
    */
-  async getDashboardSummary(params: { locationId?: string; dateRange?: { start: Date; end: Date } }) {
+  async getDashboardSummary(params: { locationId?: string; vendorId?: string; dateRange?: { start: Date; end: Date } }) {
     const whereLocation = params.locationId ? { locationId: params.locationId } : {};
+    const whereVendor = params.vendorId ? { vendorId: params.vendorId } : {};
 
     // 1. Total Inventory
     const totalInventoryCount = await prisma.seatInsert.count({
@@ -46,6 +55,7 @@ export class SeatInsertsService {
     const returnedBatches = await prisma.reupholsteryBatch.findMany({
       where: {
         ...whereLocation,
+        ...whereVendor,
         status: "RETURNED",
         actualReturnDate: { not: null },
       },
@@ -58,6 +68,26 @@ export class SeatInsertsService {
       slaPercentage = Math.round((onTime / returnedBatches.length) * 100);
     }
 
+    // Vendor metrics
+    const atVendorCount = await prisma.seatInsert.count({
+      where: {
+        ...whereLocation,
+        batch: {
+          ...whereVendor,
+          status: { in: ["PACKED", "SHIPPED", "RECEIVED_BY_VENDOR", "IN_REUPHOLSTERY", "READY_TO_RETURN"] }
+        }
+      }
+    });
+
+    const overdueVendorBatches = await prisma.reupholsteryBatch.count({
+      where: {
+        ...whereLocation,
+        ...whereVendor,
+        status: { not: "RETURNED" },
+        expectedReturnDate: { lt: new Date() }
+      }
+    });
+
     return {
       totalInventory: totalInventoryCount,
       newInventory: statusCounts["NEW"] || 0,
@@ -67,6 +97,9 @@ export class SeatInsertsService {
       disposed: statusCounts["DISPOSED"] || 0,
       replacementsMtd,
       slaPercentage,
+      atVendorCount,
+      vendorSlaPercentage: slaPercentage,
+      overdueVendorBatches,
     };
   }
 
@@ -128,15 +161,16 @@ export class SeatInsertsService {
   /**
    * Reupholstery Batches Tracker Map
    */
-  async getReupholsteryBatches(params: { status?: string; locationId?: string }) {
+  async getReupholsteryBatches(params: { status?: string; locationId?: string; vendorId?: string }) {
     const where: any = {};
     if (params.status) where.status = params.status as any;
-    if (params.locationId) where.locationId = params.locationId;
+    if (params.locationId) where.garageId = params.locationId;
+    if (params.vendorId) where.vendorId = params.vendorId;
 
     return await prisma.reupholsteryBatch.findMany({
       where,
       include: {
-        location: { select: { name: true } },
+        garage: { select: { name: true } },
         vendor: { select: { name: true } },
         _count: { select: { inserts: true } }
       },
@@ -251,29 +285,32 @@ export class SeatInsertsService {
   }
 
   /**
-   * (B) Create Reupholstery Batch
+   * (B) Send to Harvey (Create Batch)
    */
-  async createBatch(params: { insertIds: string[]; locationId: string; vendorId: string; expectedReturnDate: string }) {
+  async sendToVendor(params: { insertIds: string[]; garageId: string; vendorId: string; expectedReturnDate: string }) {
     if (params.insertIds.length === 0) throw new Error("No inserts selected");
-    const sample = await prisma.seatInsert.findUnique({ where: { id: params.insertIds[0] } });
-    if (!sample) throw new Error("Invalid inserts array");
+    // Ensure all are DIRTY
+    const inserts = await prisma.seatInsert.findMany({ where: { id: { in: params.insertIds } } });
+    if (inserts.some(i => i.status !== "DIRTY")) throw new Error("Only DIRTY inserts can be sent to the vendor.");
 
+    const sample = inserts[0];
+    
     return await prisma.$transaction(async (tx) => {
       // 1. Create Batch
       const batch = await tx.reupholsteryBatch.create({
         data: {
-          batchNumber: `UB-${Date.now().toString().slice(-6)}`,
-          locationId: params.locationId,
+          batchNumber: `VEN-${Date.now().toString().slice(-6)}`,
+          garageId: params.garageId,
           vendorId: params.vendorId,
           seatType: sample.seatType,
           color: sample.color,
-          status: "AWAITING_PICKUP",
+          status: "PACKED",
           expectedReturnDate: new Date(params.expectedReturnDate),
           packedDate: new Date(),
         },
       });
 
-      // 2. Attach inserts and move to PACKED_FOR_RETURN
+      // 2. Move inserts to PACKED_FOR_RETURN
       await tx.seatInsert.updateMany({
         where: { id: { in: params.insertIds } },
         data: {
@@ -288,29 +325,62 @@ export class SeatInsertsService {
   }
 
   /**
-   * (C) Update Batch Status
+   * (C) Update Batch Status (e.g. Ship, Vendor Receives)
    */
-  async updateBatchStatus(id: string, status: "AWAITING_PICKUP" | "IN_TRANSIT" | "IN_PRODUCTION" | "RETURNED") {
-    // If it's returned, use the dedicated flow: D
-    if (status === "RETURNED") {
-      throw new Error("Use markBatchReturned for finalizing batches.");
+  async updateBatchStatus(id: string, status: string) {
+    if (status === "RETURNED" || status === "CLOSED") {
+      throw new Error("Use receiveBatch for returning/receiving finalized batches.");
     }
-    return await prisma.reupholsteryBatch.update({
-      where: { id },
-      data: { status },
+    
+    return await prisma.$transaction(async (tx) => {
+      const batch = await prisma.reupholsteryBatch.findUnique({ where: { id } });
+      if (!batch) throw new Error("Batch not found");
+
+      const updateData: any = { status };
+      let insertStatus: string | null = null;
+      
+      if (status === "SHIPPED") {
+        updateData.shippedDate = new Date();
+        insertStatus = "IN_TRANSIT_TO_VENDOR";
+      } else if (status === "RECEIVED_BY_VENDOR" || status === "IN_REUPHOLSTERY") {
+        updateData.status = "IN_REUPHOLSTERY";
+        insertStatus = "AT_VENDOR";
+      }
+      
+      const updatedBatch = await tx.reupholsteryBatch.update({ where: { id }, data: updateData });
+      
+      if (insertStatus) {
+        await tx.seatInsert.updateMany({ where: { batchId: id }, data: { status: insertStatus as any } });
+      }
+      
+      return updatedBatch;
     });
   }
 
   /**
-   * (D) Mark Batch Returned
+   * (D) Receive Batch (Return back to Garage)
    */
-  async markBatchReturned(id: string) {
+  async receiveBatch(id: string, params: { userId: string; notes?: string }) {
     return await prisma.$transaction(async (tx) => {
       const batch = await tx.reupholsteryBatch.findUnique({ where: { id } });
       if (!batch) throw new Error("Batch not found");
 
       const now = new Date();
       const onTime = batch.expectedReturnDate >= now;
+
+      // Ensure we create a VendorReceipt record
+      await tx.vendorReceipt.create({
+        data: {
+          type: "BATCH_RETURN",
+          reupholsteryBatchId: id,
+          garageId: batch.garageId,
+          vendorId: batch.vendorId,
+          receivedAt: now,
+          receivedBy: params.userId,
+          status: "COMPLETED",
+          notes: params.notes,
+        }
+      });
 
       const updatedBatch = await tx.reupholsteryBatch.update({
         where: { id },
@@ -321,10 +391,11 @@ export class SeatInsertsService {
         },
       });
 
+      // Update inserts to RETURNED_FROM_VENDOR and immediately to NEW since it's back in inventory
       await tx.seatInsert.updateMany({
         where: { batchId: id },
         data: {
-          status: "RETURNED",
+          status: "NEW", // The inserts are returned cleanly to the shelf
           returnedAt: now,
         },
       });
@@ -385,6 +456,126 @@ export class SeatInsertsService {
     return await prisma.alert.update({
       where: { id },
       data: { status: "RESOLVED", resolvedAt: new Date() },
+    });
+  }
+
+  // --- Vendor Orders Methods --- //
+
+  async getVendorOrders(params: { garageId?: string; vendorId?: string; status?: string }) {
+    const where: any = {};
+    if (params.garageId) where.garageId = params.garageId;
+    if (params.vendorId) where.vendorId = params.vendorId;
+    if (params.status) where.status = params.status as any;
+
+    return await prisma.vendorOrder.findMany({
+      where,
+      include: {
+        garage: { select: { name: true } },
+        vendor: { select: { name: true } },
+        lines: { include: { seatInsertType: true } }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+  }
+
+  async createVendorOrder(data: { garageId: string; vendorId: string; expectedDeliveryDate: string; items: { seatInsertTypeId: string; quantity: number }[]; notes?: string }) {
+    return await prisma.$transaction(async (tx) => {
+      const order = await tx.vendorOrder.create({
+        data: {
+          orderNumber: `VO-${Date.now().toString().slice(-6)}`,
+          garageId: data.garageId,
+          vendorId: data.vendorId,
+          status: "SUBMITTED",
+          submittedAt: new Date(),
+          expectedDeliveryDate: new Date(data.expectedDeliveryDate),
+          notes: data.notes,
+          lines: {
+            create: data.items.map(i => ({
+              seatInsertTypeId: i.seatInsertTypeId,
+              quantityOrdered: i.quantity,
+              quantityReceived: 0,
+            }))
+          }
+        }
+      });
+      return order;
+    });
+  }
+
+  async updateVendorOrderStatus(id: string, status: string) {
+    return await prisma.vendorOrder.update({
+      where: { id },
+      data: { status: status as any }
+    });
+  }
+
+  async receiveVendorOrder(id: string, params: { userId: string; lines: { lineId: string; receiveQuantity: number }[]; notes?: string }) {
+    return await prisma.$transaction(async (tx) => {
+      const order = await tx.vendorOrder.findUnique({
+        where: { id },
+        include: { lines: true }
+      });
+      if (!order) throw new Error("Order not found");
+
+      let fullyReceived = true;
+      let partiallyReceived = false;
+
+      for (const line of params.lines) {
+        const orderLine = order.lines.find((l: any) => l.id === line.lineId);
+        if (!orderLine) continue;
+
+        const newReceived = orderLine.quantityReceived + line.receiveQuantity;
+        if (newReceived > orderLine.quantityOrdered) throw new Error(`Cannot over-receive line ${orderLine.id}`);
+
+        await tx.vendorOrderLine.update({
+          where: { id: line.lineId },
+          data: { quantityReceived: newReceived }
+        });
+
+        if (newReceived < orderLine.quantityOrdered) fullyReceived = false;
+        if (newReceived > 0) partiallyReceived = true;
+
+        if (line.receiveQuantity > 0) {
+           // increase inventory
+           const inventory = await tx.inventoryItem.findFirst({
+             where: { garageId: order.garageId, seatInsertTypeId: orderLine.seatInsertTypeId }
+           });
+           if (inventory) {
+             await tx.inventoryItem.update({
+               where: { id: inventory.id },
+               data: { quantityOnHand: inventory.quantityOnHand + line.receiveQuantity, quantity: inventory.quantity + line.receiveQuantity }
+             });
+           } else {
+             await tx.inventoryItem.create({
+               data: { garageId: order.garageId, seatInsertTypeId: orderLine.seatInsertTypeId, quantityOnHand: line.receiveQuantity, quantity: line.receiveQuantity }
+             });
+           }
+        }
+      }
+
+      const finalStatus = fullyReceived ? "RECEIVED" : partiallyReceived ? "PARTIALLY_RECEIVED" : order.status;
+      const now = new Date();
+
+      await tx.vendorReceipt.create({
+        data: {
+          type: "ORDER_RECEIPT",
+          vendorOrderId: id,
+          garageId: order.garageId,
+          vendorId: order.vendorId,
+          receivedAt: now,
+          receivedBy: params.userId,
+          status: fullyReceived ? "COMPLETED" : "PARTIAL",
+          notes: params.notes,
+        }
+      });
+
+      return await tx.vendorOrder.update({
+        where: { id },
+        data: {
+          status: finalStatus as any,
+          receivedAt: fullyReceived ? now : order.receivedAt
+        }
+      });
     });
   }
 }
