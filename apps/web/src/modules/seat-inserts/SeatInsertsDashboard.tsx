@@ -83,13 +83,6 @@ export function SeatInsertsDashboard() {
   useEffect(() => {
     api.get("/garages").then(res => {
       setGarages(res.data);
-      if (res.data.length === 1 && !searchParams.get("locationId")) {
-        setSearchParams(prev => {
-          const next = new URLSearchParams(prev);
-          next.set("locationId", res.data[0].id);
-          return next;
-        });
-      }
     }).catch(console.error);
 
     api.get("/seat-inserts/vendors").then(res => {
@@ -254,7 +247,7 @@ export function SeatInsertsDashboard() {
         }} 
       />
 
-      {isOrdersOpen && locationId && (
+      {isOrdersOpen && (
         <VendorOrdersModal 
           locationId={locationId}
           vendorId={vendorId}

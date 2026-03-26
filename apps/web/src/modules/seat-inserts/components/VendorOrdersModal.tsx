@@ -21,8 +21,11 @@ export function VendorOrdersModal({ locationId, vendorId, onClose, onMutationSuc
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      let url = `/seat-inserts/vendor-orders?garageId=${locationId}`;
-      if (vendorId) url += `&vendorId=${vendorId}`;
+      let url = `/seat-inserts/vendor-orders`;
+      const params = new URLSearchParams();
+      if (locationId) params.set("garageId", locationId);
+      if (vendorId) params.set("vendorId", vendorId);
+      if (params.toString()) url += `?${params.toString()}`;
       const res = await api.get(url);
       setOrders(res.data);
     } catch (e: any) {
@@ -59,12 +62,14 @@ export function VendorOrdersModal({ locationId, vendorId, onClose, onMutationSuc
             <p className="text-xs text-muted-foreground mt-1">Manage replacements and new stock from active vendors.</p>
           </div>
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setIsCreating(true)}
-              className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold text-sm flex items-center gap-2 shadow-sm hover:bg-primary/90 transition-colors"
-            >
-              <PackagePlus className="w-4 h-4" /> New Order
-            </button>
+            {locationId && (
+              <button 
+                onClick={() => setIsCreating(true)}
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold text-sm flex items-center gap-2 shadow-sm hover:bg-primary/90 transition-colors"
+              >
+                <PackagePlus className="w-4 h-4" /> New Order
+              </button>
+            )}
             <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-lg text-slate-500 transition-colors">
               <X className="w-5 h-5" />
             </button>

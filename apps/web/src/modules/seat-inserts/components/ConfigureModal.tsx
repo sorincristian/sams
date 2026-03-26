@@ -43,7 +43,7 @@ export function ConfigureModal({
         
         <div className="p-6 space-y-6">
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">Scope to Location (Required)</label>
+            <label className="block text-sm font-medium text-gray-700">Scope to Location</label>
             <select
               value={selectedGarage}
               onChange={(e) => setSelectedGarage(e.target.value)}
