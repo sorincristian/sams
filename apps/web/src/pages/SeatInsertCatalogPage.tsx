@@ -19,6 +19,8 @@ interface CatalogPart {
   trimSpec?: string | null;
   createdAt: string;
   updatedAt: string;
+  _count?: { catalogAttachments: number };
+  catalogAttachments?: { id: string; attachmentType: string; isPrimary: boolean; previewImageUrl?: string | null; urlOrPath?: string }[];
 }
 
 interface BusCompat {
@@ -43,6 +45,7 @@ interface CatalogAttach {
   busTypeLabel?: string | null;
   fleetRangeLabel?: string | null;
   notes?: string | null;
+  isPrimary: boolean;
 }
 
 interface PartDetail extends CatalogPart {
@@ -377,6 +380,7 @@ export function SeatInsertCatalogPage() {
                     <th style={{ textAlign: "right" }}>Min Stock</th>
                     <th style={{ textAlign: "right" }}>Unit Cost</th>
                     <th>Status</th>
+                    <th style={{ textAlign: "center" }}>Diagrams</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -412,11 +416,49 @@ export function SeatInsertCatalogPage() {
                           fontSize: "0.75rem", fontWeight: 700,
                         }}>{part.active ? "ACTIVE" : "INACTIVE"}</span>
                       </td>
-                      <td style={{ display: "flex", gap: 6 }}>
+                      <td style={{ textAlign: "center", verticalAlign: "middle" }}>
+                        {(() => {
+                          const diagramsCount = part._count?.catalogAttachments || 0;
+                          if (diagramsCount === 0) return <span className="muted" style={{ fontSize: "0.8rem" }}>No diagram</span>;
+                          const thumb = part.catalogAttachments?.[0]?.previewImageUrl;
+                          return (
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                              {thumb ? (
+                                <img src={thumb} alt="Diagram Thumbnail" style={{ width: 28, height: 28, borderRadius: 4, objectFit: "cover", border: "1px solid #374151" }} />
+                              ) : (
+                                <div style={{ width: 28, height: 28, borderRadius: 4, background: "#1f2937", border: "1px solid #374151", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.5rem", color: "#60a5fa", fontWeight: 700 }}>
+                                  MAP
+                                </div>
+                              )}
+                              <span style={{ background: "#2563eb", color: "#fff", padding: "2px 8px", borderRadius: 12, fontSize: "0.75rem", fontWeight: 700 }}>
+                                {diagramsCount} Map{diagramsCount > 1 ? "s" : ""}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                         <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#374151" }}
                           onClick={() => setEditing(part)}>Edit</button>
-                        <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#1e3a5f" }}
-                          onClick={() => setDetailId(part.id)}>Detail</button>
+                        <Link to={`/catalog/${part.id}`} style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#1e3a5f", color: "#fff", textDecoration: "none", borderRadius: 6 }}>
+                          Detail
+                        </Link>
+                        {(() => {
+                          const primary = part.catalogAttachments?.[0];
+                          if (primary) {
+                            return (
+                              <Link to={`/catalog/${part.id}/diagram/${primary.id}`} style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#0ea5e9", color: "#fff", textDecoration: "none", borderRadius: 6 }}>
+                                View Diagram
+                              </Link>
+                            );
+                          } else {
+                            return (
+                              <button disabled style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#1f2937", color: "#6b7280", cursor: "not-allowed" }}>
+                                View Diagram
+                              </button>
+                            );
+                          }
+                        })()}
                       </td>
                     </tr>
                   ))}

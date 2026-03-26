@@ -201,6 +201,7 @@ model CatalogAttachment {
   busTypeLabel       String?
   fleetRangeLabel    String?
   notes              String?
+  isPrimary          Boolean           @default(false)
   seatInsertType     SeatInsertType?   @relation(fields: [seatInsertTypeId], references: [id])
   busCompatibility   BusCompatibility? @relation(fields: [busCompatibilityId], references: [id])
   hotspots           DiagramHotspot[]

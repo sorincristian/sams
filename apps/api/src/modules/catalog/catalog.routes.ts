@@ -14,7 +14,18 @@ const router = Router();
 // GET /api/catalog — list all seat insert types
 router.get("/", requireAuth, async (req, res) => {
   const parts = await prisma.seatInsertType.findMany({
-    orderBy: { partNumber: "asc" }
+    orderBy: { partNumber: "asc" },
+    include: {
+      _count: {
+        select: { catalogAttachments: { where: { attachmentType: "DIAGRAM" } } }
+      },
+      catalogAttachments: {
+        where: { attachmentType: "DIAGRAM" },
+        orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+        take: 1,
+        select: { id: true, previewImageUrl: true, urlOrPath: true, isPrimary: true, attachmentType: true }
+      }
+    }
   });
   res.json(parts);
 });
@@ -127,6 +138,87 @@ router.put("/:id", requireAuth, async (req, res) => {
   res.json(updated);
 });
 
+// ─── Attachment endpoints ────────────────────────────────────────────────────────
+
+// GET /api/catalog/:id/attachments
+router.get("/:id/attachments", requireAuth, async (req, res) => {
+  const id = firstString(req.params.id);
+  if (!id) return res.status(400).json({ message: "Invalid ID" });
+  const attachments = await prisma.catalogAttachment.findMany({
+    where: { seatInsertTypeId: id },
+    orderBy: { createdAt: "desc" }
+  });
+  res.json(attachments);
+});
+
+const attachmentSchema = z.object({
+  attachmentType: z.string().min(1),
+  fileName: z.string().min(1),
+  fileType: z.string().min(1),
+  urlOrPath: z.string().min(1),
+  notes: z.string().optional().nullable(),
+  isPrimary: z.boolean().default(false).optional()
+});
+
+// POST /api/catalog/:id/attachments
+router.post("/:id/attachments", requireAuth, async (req, res) => {
+  const id = firstString(req.params.id);
+  if (!id) return res.status(400).json({ message: "Invalid ID" });
+  const parsed = attachmentSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "Invalid data", errors: parsed.error.flatten() });
+  
+  if (parsed.data.isPrimary && parsed.data.attachmentType !== "DIAGRAM") {
+    return res.status(400).json({ message: "Only DIAGRAM attachments can be primary" });
+  }
+
+  if (parsed.data.isPrimary && parsed.data.attachmentType === "DIAGRAM") {
+    await prisma.catalogAttachment.updateMany({
+      where: { seatInsertTypeId: id, attachmentType: "DIAGRAM" },
+      data: { isPrimary: false }
+    });
+  }
+
+  const attachment = await prisma.catalogAttachment.create({
+    data: { ...parsed.data, seatInsertTypeId: id }
+  });
+  res.status(201).json(attachment);
+});
+
+// DELETE /api/catalog/attachments/:id
+router.delete("/attachments/:id", requireAuth, async (req, res) => {
+  const id = firstString(req.params.id);
+  if (!id) return res.status(400).json({ message: "Invalid ID" });
+  const existing = await prisma.catalogAttachment.findUnique({ where: { id } });
+  if (!existing) return res.status(404).json({ message: "Attachment not found" });
+  await prisma.catalogAttachment.delete({ where: { id } });
+  res.status(204).end();
+});
+
+// PATCH /api/catalog/attachments/:id/primary
+router.patch("/attachments/:id/primary", requireAuth, async (req, res) => {
+  const id = firstString(req.params.id);
+  if (!id) return res.status(400).json({ message: "Invalid ID" });
+  const attachment = await prisma.catalogAttachment.findUnique({ where: { id } });
+  if (!attachment) return res.status(404).json({ message: "Attachment not found" });
+  if (attachment.attachmentType !== "DIAGRAM") {
+    return res.status(400).json({ message: "Only DIAGRAM attachments can be primary" });
+  }
+
+  await prisma.$transaction([
+    prisma.catalogAttachment.updateMany({
+      where: { seatInsertTypeId: attachment.seatInsertTypeId, attachmentType: "DIAGRAM" },
+      data: { isPrimary: false }
+    }),
+    prisma.catalogAttachment.update({
+      where: { id },
+      data: { isPrimary: true }
+    })
+  ]);
+
+  const updated = await prisma.catalogAttachment.findUnique({ where: { id } });
+  res.json(updated);
+});
+
 // ─── Hotspot endpoints ────────────────────────────────────────────────────────
 
 // GET /api/catalog/attachments/:id — fetch a single attachment by ID (for DiagramViewerPage)
@@ -141,7 +233,7 @@ router.get("/attachments/:id", requireAuth, async (req, res) => {
 const hotspotSchema = z.object({
   seatLabel:       z.string().min(1),
   partNumber:      z.string().min(1),
-  seatInsertTypeId: z.string().optional().nullable(),
+  seatInsertTypeId: z.string().min(1),
   x:               z.number().min(0).max(1),
   y:               z.number().min(0).max(1),
   width:           z.number().min(0.001).max(1),
@@ -172,6 +264,9 @@ router.post("/attachments/:id/hotspots", requireAuth, async (req, res) => {
   if (!id) return res.status(400).json({ message: "Invalid ID" });
   const attachment = await prisma.catalogAttachment.findUnique({ where: { id } });
   if (!attachment) return res.status(404).json({ message: "Attachment not found" });
+  if (attachment.attachmentType !== "DIAGRAM") {
+    return res.status(400).json({ message: "Hotspots can only be added to DIAGRAM attachments" });
+  }
 
   const parsed = hotspotSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ message: "Invalid data", errors: parsed.error.flatten() });

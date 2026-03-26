@@ -127,4 +127,42 @@ router.post("/", requireAuth, async (req, res) => {
   res.status(201).json(created);
 });
 
+router.post("/:id/items", requireAuth, async (req, res) => {
+  const id = firstString(req.params.id);
+  if (!id) return res.status(400).json({ message: "Invalid ID" });
+  
+  const schema = z.object({
+    seatInsertTypeId: z.string().min(1),
+    quantity: z.number().int().min(1).default(1),
+    notes: z.string().optional().nullable()
+  });
+
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ message: "Invalid payload" });
+
+  const wo = await prisma.workOrder.findUnique({ where: { id } });
+  if (!wo) return res.status(404).json({ message: "Work order not found" });
+
+  const { seatInsertTypeId, quantity, notes } = parsed.data;
+
+  // Verify the part exists
+  const part = await prisma.seatInsertType.findUnique({ where: { id: seatInsertTypeId } });
+  if (!part) return res.status(404).json({ message: "Part not found" });
+
+  const usage = await prisma.workOrderPartUsage.create({
+    data: {
+      workOrderId: wo.id,
+      seatInsertTypeId: part.id,
+      garageId: wo.garageId,
+      quantity,
+      notes,
+      // Since it's requested by the technician via mobile/hotspot, we assign them as the issuer.
+      // Usually full inventory ISSUE would be a separate InventoryTransaction binding.
+      issuedByUserId: (req as any).user!.userId
+    }
+  });
+
+  res.status(201).json(usage);
+});
+
 export default router;

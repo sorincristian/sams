@@ -165,7 +165,7 @@ function HotspotEditor({
       const res = await api.post(`/catalog/attachments/${attachmentId}/hotspots`, {
         seatLabel: form.seatLabel,
         partNumber: form.partNumber,
-        seatInsertTypeId: form.seatInsertTypeId || null,
+        seatInsertTypeId: form.seatInsertTypeId, // REQUIRED now in API
         x: modal.x, y: modal.y, width: modal.w, height: modal.h,
         notes: form.notes || null,
       });
@@ -238,6 +238,7 @@ function HotspotEditor({
             <label>
               <div style={{ fontSize: "0.82rem", marginBottom: 4, fontWeight: 600 }}>Link to Catalog Part</div>
               <select
+                required
                 value={form.seatInsertTypeId}
                 onChange={(e) => {
                   const sel = parts.find((p) => p.id === e.target.value);
@@ -264,7 +265,7 @@ function HotspotEditor({
             </label>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button style={{ width: "auto", background: "#374151" }} onClick={() => setModal(null)}>Cancel</button>
-              <button style={{ width: "auto" }} disabled={saving || !form.seatLabel || !form.partNumber} onClick={handleSave}>
+              <button style={{ width: "auto" }} disabled={saving || !form.seatLabel || !form.partNumber || !form.seatInsertTypeId} onClick={handleSave}>
                 {saving ? "Saving…" : "Save Hotspot"}
               </button>
             </div>

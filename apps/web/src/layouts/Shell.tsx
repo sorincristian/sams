@@ -7,6 +7,7 @@ import { TransactionsLedgerPage } from "../pages/TransactionsLedgerPage";
 import { WorkOrdersPage } from "../pages/WorkOrdersPage";
 import { WorkOrderDetailPage } from "../pages/WorkOrderDetailPage";
 import { SeatInsertCatalogPage } from "../pages/SeatInsertCatalogPage";
+import { PartDetailsPage } from "../pages/PartDetailsPage";
 import { DiagramViewerPage } from "../pages/DiagramViewerPage";
 import { HelpPage } from "../pages/HelpPage";
 import { SeatChangeReportPage } from "../pages/SeatChangeReportPage";
@@ -78,13 +79,14 @@ export function Shell({ user, onLogout }: { user: any; onLogout: () => void }) {
           <Route path="/work-orders" element={<WorkOrdersPage />} />
           <Route path="/work-orders/:id" element={<WorkOrderDetailPage />} />
           <Route path="/catalog" element={<SeatInsertCatalogPage />} />
+          <Route path="/catalog/:id" element={<PartDetailsPage />} />
+          <Route path="/catalog/:id/diagram/:attachmentId" element={<DiagramViewerPage />} />
           <Route path="/import-history" element={
             <React.Suspense fallback={<div>Loading Import History...</div>}>
               {React.createElement(React.lazy(() => import('../pages/ImportHistoryPage').then(m => ({ default: m.ImportHistoryPage }))))}
             </React.Suspense>
           } />
           <Route path="/seat-inserts" element={<SeatInsertsDashboard />} />
-          <Route path="/diagram/:attachmentId" element={<DiagramViewerPage />} />
           <Route path="/help" element={<HelpPage />} />
           <Route path="/admin/users" element={
             <React.Suspense fallback={<div>Loading Users...</div>}>

@@ -4,6 +4,7 @@ import { api, setAuthToken } from "./api";
 import { Login } from "./pages/Login";
 import { AcceptInvitePage } from "./pages/auth/AcceptInvitePage";
 import { Shell } from "./layouts/Shell";
+import { MobileDiagramViewerPage } from "./modules/seat-inserts/components/mobile/MobileDiagramViewerPage";
 
 function useAuth() {
   const [token, setToken] = React.useState<string | null>(localStorage.getItem("sams_token"));
@@ -30,7 +31,12 @@ export function App() {
   }
 
   if (auth.token) {
-    return <Shell user={auth.user} onLogout={logout} />;
+    return (
+      <Routes>
+        <Route path="/mobile/diagram/:attachmentId" element={<MobileDiagramViewerPage />} />
+        <Route path="*" element={<Shell user={auth.user} onLogout={logout} />} />
+      </Routes>
+    );
   }
 
   return (
