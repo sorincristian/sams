@@ -10,17 +10,30 @@ import { PasswordStrengthRules } from "../../components/auth/PasswordStrengthRul
 import { authService } from "../../services/authService";
 
 export function ResetPasswordPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  let token = searchParams.get("token") || "";
+  
+  const [token] = React.useState(() => {
+    // TODO: Sunset Plan (Safe to remove after 2026-03-27 18:00 EST)
+    // We transitioned from query-param (?token=) to hash-fragment (#token=) to prevent leakage.
+    // Because tokens enforce a strict 30-minute expiration limit, all legacy emails will inherently 
+    // expire by 18:00 EST today. After that, this fallback hook should be safely removed.
+    let t = searchParams.get("token") || "";
 
-  if (!token && window.location.hash.startsWith("#token=")) {
-    token = window.location.hash.replace("#token=", "");
-  }
+    if (!t && window.location.hash.startsWith("#token=")) {
+      t = window.location.hash.replace("#token=", "");
+      
+      // Clear token from URL bar immediately for security
+      if (window.history.replaceState) {
+        window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      }
+    }
+    return t;
+  });
 
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
-  const [success, setSuccess] = React.useState(false);
   const [error, setError] = React.useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -51,7 +64,13 @@ export function ResetPasswordPage() {
     setLoading(true);
     try {
       await authService.resetPassword(token, password);
-      setSuccess(true);
+      // Immediately redirect to login with a success transfer state
+      navigate("/login", { 
+        state: { 
+          message: "Your password has been successfully reset. You may now sign in." 
+        },
+        replace: true 
+      });
     } catch (err: any) {
       setError(err?.response?.data?.message || "Token invalid or expired.");
     } finally {
@@ -79,23 +98,15 @@ export function ResetPasswordPage() {
       <AuthCard>
         <AuthBrand />
         <AuthHeader 
-          title={success ? "System Resecured" : "Create new password"} 
-          subtitle={success ? "Your operational credentials have been updated." : "Secure your operational account credentials"} 
+          title="Create new password" 
+          subtitle="Secure your operational account credentials" 
         />
 
         {error && <AuthMessageBanner type="error" message={error} />}
 
-        {success ? (
-           <div className="flex flex-col gap-6">
-             <AuthMessageBanner type="success" message="Your password has been successfully reset. You may now access the workspace." />
-             <Link to="/login" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl text-center shadow-md block transition-colors mt-2">
-               Sign in to SAMS
-             </Link>
-           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-            <AuthField 
-              label="New Password"
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+          <AuthField 
+            label="New Password"
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
@@ -123,7 +134,6 @@ export function ResetPasswordPage() {
               {loading ? "Syncing Constraints..." : "Update Password"}
             </button>
           </form>
-        )}
       </AuthCard>
     </AuthPageShell>
   );

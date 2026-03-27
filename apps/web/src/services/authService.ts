@@ -18,23 +18,13 @@ export const authService = {
     return res.data;
   },
 
-  // Backend Placeholder - Endpoint does not natively exist in express router yet.
   forgotPassword: async (email: string) => {
-    console.warn("Backend dependency: /api/auth/forgot-password is not fully implemented");
-    return api.post("/auth/forgot-password", { email }).catch((err: any) => {
-      // Mock success for UI flow testing until endpoint exists
-      console.log("Mocking forgot password success for:", email);
-      return { data: { success: true } };
-    });
+    const res = await api.post("/auth/forgot-password", { email });
+    return res.data;
   },
 
-  // Backend Placeholder - Endpoint does not natively exist in express router yet.
   resetPassword: async (token: string, password: string) => {
-    console.warn("Backend dependency: /api/auth/reset-password is not fully implemented");
-    return api.post("/auth/reset-password", { token, password }).catch((err: any) => {
-      // Mock success for UI flow testing until endpoint exists
-      console.log("Mocking reset password success for:", token);
-      return { data: { success: true } };
-    });
+    const res = await api.post("/auth/reset-password", { token, password });
+    return res.data;
   }
 };

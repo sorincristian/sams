@@ -296,11 +296,12 @@ router.post("/forgot-password", async (req, res) => {
 
     if (!isProd) {
       console.log(`\n=== [DEV EMAIL FALLBACK] Password Reset ===\nLink for ${email}:\n${resetLink}\n===========================================\n`);
+      console.log(`RESET_LINK_GENERATED for ${email}`);
+      return res.status(200).json({ success: true, debugResetUrl: resetLink });
     } else {
       console.log(`Password reset requested for ${email}`);
+      return res.status(200).json({ success: true });
     }
-
-    return res.status(200).json({ success: true });
   } catch (err) {
     console.error("Forgot Password Error:", err);
     return res.status(500).json({ message: "Internal server error" });

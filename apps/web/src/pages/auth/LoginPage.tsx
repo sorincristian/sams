@@ -22,6 +22,14 @@ export function LoginPage() {
   const [error, setError] = React.useState("");
 
   const explicitStatus = location.state?.status as "expired" | "logout" | "denied" | null;
+  const explicitMessage = location.state?.message as string | undefined;
+
+  // Immediately destroy transient history state so banners do not persist on explicit F5 reloads
+  React.useEffect(() => {
+    if (explicitStatus || explicitMessage) {
+      window.history.replaceState({}, document.title);
+    }
+  }, [explicitStatus, explicitMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +64,7 @@ export function LoginPage() {
         <AuthHeader title="Sign in" subtitle="Access your operations workspace" />
 
         <SessionStatusBanner status={explicitStatus} />
+        {explicitMessage && !error && <AuthMessageBanner type="success" message={explicitMessage} />}
         {error && <AuthMessageBanner type="error" message={error} />}
 
         <form onSubmit={handleSubmit} className="flex flex-col">
