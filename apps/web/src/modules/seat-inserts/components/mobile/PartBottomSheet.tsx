@@ -21,10 +21,22 @@ export function PartBottomSheet({ hotspot, onClose }: PartBottomSheetProps) {
   // Existing WO forms
   const [selectedWOId, setSelectedWOId] = React.useState("");
   const [addNotes, setAddNotes] = React.useState("");
+  const [errorMsg, setErrorMsg] = React.useState("");
+  const [successMsg, setSuccessMsg] = React.useState("");
   
   const [submitting, setSubmitting] = React.useState(false);
 
   const part = hotspot.seatInsertType;
+
+  function showToast(type: "error" | "success", msg: string) {
+    if (type === "error") {
+      setErrorMsg(msg);
+      setTimeout(() => setErrorMsg(""), 3000);
+    } else {
+      setSuccessMsg(msg);
+      setTimeout(() => setSuccessMsg(""), 3000);
+    }
+  }
 
   // Load existing Work Orders strictly if accessing WO mode
   React.useEffect(() => {
@@ -47,7 +59,7 @@ export function PartBottomSheet({ hotspot, onClose }: PartBottomSheetProps) {
 
       if (woOption === "NEW") {
         if (!busId || !issueDesc) {
-           alert("Bus ID and Description required for new WO.");
+           showToast("error", "Bus ID and Description required for new WO.");
            setSubmitting(false);
            return;
         }
@@ -75,10 +87,10 @@ export function PartBottomSheet({ hotspot, onClose }: PartBottomSheetProps) {
         notes: addNotes || `Mapped via Area: ${hotspot.seatLabel}`
       });
 
-      alert(`Part added to Work Order ${woOption === "NEW" ? "" : "successfully"}`);
-      onClose();
+      showToast("success", `Part added to Work Order ${woOption === "NEW" ? "" : "successfully"}`);
+      setTimeout(() => onClose(), 1500);
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Failed to process Work Order transition");
+      showToast("error", err?.response?.data?.message || "Failed to process Work Order transition");
     } finally {
       setSubmitting(false);
     }
@@ -87,6 +99,13 @@ export function PartBottomSheet({ hotspot, onClose }: PartBottomSheetProps) {
   return (
     <>
       <div className="absolute inset-0 bg-black/60 z-40 touch-none" onClick={onClose} />
+      
+      {/* Toasts overlay */}
+      <div className="absolute top-16 left-0 right-0 z-[60] flex flex-col items-center gap-2 pointer-events-none px-4">
+        {errorMsg && <div className="bg-red-600 text-white px-4 py-2 rounded-lg shadow-xl font-semibold text-sm animate-fade-in w-full text-center pointer-events-auto">{errorMsg}</div>}
+        {successMsg && <div className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-xl font-semibold text-sm animate-fade-in w-full text-center pointer-events-auto">{successMsg}</div>}
+      </div>
+
       <div className="absolute bottom-0 left-0 right-0 max-h-[90vh] bg-gray-900 border-t border-gray-700 rounded-t-3xl p-6 z-50 flex flex-col gap-4 overflow-y-auto shadow-[0_-10px_40px_rgba(0,0,0,0.5)] safe-bottom animate-slide-up">
         
         {/* Grab Handle */}

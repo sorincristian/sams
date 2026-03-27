@@ -313,6 +313,7 @@ model User {
   vendorReceipts        VendorReceipt[]
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
+  tokenVersion          Int                    @default(0)
 }
 
 model AuditLog {
@@ -589,4 +590,21 @@ model UserInvite {
   createdByUser   User         @relation(fields: [createdByUserId], references: [id])
   role            Role         @relation(fields: [roleId], references: [id])
   createdAt       DateTime     @default(now())
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  email     String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+}
+
+model RateLimit {
+  key       String   @id
+  points    Int      @default(0)
+  expiresAt DateTime
 }

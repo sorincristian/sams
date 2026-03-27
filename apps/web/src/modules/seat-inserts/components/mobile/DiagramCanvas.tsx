@@ -12,6 +12,7 @@ export function DiagramCanvas({ pdfUrl, focusHotspot, children }: DiagramCanvasP
   
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [retryCount, setRetryCount] = React.useState(0);
 
   const [scale, setScale] = React.useState(1);
   const [offset, setOffset] = React.useState({ x: 0, y: 0 });
@@ -29,12 +30,18 @@ export function DiagramCanvas({ pdfUrl, focusHotspot, children }: DiagramCanvasP
 
     async function loadPdf() {
       setLoading(true);
+      setError(null);
+      
+      const apiBase = import.meta.env.VITE_API_URL.replace('/api', '');
+      const finalUrl = pdfUrl.startsWith('/') ? `${apiBase}${pdfUrl}` : pdfUrl;
+      console.log("Diagram URL:", finalUrl);
+
       try {
         // @ts-ignore
         const pdfjsLib = await import("https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.min.mjs");
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://unpkg.com/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
 
-        const loadingTask = pdfjsLib.getDocument(pdfUrl);
+        const loadingTask = pdfjsLib.getDocument(finalUrl);
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
 
@@ -63,7 +70,10 @@ export function DiagramCanvas({ pdfUrl, focusHotspot, children }: DiagramCanvasP
         }
 
       } catch (err: any) {
-        if (err.name !== "RenderingCancelledException") {
+        if (err.name === "MissingPDFException" || err.message?.includes("404")) {
+          setError("Diagram not uploaded");
+        } else if (err.name !== "RenderingCancelledException") {
+          console.error("Failed to load blueprint:", err);
           setError("Failed to load blueprint.");
         }
       } finally {
@@ -75,7 +85,7 @@ export function DiagramCanvas({ pdfUrl, focusHotspot, children }: DiagramCanvasP
     return () => {
        if (renderTask) renderTask.cancel();
     };
-  }, [pdfUrl]);
+  }, [pdfUrl, retryCount]);
 
   // Handle auto-focus
   React.useEffect(() => {
@@ -141,7 +151,17 @@ export function DiagramCanvas({ pdfUrl, focusHotspot, children }: DiagramCanvasP
       onTouchCancel={handleTouchEnd}
     >
       {loading && <div className="absolute inset-0 flex items-center justify-center text-gray-400 z-50">Rendering Blueprint...</div>}
-      {error && <div className="absolute inset-0 flex items-center justify-center text-red-500 z-50">{error}</div>}
+      {error && (
+        <div className="absolute inset-0 flex flex-col gap-4 items-center justify-center bg-gray-900 z-50 p-4 text-center">
+          <span className="text-red-500 font-semibold">{error}</span>
+          <button 
+            onClick={() => setRetryCount(r => r + 1)} 
+            className="px-6 py-3 bg-blue-600 rounded-lg text-white font-bold shadow-lg active:scale-95"
+          >
+            Retry Loading
+          </button>
+        </div>
+      )}
       
       <div 
         className="absolute origin-top-left will-change-transform"

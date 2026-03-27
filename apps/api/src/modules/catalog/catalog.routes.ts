@@ -148,14 +148,24 @@ router.get("/:id/attachments", requireAuth, async (req, res) => {
     where: { seatInsertTypeId: id },
     orderBy: { createdAt: "desc" }
   });
-  res.json(attachments);
+
+  const base = `${req.protocol}://${req.get("host")}`;
+  const formatted = attachments.map(a => {
+    const updated: any = { ...a };
+    if (updated.urlOrPath?.startsWith("/uploads/")) {
+      updated.url = `${base}${updated.urlOrPath}`;
+    }
+    return updated;
+  });
+
+  res.json(formatted);
 });
 
 const attachmentSchema = z.object({
   attachmentType: z.string().min(1),
   fileName: z.string().min(1),
   fileType: z.string().min(1),
-  urlOrPath: z.string().min(1),
+  urlOrPath: z.string().min(1).refine(v => v.startsWith('/uploads/'), { message: "Must be a relative path starting with /uploads/" }),
   notes: z.string().optional().nullable(),
   isPrimary: z.boolean().default(false).optional()
 });
@@ -225,8 +235,14 @@ router.patch("/attachments/:id/primary", requireAuth, async (req, res) => {
 router.get("/attachments/:id", requireAuth, async (req, res) => {
   const id = firstString(req.params.id);
   if (!id) return res.status(400).json({ message: "Invalid ID" });
-  const attachment = await prisma.catalogAttachment.findUnique({ where: { id } });
+  const attachment: any = await prisma.catalogAttachment.findUnique({ where: { id } });
   if (!attachment) return res.status(404).json({ message: "Attachment not found" });
+
+  if (attachment.urlOrPath?.startsWith("/uploads/")) {
+    const base = `${req.protocol}://${req.get("host")}`;
+    attachment.url = `${base}${attachment.urlOrPath}`;
+  }
+
   res.json(attachment);
 });
 

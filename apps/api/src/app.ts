@@ -59,21 +59,17 @@ app.use(morgan("dev"));
 // apps/api/diagrams/          = path.join(__dirname, "../diagrams")
 // apps/api/diagram-previews/  = path.join(__dirname, "../diagram-previews")
 
-// Raw PDF diagrams — /api/diagrams/<filename>.pdf
-const diagramsDir = path.join(__dirname, "../diagrams");
-app.use("/api/diagrams", express.static(diagramsDir, {
-  setHeaders: (res, filePath) => {
-    if (filePath.endsWith(".pdf")) {
-      res.setHeader("Content-Disposition", "inline");
-      res.setHeader("Content-Type", "application/pdf");
-    }
-  }
-}));
+// Static file routing logic has been migrated exclusively to `/uploads/`
 
 // Preview images (PNG/WebP) for interactive hotspot viewer — /api/diagram-previews/<img>
 const diagramPreviewsDir = path.join(__dirname, "../diagram-previews");
 app.use("/api/diagram-previews", express.static(diagramPreviewsDir));
 
+// Generic file uploads fallback directory (/uploads/)
+app.use('/uploads', (req, res, next) => {
+  console.log("Serving file:", req.path);
+  next();
+}, express.static(path.join(__dirname, '../uploads')));
 
 app.get("/health", (_req: Request, res: Response) => {
   res.status(200).json({ ok: true });

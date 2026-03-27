@@ -84,7 +84,8 @@ router.post("/login", async (req, res) => {
       email: user.email, 
       role: user.roleRelation?.name || user.role,
       permissions,
-      scope
+      scope,
+      tokenVersion: user.tokenVersion
     };
     const token = jwt.sign(payload, jwtSecret, { expiresIn });
 
@@ -191,6 +192,187 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
   } catch (err) {
     console.error("GET /me ERROR:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ message: "Valid email is required" });
+    }
+
+    const key = `forgotpw_${req.ip}_${email}`;
+    const now = new Date();
+
+    // Clean out globally expired rate limits periodically
+    await prisma.rateLimit.deleteMany({ where: { expiresAt: { lt: now } } });
+
+    const limitWindow = 15 * 60 * 1000;
+    const rateLimit = await prisma.rateLimit.upsert({
+      where: { key },
+      update: { points: { increment: 1 } },
+      create: { key, points: 1, expiresAt: new Date(now.getTime() + limitWindow) }
+    });
+
+    if (rateLimit.points > 3) {
+      console.warn(`RATE LIMIT HIT for forgot-password: ${email} from ${req.ip}`);
+      return res.status(200).json({ success: true });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      console.log(`Forgot Password requested for non-existent email: ${email}`);
+      return res.status(200).json({ success: true });
+    }
+
+    // Produce Audit Log
+    await prisma.auditLog.create({
+      data: {
+        action: "FORGOT_PASSWORD_REQUEST",
+        entity: "User",
+        entityId: user.id,
+        userId: user.id
+      }
+    });
+
+    const crypto = await import("crypto");
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    await prisma.passwordResetToken.create({
+      data: {
+        email,
+        token: hashedToken,
+        expiresAt
+      }
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const resetLink = `${frontendUrl}/reset-password#token=${rawToken}`;
+    
+    const isProd = process.env.NODE_ENV === "production";
+    const resendApiKey = process.env.RESEND_API_KEY;
+
+    if (resendApiKey) {
+      const htmlBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+          <h2 style="color: #2563eb;">SAMS Platform Security</h2>
+          <p>We received a request to reset your operational account password.</p>
+          <p>Click the button below to establish new credentials. <strong>This link will safely expire in 30 minutes.</strong></p>
+          <div style="margin: 30px 0;">
+            <a href="${resetLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Reset Password</a>
+          </div>
+          <p style="font-size: 13px; color: #666;">If you did not request this, please ignore this email or contact the fleet security team.</p>
+        </div>
+      `;
+
+      try {
+        const emailRes = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${resendApiKey}`
+          },
+          body: JSON.stringify({
+            from: process.env.EMAIL_FROM || "security@sams-platform.com",
+            to: email,
+            subject: "Password Reset Request - SAMS Platform",
+            html: htmlBody
+          })
+        });
+        
+        if (!emailRes.ok) {
+          const errData = await emailRes.text();
+          console.error("Resend API failed:", errData);
+        } else {
+          console.log(`[EMAIL] Dispatched password reset link to ${email}`);
+        }
+      } catch (emailErr) {
+        console.error("Failed to execute Resend fetch:", emailErr);
+      }
+    }
+
+    if (!isProd) {
+      console.log(`\n=== [DEV EMAIL FALLBACK] Password Reset ===\nLink for ${email}:\n${resetLink}\n===========================================\n`);
+    } else {
+      console.log(`Password reset requested for ${email}`);
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Forgot Password Error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post("/reset-password", async (req, res) => {
+  try {
+    const schema = z.object({
+      token: z.string().min(1),
+      password: z.string()
+        .min(8, "Password must be at least 8 characters")
+        .regex(/[A-Z]/, "Password must contain an uppercase letter")
+        .regex(/[0-9]/, "Password must contain a number")
+    });
+    
+    const parsed = schema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.errors[0].message });
+    }
+    const { token, password } = parsed.data;
+
+    const crypto = await import("crypto");
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const resetRecord = await prisma.passwordResetToken.findUnique({
+      where: { token: hashedToken }
+    });
+
+    if (!resetRecord || resetRecord.usedAt || new Date() > resetRecord.expiresAt) {
+      console.warn(`Invalid or expired reset token attempt`);
+      return res.status(400).json({ message: "Token invalid or expired" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email: resetRecord.email } });
+    if (!user) {
+      return res.status(400).json({ message: "User account no longer exists" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { 
+          passwordHash,
+          tokenVersion: { increment: 1 } // INVALIDATES ALL ACTIVE SESSIONS
+        }
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: resetRecord.id },
+        data: { usedAt: new Date() }
+      }),
+      prisma.auditLog.create({
+        data: {
+          action: "PASSWORD_RESET_COMPLETED",
+          entity: "User",
+          entityId: user.id,
+          userId: user.id
+        }
+      }),
+      // Cleanup token bloat
+      prisma.passwordResetToken.deleteMany({
+        where: { OR: [ { usedAt: { not: null } }, { expiresAt: { lt: new Date() } } ] }
+      })
+    ]);
+
+    console.log(`Password reset successfully for ${user.email}, sessions invalidated.`);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("Reset Password Error:", err);
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 
