@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { LayoutDashboard, Settings, Package } from "lucide-react";
 import { api } from "../../api";
 
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { KPIBox } from "./components/KPIBox";
 import { AlertsPanel } from "./components/AlertsPanel";
 import { InventoryTable } from "./components/InventoryTable";
@@ -10,6 +10,7 @@ import { PipelineFlow } from "./components/PipelineFlow";
 import { TrendChart } from "./components/TrendChart";
 import { ConfigureModal } from "./components/ConfigureModal";
 import { VendorOrdersModal } from "./components/VendorOrdersModal";
+// import { SeatOrdersModal } from "../seat-orders/components/SeatOrdersModal"; // Removed cleanly
 
 export function SeatInsertsDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,6 +19,7 @@ export function SeatInsertsDashboard() {
   
   const [isConfigureOpen, setIsConfigureOpen] = useState(false);
   const [isOrdersOpen, setIsOrdersOpen] = useState(false);
+  const [isSeatOrdersOpen, setIsSeatOrdersOpen] = useState(false);
   const [garages, setGarages] = useState<{ id: string; name: string }[]>([]);
   const [vendors, setVendors] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,8 +157,12 @@ export function SeatInsertsDashboard() {
           </button>
           <button onClick={() => setIsOrdersOpen(true)} className="bg-card border border-border text-foreground hover:bg-muted px-4 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center gap-2">
             <Package className="w-4 h-4" />
-            Vendor Orders
+            Vendor Receipts
           </button>
+          <Link to="/procurement/seat-orders" className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center gap-2">
+            <Package className="w-4 h-4" />
+            Harvey Orders
+          </Link>
           <button onClick={() => setIsConfigureOpen(true)} className="bg-card border border-border text-foreground hover:bg-muted px-4 py-2 rounded-lg font-semibold text-sm shadow-sm transition-colors flex items-center gap-2">
             <Settings className="w-4 h-4" />
             Configure
@@ -255,6 +261,8 @@ export function SeatInsertsDashboard() {
           onMutationSuccess={fetchDashboardData}
         />
       )}
+
+      {/* SeatOrdersModal has been extracted to production routes under /procurement/seat-orders */}
     </div>
   );
 }

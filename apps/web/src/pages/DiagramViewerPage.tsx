@@ -1,6 +1,7 @@
 import React from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../api";
+import { resolveAssetUrl } from "../utils/assetUrl";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Attachment {
@@ -276,12 +277,6 @@ function HotspotEditor({
   );
 }
 
-// ─── Main DiagramViewerPage ───────────────────────────────────────────────────
-// VITE_API_BASE_URL = "https://sams-api-vfvj.onrender.com/api"
-// We need the root without /api for serving static files.
-const VITE_API = import.meta.env.VITE_API_BASE_URL ?? "https://sams-api-vfvj.onrender.com/api";
-const API_BASE = VITE_API.endsWith("/api") ? VITE_API.slice(0, -4) : VITE_API.replace(/\/api\/.*$/, "");
-
 export function DiagramViewerPage() {
   const { attachmentId } = useParams<{ attachmentId: string }>();
 
@@ -334,12 +329,8 @@ export function DiagramViewerPage() {
   }
 
   // Build image src: previewImageUrl is a path like "/api/diagram-previews/proterra..."
-  // Prepend the API base to get the full URL
-  const previewSrc = attachment?.previewImageUrl
-    ? `${API_BASE}${attachment.previewImageUrl.startsWith("/") ? "" : "/"}${attachment.previewImageUrl}`
-    : null;
-  // urlOrPath is already a full URL like https://sams-api-vfvj.onrender.com/api/diagrams/...
-  const pdfUrl = attachment?.urlOrPath ?? null;
+  const previewSrc = resolveAssetUrl(attachment?.previewImageUrl);
+  const pdfUrl = resolveAssetUrl(attachment?.urlOrPath);
 
   // Render PDF when URL is ready
   React.useEffect(() => {

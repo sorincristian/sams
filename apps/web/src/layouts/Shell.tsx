@@ -1,5 +1,5 @@
 import React from "react";
-import { NavLink, Route, Routes } from "react-router-dom";
+import { NavLink, Route, Routes, Navigate } from "react-router-dom";
 import { DashboardPage } from "../pages/DashboardPage";
 import { FleetPage } from "../pages/FleetPage";
 import { InventoryPage } from "../pages/InventoryPage";
@@ -12,6 +12,10 @@ import { DiagramViewerPage } from "../pages/DiagramViewerPage";
 import { HelpPage } from "../pages/HelpPage";
 import { SeatChangeReportPage } from "../pages/SeatChangeReportPage";
 import { SeatInsertsDashboard } from "../modules/seat-inserts/SeatInsertsDashboard";
+import { EmailCentrePage } from "../pages/admin/EmailCentrePage";
+import { SeatOrdersPage } from "../modules/seat-orders/pages/SeatOrdersPage";
+import { SeatOrderCreatePage } from "../modules/seat-orders/pages/SeatOrderCreatePage";
+import { SeatOrderDetailPage } from "../modules/seat-orders/pages/SeatOrderDetailPage";
 import { canView } from "../lib/rbac";
 
 export function Shell({ user, onLogout }: { user: any; onLogout: () => void }) {
@@ -98,6 +102,11 @@ export function Shell({ user, onLogout }: { user: any; onLogout: () => void }) {
               {React.createElement(React.lazy(() => import('../pages/admin/RolesPage').then(m => ({ default: m.RolesPage }))), { user })}
             </React.Suspense>
           } />
+          <Route path="/admin/email-centre" element={<EmailCentrePage />} />
+          <Route path="/procurement/seat-orders" element={<SeatOrdersPage />} />
+          <Route path="/procurement/seat-orders/new" element={<SeatOrderCreatePage />} />
+          <Route path="/procurement/seat-orders/:id" element={<SeatOrderDetailPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </div>

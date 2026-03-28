@@ -15,6 +15,8 @@ import catalogRoutes from "./modules/catalog/catalog.routes.js";
 import reportsRoutes from "./modules/reports/reports.routes.js";
 import adminRoutes from "./modules/admin/admin.routes.js";
 import seatInsertsRoutes from "./modules/seat-inserts/seat-inserts.routes.js";
+import emailCentreRoutes from "./modules/email-centre/email-centre.routes.js";
+import seatOrdersRoutes from "./modules/seat-orders/seat-orders.routes.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -86,5 +88,7 @@ app.use("/api/v1/catalog", catalogRoutes);
 app.use("/api/v1/reports", reportsRoutes);
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/seat-inserts", seatInsertsRoutes);
+app.use("/api/email-centre", emailCentreRoutes);
+app.use("/api/seat-orders", seatOrdersRoutes);
 
 export default app;

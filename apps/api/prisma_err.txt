@@ -1,0 +1,58 @@
+﻿Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+node.exe : 
+At C:\nvm4w\nodejs\npx.ps
+1:29 char:3
++   & $NODE_EXE 
+$NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~
+    + CategoryInfo       
+       : NotSpecified:   
+  (:String) [], Remote   
+ Exception
+    + FullyQualifiedErro 
+   rId : NativeCommandE  
+  rror
+ 
+Error: Prisma schema 
+validation - (validate 
+wasm)
+Error code: P1012
+[1;91merror[0m: 
+[1mError validating 
+field `seatInsertType` 
+in model 
+`SeatOrderLine`: The 
+relation field 
+`seatInsertType` on 
+model `SeatOrderLine` is 
+missing an opposite 
+relation field on the 
+model `SeatInsertType`. 
+Either run `prisma 
+format` or add it 
+manually.[0m
+  [1;94m-->[0m  [4mpri
+sma\schema.prisma:750[0m
+[1;94m   | [0m
+[1;94m749 | [0m  order 
+           SeatOrder     
+  @relation(fields: 
+[seatOrderId], 
+references: [id], 
+onDelete: Cascade)
+[1;94m750 | [0m  
+[1;91mseatInsertType   
+SeatInsertType  
+@relation(fields: 
+[seatInsertTypeId], 
+references: [id])[0m
+[1;94m751 | [0m}
+[1;94m   | [0m
+
+Validation Error Count: 1
+[Context: validate]
+
+Prisma CLI Version : 
+5.22.0

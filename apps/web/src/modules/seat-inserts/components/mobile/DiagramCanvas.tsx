@@ -1,4 +1,5 @@
 import React from "react";
+import { resolveAssetUrl } from "../../../../utils/assetUrl";
 
 interface DiagramCanvasProps {
   pdfUrl: string;
@@ -32,8 +33,8 @@ export function DiagramCanvas({ pdfUrl, focusHotspot, children }: DiagramCanvasP
       setLoading(true);
       setError(null);
       
-      const apiBase = import.meta.env.VITE_API_URL.replace('/api', '');
-      const finalUrl = pdfUrl.startsWith('/') ? `${apiBase}${pdfUrl}` : pdfUrl;
+      const finalUrl = resolveAssetUrl(pdfUrl);
+      if (!finalUrl) return;
       console.log("Diagram URL:", finalUrl);
 
       try {

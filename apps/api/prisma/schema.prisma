@@ -123,6 +123,11 @@ model Garage {
   vendorOrders            VendorOrder[]
   vendorReceipts          VendorReceipt[]
 
+  // Phase 25 Additions
+  emailProfile            GarageEmailProfile?
+  outboundEmails          OutboundEmail[]
+  seatOrders              SeatOrder[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -167,6 +172,7 @@ model SeatInsertType {
   catalogAttachments     CatalogAttachment[]
   diagramHotspots        DiagramHotspot[]
   vendorOrderLines       VendorOrderLine[]
+  seatOrderLines         SeatOrderLine[] // Phase 25 Addition
   createdAt              DateTime               @default(now())
   updatedAt              DateTime               @updatedAt
 }
@@ -312,6 +318,13 @@ model User {
   replacementActivities ReplacementActivity[]
   disposalRecords       DisposalRecord[]
   vendorReceipts        VendorReceipt[]
+
+  // Phase 25 Additions
+  createdSeatOrders     SeatOrder[]         @relation("OrderCreator")
+  approvedSeatOrders    SeatOrderApproval[] @relation("OrderApprover")
+  receivedSeatOrders    SeatOrderReceipt[]  @relation("OrderReceiver")
+  uploadedSeatOrderAttachments SeatOrderAttachment[] @relation("OrderAttachmentUploader")
+
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
   tokenVersion          Int                    @default(0)
@@ -613,4 +626,186 @@ model RateLimit {
   key       String   @id
   points    Int      @default(0)
   expiresAt DateTime
+}
+
+// ─── Phase 25: Seat Inserts Order Centre & Email Management ───────────────
+
+enum SeatOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENDING
+  SENT
+  CONFIRMED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  INSTALLED 
+  CLOSED
+  CANCELLED
+}
+
+enum EmailStatus {
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  DELIVERED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model GarageEmailProfile {
+  id              String   @id @default(cuid())
+  garageId        String   @unique
+  fromName        String
+  fromEmail       String
+  replyToEmail    String
+  signatureHtml   String?
+  harveyToEmail   String
+  defaultCc       String?
+  defaultBcc      String?
+  providerType    String   @default("SMTP")
+  active          Boolean  @default(true)
+  
+  garage          Garage   @relation(fields: [garageId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model EmailTemplate {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  name             String
+  subjectTemplate  String
+  bodyHtmlTemplate String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model OutboundEmail {
+  id               String      @id @default(cuid())
+  garageId         String
+  to               String
+  cc               String?
+  bcc              String?
+  subject          String
+  bodyHtml         String
+  status           EmailStatus @default(QUEUED)
+  providerMessageId String?
+  errorMessage     String?
+  attempts         Int         @default(0)
+  lockedUntil      DateTime?   
+  templateCode     String      @default("SEAT_ORDER_HARVEY")
+  
+  garage           Garage      @relation(fields: [garageId], references: [id])
+  events           EmailAuditEvent[]
+  seatOrderId      String?
+  seatOrder        SeatOrder?  @relation(fields: [seatOrderId], references: [id])
+
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+model EmailAuditEvent {
+  id               String      @id @default(cuid())
+  emailId          String
+  status           EmailStatus
+  message          String?
+  providerResponse String?
+  
+  email            OutboundEmail @relation(fields: [emailId], references: [id])
+  createdAt        DateTime      @default(now())
+}
+
+model SeatOrder {
+  id              String          @id @default(cuid())
+  orderNumber     String          @unique
+  garageId        String
+  status          SeatOrderStatus @default(DRAFT)
+  totalCost       Float           @default(0)
+  totalQuantity   Int             @default(0)
+  notes           String?
+  
+  createdByUserId String
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  sentAt          DateTime?
+
+  garage          Garage          @relation(fields: [garageId], references: [id])
+  createdByUser   User            @relation("OrderCreator", fields: [createdByUserId], references: [id])
+  
+  outboundEmails  OutboundEmail[]
+
+  lines           SeatOrderLine[]
+  approvals       SeatOrderApproval[]
+  receipts        SeatOrderReceipt[]
+  attachments     SeatOrderAttachment[]
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model SeatOrderLine {
+  id               String          @id @default(cuid())
+  seatOrderId      String
+  seatInsertTypeId String
+  quantity         Int
+  unitCost         Float
+  description      String?         
+  
+  order            SeatOrder       @relation(fields: [seatOrderId], references: [id])
+  seatInsertType   SeatInsertType  @relation(fields: [seatInsertTypeId], references: [id])
+  receipts         SeatOrderReceiptLine[]
+}
+
+model SeatOrderApproval {
+  id               String          @id @default(cuid())
+  seatOrderId      String
+  approvedByUserId String
+  status           ApprovalStatus  @default(PENDING)
+  notes            String?
+  
+  order            SeatOrder       @relation(fields: [seatOrderId], references: [id], onDelete: Cascade)
+  approvedByUser   User            @relation("OrderApprover", fields: [approvedByUserId], references: [id])
+  createdAt        DateTime        @default(now())
+}
+
+model SeatOrderReceipt {
+  id               String          @id @default(cuid())
+  seatOrderId      String
+  receivedByUserId String
+  notes            String?
+  
+  order            SeatOrder       @relation(fields: [seatOrderId], references: [id])
+  receivedByUser   User            @relation("OrderReceiver", fields: [receivedByUserId], references: [id])
+  lines            SeatOrderReceiptLine[]
+  
+  createdAt        DateTime        @default(now())
+}
+
+model SeatOrderReceiptLine {
+  id               String           @id @default(cuid())
+  receiptId        String
+  seatOrderLineId  String
+  receivedQty      Int
+  
+  receipt          SeatOrderReceipt @relation(fields: [receiptId], references: [id])
+  seatOrderLine    SeatOrderLine    @relation(fields: [seatOrderLineId], references: [id])
+}
+
+model SeatOrderAttachment {
+  id               String          @id @default(cuid())
+  seatOrderId      String
+  fileUrl          String
+  fileName         String
+  uploadedByUserId String
+  
+  order            SeatOrder       @relation(fields: [seatOrderId], references: [id])
+  uploadedByUser   User            @relation("OrderAttachmentUploader", fields: [uploadedByUserId], references: [id])
+  
+  createdAt        DateTime        @default(now())
 }
