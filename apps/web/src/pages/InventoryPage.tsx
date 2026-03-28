@@ -7,6 +7,8 @@ import { AdjustInventoryModal } from "./AdjustInventoryModal";
 import { IssueInventoryModal } from "./IssueInventoryModal";
 import { canManage } from "../lib/rbac";
 import { CatalogAutocomplete } from "../components/CatalogAutocomplete";
+import { Button } from "../components/ui/Button";
+import { AlertTriangle, Download, SlidersHorizontal, ShoppingCart } from "lucide-react";
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
@@ -219,12 +221,28 @@ export function InventoryPage({ user }: { user?: any }) {
                     </td>
                     <td>{row.quantityReserved}</td>
                     <td>{row.binLocation ?? <span className="muted">—</span>}</td>
-                    <td style={{ display: "flex", gap: 8 }}>
+                    <td style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
                       {canManage(user, 'inventory') ? (
                         <>
-                          <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#dc2626" }} onClick={() => setIssueTarget(row)}>Issue</button>
-                          <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem" }} onClick={() => setReceiveTarget(row)}>Receive</button>
-                          <button style={{ width: "auto", padding: "4px 10px", fontSize: "0.8rem", background: "#374151" }} onClick={() => setAdjustTarget(row)}>Adjust</button>
+                          <Button size="sm" variant="danger" onClick={() => setIssueTarget(row)} title="Issue inventory">
+                            <AlertTriangle className="w-3.5 h-3.5" /> Issue
+                          </Button>
+                          <Button size="sm" variant="success" onClick={() => setReceiveTarget(row)} title="Receive stock">
+                            <Download className="w-3.5 h-3.5" /> Receive
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => setAdjustTarget(row)} title="Adjust quantity">
+                            <SlidersHorizontal className="w-3.5 h-3.5" /> Adjust
+                          </Button>
+                          <Button 
+                            size="sm"
+                            variant="primary" 
+                            title="Create procurement order"
+                            onClick={() => navigate("/procurement/seat-orders/new", { 
+                              state: { garageId: row.garage.id, item: row.seatInsertType } 
+                            })}
+                          >
+                            <ShoppingCart className="w-3.5 h-3.5" /> Order
+                          </Button>
                         </>
                       ) : (
                         <span className="muted" style={{ fontSize: "0.8rem" }}>View Only</span>

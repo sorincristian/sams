@@ -1,18 +1,33 @@
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, Save } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { api } from "../../../api";
 
 export function SeatOrderCreatePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [garages, setGarages] = useState<any[]>([]);
-  const [garageId, setGarageId] = useState("");
+  
+  const prefillGarageId = location.state?.garageId || "";
+  const [garageId, setGarageId] = useState(prefillGarageId);
   const [notes, setNotes] = useState("");
-  const [lines, setLines] = useState<any[]>([]);
+  
+  const prefillLine = location.state?.item ? [{
+    seatInsertTypeId: location.state.item.id,
+    quantity: 1,
+    unitCost: location.state.item.unitCost || 0,
+    description: location.state.item.description || "Prefilled Item",
+    partNumber: location.state.item.partNumber || "SKU"
+  }] : [];
+  const [lines, setLines] = useState<any[]>(prefillLine);
 
   useEffect(() => {
     api.get("/api/garages").then((res: any) => setGarages(res.data)).catch(console.error);
-  }, []);
+    
+    if (location.state) {
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const handleSave = async () => {
     if (!garageId) return alert("Select a garage");
