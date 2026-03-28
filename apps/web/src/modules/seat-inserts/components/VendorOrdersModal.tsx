@@ -52,8 +52,8 @@ export function VendorOrdersModal({ locationId, vendorId, onClose, onMutationSuc
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-card w-full max-w-5xl max-h-[90vh] rounded-xl shadow-lg border border-border flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
         
         {/* Header */}
         <div className="p-4 border-b border-border flex justify-between items-center bg-slate-50/50">
@@ -188,8 +188,8 @@ function CreateVendorOrderModal({ locationId, onClose, onSuccess }: any) {
   };
 
   return (
-    <div className="fixed inset-0 z-[60] bg-background/80 flex items-center justify-center p-4">
-      <div className="bg-card w-full max-w-md rounded-xl shadow-xl border border-border flex flex-col p-5">
+    <div className="fixed inset-0 z-[60] bg-slate-900/40 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-md rounded-xl shadow-2xl border border-slate-200 flex flex-col p-5">
         <h3 className="text-lg font-bold mb-4">Place Order</h3>
         
         <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">Vendor</label>

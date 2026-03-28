@@ -11,6 +11,7 @@ import { LoadingState } from '../components/ui/LoadingState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { DataTable } from '../components/ui/DataTable';
+import { Download } from 'lucide-react';
 
 // --- Domain logic ---
 interface SeatChangeItem {
@@ -30,6 +31,7 @@ export function SeatChangeReportPage() {
   const [data, setData] = useState<SeatChangeItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exportLoading, setExportLoading] = useState(false);
 
   const [periodType, setPeriodType] = useState<'Day' | 'Week' | 'Month'>('Day');
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -79,8 +81,12 @@ export function SeatChangeReportPage() {
     };
   }, [data]);
 
-  const handleExportCsv = () => {
+  const handleExportCsv = async () => {
     if (!data || data.length === 0) return;
+    setExportLoading(true);
+    
+    // Brief artificial generation tick to guarantee UX visibility
+    await new Promise(res => setTimeout(res, 500));
     
     const headers = ['Part Number', 'Description', 'Facility', 'Status', 'Quantity', 'Change Type', 'Changed By', 'Changed At', 'Notes'];
     const rows = data.map(item => [
@@ -118,6 +124,8 @@ export function SeatChangeReportPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    setExportLoading(false);
   };
 
   return (
@@ -126,13 +134,16 @@ export function SeatChangeReportPage() {
         title="Seat Change Report" 
         description="View created and updated seat inventory records over specific periods."
         actions={
-          <button 
+          <Button 
             onClick={handleExportCsv} 
             disabled={loading || !data || data.length === 0}
+            loading={exportLoading}
+            variant="primary"
             title={(!data || data.length === 0) ? "No data to export" : "Export CSV"}
           >
+            <Download className="w-5 h-5" />
             Export CSV
-          </button>
+          </Button>
         }
       />
 

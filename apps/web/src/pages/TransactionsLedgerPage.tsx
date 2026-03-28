@@ -1,6 +1,7 @@
 import React from "react";
 import { api } from "../api";
 import type { InventoryTransaction } from "@sams/types";
+import { CatalogAutocomplete } from "../components/CatalogAutocomplete";
 
 const TRANSACTION_TYPES = ["RECEIVE", "ISSUE", "ADJUST_IN", "ADJUST_OUT", "RETURN", "SCRAP", "TRANSFER_IN", "TRANSFER_OUT"];
 
@@ -39,19 +40,27 @@ function toDateInputValue(d: Date) {
 
 export function TransactionsLedgerPage() {
   const [rows, setRows] = React.useState<InventoryTransaction[]>([]);
+  const [catalogParts, setCatalogParts] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
   // Filters
   const [search, setSearch] = React.useState("");
+  const [selectedPartId, setSelectedPartId] = React.useState<string | null>(null);
   const [typeFilter, setTypeFilter] = React.useState("");
   const [garageFilter, setGarageFilter] = React.useState("");
   const [dateFrom, setDateFrom] = React.useState("");
   const [dateTo, setDateTo] = React.useState("");
 
   React.useEffect(() => {
-    api.get("/inventory/transactions")
-      .then((res) => setRows(res.data))
+    Promise.all([
+      api.get("/inventory/transactions"),
+      api.get("/v1/catalog")
+    ])
+      .then(([txRes, catRes]) => {
+        setRows(txRes.data);
+        setCatalogParts(catRes.data);
+      })
       .catch(() => setError("Failed to load transactions."))
       .finally(() => setLoading(false));
   }, []);
@@ -68,16 +77,22 @@ export function TransactionsLedgerPage() {
 
   const visible = React.useMemo(() => {
     let out = rows;
-    const q = search.toLowerCase().trim();
-    if (q) {
-      out = out.filter(
-        (tx) =>
-          tx.seatInsertType.partNumber.toLowerCase().includes(q) ||
-          tx.seatInsertType.description.toLowerCase().includes(q) ||
-          (tx.notes ?? "").toLowerCase().includes(q) ||
-          (tx.referenceId ?? "").toLowerCase().includes(q)
-      );
+    
+    if (selectedPartId) {
+      out = out.filter(tx => tx.seatInsertType.id === selectedPartId);
+    } else {
+      const q = search.toLowerCase().trim();
+      if (q) {
+        out = out.filter(
+          (tx) =>
+            tx.seatInsertType.partNumber.toLowerCase().includes(q) ||
+            tx.seatInsertType.description.toLowerCase().includes(q) ||
+            (tx.notes ?? "").toLowerCase().includes(q) ||
+            (tx.referenceId ?? "").toLowerCase().includes(q)
+        );
+      }
     }
+
     if (typeFilter) out = out.filter((tx) => tx.type === typeFilter);
     if (garageFilter) out = out.filter((tx) => tx.garage.id === garageFilter);
     if (dateFrom) out = out.filter((tx) => tx.createdAt >= dateFrom);
@@ -86,12 +101,12 @@ export function TransactionsLedgerPage() {
       out = out.filter((tx) => tx.createdAt <= end);
     }
     return out;
-  }, [rows, search, typeFilter, garageFilter, dateFrom, dateTo]);
+  }, [rows, search, selectedPartId, typeFilter, garageFilter, dateFrom, dateTo]);
 
-  const hasFilters = search || typeFilter || garageFilter || dateFrom || dateTo;
+  const hasFilters = search || selectedPartId || typeFilter || garageFilter || dateFrom || dateTo;
 
   function clearFilters() {
-    setSearch(""); setTypeFilter(""); setGarageFilter(""); setDateFrom(""); setDateTo("");
+    setSearch(""); setSelectedPartId(null); setTypeFilter(""); setGarageFilter(""); setDateFrom(""); setDateTo("");
   }
 
   const selectStyle: React.CSSProperties = {
@@ -105,12 +120,13 @@ export function TransactionsLedgerPage() {
 
       {/* Filters */}
       <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-        <input
-          type="text"
-          placeholder="Search part #, notes, reference…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: "1 1 200px", minWidth: 160 }}
+        <CatalogAutocomplete 
+          catalogParts={catalogParts}
+          queryLocal={search}
+          setQueryLocal={setSearch}
+          selectedPartId={selectedPartId}
+          setSelectedPartId={setSelectedPartId}
+          placeholder="Search part #, description, type…"
         />
 
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} style={selectStyle}>

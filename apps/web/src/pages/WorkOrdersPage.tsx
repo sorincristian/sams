@@ -2,6 +2,8 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { Bus, WorkOrder } from "@sams/types";
+import { Button } from "../components/ui/Button";
+import { Plus } from "lucide-react";
 
 export function WorkOrdersPage() {
   const navigate = useNavigate();
@@ -11,6 +13,7 @@ export function WorkOrdersPage() {
   const [issueDescription, setIssueDescription] = React.useState("");
   const [creating, setCreating] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
 
   async function load() {
@@ -40,6 +43,7 @@ export function WorkOrdersPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setSuccessMsg(null);
 
     if (!busId) {
       setError("Please select a bus.");
@@ -58,6 +62,8 @@ export function WorkOrdersPage() {
       const res = await api.post("/work-orders", payload);
       console.log("[WorkOrdersPage] created:", res.data);
       setIssueDescription("");
+      setSuccessMsg("Work order dispatched successfully!");
+      setTimeout(() => setSuccessMsg(null), 4000);
       await load();
     } catch (err: any) {
       console.error("[WorkOrdersPage] create failed:", err);
@@ -108,12 +114,23 @@ export function WorkOrdersPage() {
             </div>
 
             {error && (
-              <div style={{ color: "#ef4444", fontSize: "0.9rem" }}>{error}</div>
+              <div style={{ color: "#ef4444", fontSize: "0.9rem", padding: "10px 14px", background: "#fee2e2", border: "1px solid #fecaca", borderRadius: 8, fontWeight: 500 }}>
+                {error}
+              </div>
+            )}
+            
+            {successMsg && (
+              <div style={{ color: "#15803d", fontSize: "0.9rem", padding: "10px 14px", background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: 8, fontWeight: 500 }}>
+                {successMsg}
+              </div>
             )}
 
-            <button type="submit" disabled={creating} style={{ width: "auto" }}>
-              {creating ? "Creating..." : "Create Work Order"}
-            </button>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+              <Button type="submit" loading={creating} disabled={!busId || !issueDescription.trim()} variant="primary">
+                <Plus className="w-5 h-5 -ml-1 opacity-80" />
+                Create Work Order
+              </Button>
+            </div>
           </form>
         </div>
 
