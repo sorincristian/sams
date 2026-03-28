@@ -30,6 +30,12 @@ router.get("/items", seatInsertsController.getInserts.bind(seatInsertsController
 // POST /api/seat-inserts/:id/mark-dirty
 router.post("/:id/mark-dirty", seatInsertsController.markDirty.bind(seatInsertsController));
 
+// POST /api/seat-inserts/:id/dispose
+router.post("/:id/dispose", seatInsertsController.disposeInsert.bind(seatInsertsController));
+
+// POST /api/seat-inserts/:id/install
+router.post("/:id/install", seatInsertsController.installSeat.bind(seatInsertsController));
+
 // POST /api/seat-inserts/batches/send-to-vendor
 router.post("/batches/send-to-vendor", seatInsertsController.sendToVendor.bind(seatInsertsController));
 

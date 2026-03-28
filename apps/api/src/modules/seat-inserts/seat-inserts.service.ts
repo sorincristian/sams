@@ -275,12 +275,99 @@ export class SeatInsertsService {
    * (A) Mark Insert as DIRTY
    */
   async markDirty(id: string) {
-    return await prisma.seatInsert.update({
-      where: { id },
-      data: {
-        status: "DIRTY",
-        dirtyAt: new Date(),
-      },
+    return await prisma.$transaction(async (tx) => {
+      const insert = await tx.seatInsert.findUnique({ where: { id } });
+      if (!insert) throw new Error("Seat not found.");
+
+      const updated = await tx.seatInsert.update({
+        where: { id },
+        data: {
+          status: "DIRTY",
+          installedBusId: null,
+          dirtyAt: new Date(),
+        },
+      });
+
+      // If the seat was sitting on the shelf as usable stock, we must deduct it from bulk availability
+      if ((insert.status === "NEW" || insert.status === "RETURNED_FROM_VENDOR") && insert.seatInsertTypeId) {
+        const inv = await tx.inventoryItem.findFirst({
+           where: { garageId: insert.locationId, seatInsertTypeId: insert.seatInsertTypeId }
+        });
+        if (inv && inv.quantityOnHand > 0) {
+           await tx.inventoryItem.update({
+              where: { id: inv.id },
+              data: { quantityOnHand: inv.quantityOnHand - 1 }
+           });
+        }
+      }
+
+      return updated;
+    });
+  }
+
+  /**
+   * (A2) Dispose Seat from Shelf
+   */
+  async disposeInsert(params: { id: string; locationId: string; reason: string; notes?: string; userId?: string }) {
+    return await prisma.$transaction(async (tx) => {
+      let createdBy = params.userId;
+      if (!createdBy) {
+        const admin = await tx.user.findFirst();
+        createdBy = admin?.id || "system";
+      }
+
+      const insert = await tx.seatInsert.findUnique({ where: { id: params.id } });
+      if (!insert) throw new Error("Seat not found.");
+
+      const allowedStatuses = ["NEW", "RETURNED_FROM_VENDOR", "DIRTY"];
+      if (!allowedStatuses.includes(insert.status)) {
+        throw new Error(`Cannot dispose seat in status ${insert.status}.`);
+      }
+
+      const now = new Date();
+
+      const updated = await tx.seatInsert.update({
+        where: { id: params.id },
+        data: {
+          status: "DISPOSED",
+          installedBusId: null,
+          disposedAt: now,
+        },
+      });
+
+      if (insert.seatInsertTypeId) {
+        const inv = await tx.inventoryItem.findFirst({
+           where: { garageId: insert.locationId, seatInsertTypeId: insert.seatInsertTypeId }
+        });
+
+        if (inv && inv.quantity > 0) {
+           // It's leaving existence entirely - drop gross quantity
+           const updateData: any = { quantity: inv.quantity - 1 };
+           
+           // If it was previously sitting on the shelf exactly (not dirty), we must also drop quantityOnHand
+           if ((insert.status === "NEW" || insert.status === "RETURNED_FROM_VENDOR") && inv.quantityOnHand > 0) {
+             updateData.quantityOnHand = inv.quantityOnHand - 1;
+           }
+
+           await tx.inventoryItem.update({
+              where: { id: inv.id },
+              data: updateData
+           });
+        }
+      }
+
+      await tx.disposalRecord.create({
+        data: {
+           inventoryId: params.id,
+           locationId: params.locationId,
+           reason: (params.reason as any) || "OTHER",
+           createdBy,
+           disposedAt: now,
+           notes: params.notes,
+        }
+      });
+
+      return updated;
     });
   }
 
@@ -392,6 +479,7 @@ export class SeatInsertsService {
       });
 
       // Update inserts to RETURNED_FROM_VENDOR and immediately to NEW since it's back in inventory
+      const inserts = await tx.seatInsert.findMany({ where: { batchId: id } });
       await tx.seatInsert.updateMany({
         where: { batchId: id },
         data: {
@@ -400,47 +488,30 @@ export class SeatInsertsService {
         },
       });
 
+      // Synchronize aggregate quantityOnHand matching new returned stock
+      for (const insert of inserts) {
+         if (insert.seatInsertTypeId) {
+            const inventory = await tx.inventoryItem.findFirst({
+              where: { garageId: batch.garageId, seatInsertTypeId: insert.seatInsertTypeId }
+            });
+            if (inventory) {
+               await tx.inventoryItem.update({
+                  where: { id: inventory.id },
+                  data: { quantityOnHand: inventory.quantityOnHand + 1 }
+               });
+            } else {
+               await tx.inventoryItem.create({
+                  data: { garageId: batch.garageId, seatInsertTypeId: insert.seatInsertTypeId, quantityOnHand: 1, quantity: 1 }
+               });
+            }
+         }
+      }
+
       return updatedBatch;
     });
   }
 
-  /**
-   * (E) Dispose Insert
-   */
-  async disposeInsert(params: { id: string; locationId: string; reason: string; notes?: string; userId?: string }) {
-    return await prisma.$transaction(async (tx) => {
-      const now = new Date();
-      
-      let createdBy = params.userId;
-      if (!createdBy) {
-        // Fallback for isolated API calls
-        const admin = await tx.user.findFirst();
-        if (!admin) throw new Error("No generic user mapping available for disposal logging");
-        createdBy = admin.id;
-      }
-      
-      const insert = await tx.seatInsert.update({
-        where: { id: params.id },
-        data: {
-          status: "DISPOSED",
-          disposedAt: now,
-        },
-      });
 
-      const record = await tx.disposalRecord.create({
-        data: {
-          inventoryId: insert.id,
-          locationId: params.locationId,
-          reason: params.reason as any,
-          notes: params.notes,
-          disposedAt: now,
-          createdBy,
-        },
-      });
-
-      return record;
-    });
-  }
 
   /**
    * (F) Alert Actions
@@ -513,7 +584,7 @@ export class SeatInsertsService {
     return await prisma.$transaction(async (tx) => {
       const order = await tx.vendorOrder.findUnique({
         where: { id },
-        include: { lines: true }
+        include: { lines: { include: { seatInsertType: true } } }
       });
       if (!order) throw new Error("Order not found");
 
@@ -536,7 +607,20 @@ export class SeatInsertsService {
         if (newReceived > 0) partiallyReceived = true;
 
         if (line.receiveQuantity > 0) {
-           // increase inventory
+           // 1. auto-serialize the new inserts
+           const newInserts = Array.from({ length: line.receiveQuantity }).map(() => ({
+             seatInsertTypeId: orderLine.seatInsertTypeId,
+             vendorOrderLineId: line.lineId,
+             locationId: order.garageId,
+             status: "NEW" as const,
+             seatType: orderLine.seatInsertType?.componentType || "UNKNOWN",
+             color: "N/A",
+             hardwareCode: "N/A",
+             fleetType: "GENERIC"
+           }));
+           await tx.seatInsert.createMany({ data: newInserts });
+
+           // 2. increase aggregate bulk inventory
            const inventory = await tx.inventoryItem.findFirst({
              where: { garageId: order.garageId, seatInsertTypeId: orderLine.seatInsertTypeId }
            });
@@ -576,6 +660,116 @@ export class SeatInsertsService {
           receivedAt: fullyReceived ? now : order.receivedAt
         }
       });
+    });
+  }
+
+  // --- Bus Installation / Consumption --- //
+
+  async installSeat(params: { 
+    insertId: string; 
+    busId: string; 
+    workOrderId?: string; 
+    userId: string;
+    removedInsertId?: string;
+    removedDisposition?: "DIRTY" | "DISPOSED";
+    removedReason?: string;
+  }) {
+    return await prisma.$transaction(async (tx) => {
+      const insert = await tx.seatInsert.findUnique({ 
+        where: { id: params.insertId }, 
+        include: { location: true, seatInsertType: true } 
+      });
+      if (!insert) throw new Error("Seat not found.");
+      if (insert.status !== "NEW" && insert.status !== "RETURNED_FROM_VENDOR") {
+        throw new Error("Seat is not available for installation. Status must be NEW or RETURNED_FROM_VENDOR.");
+      }
+
+      const now = new Date();
+
+      // 1. Mark uniquely serialized seat as INSTALLED and bound to Bus
+      const updated = await tx.seatInsert.update({
+        where: { id: params.insertId },
+        data: { 
+          status: "INSTALLED", 
+          installedBusId: params.busId, 
+          installedAt: now 
+        }
+      });
+
+      // 2. Decrement aggregate bulk inventory
+      if (insert.seatInsertTypeId) {
+        const inv = await tx.inventoryItem.findFirst({ 
+          where: { garageId: insert.locationId, seatInsertTypeId: insert.seatInsertTypeId } 
+        });
+        if (inv && inv.quantityOnHand > 0) {
+          await tx.inventoryItem.update({
+            where: { id: inv.id },
+            data: { quantityOnHand: inv.quantityOnHand - 1 }
+          });
+        }
+      } else {
+        throw new Error("Cannot consume seat: physical Insert lacks a core SeatInsertType mapping.");
+      }
+
+      // 3. Atomically Handle the Removed Seat if flagged
+      if (params.removedInsertId) {
+         if (params.removedDisposition === "DISPOSED") {
+           await tx.seatInsert.update({
+             where: { id: params.removedInsertId },
+             data: { status: "DISPOSED", installedBusId: null, disposedAt: now }
+           });
+           
+           // Decrement gross ownership quantity ONLY when explicitly disposed
+           const oldInv = await tx.inventoryItem.findFirst({
+              where: { garageId: insert.locationId, seatInsertTypeId: insert.seatInsertTypeId }
+           });
+           if (oldInv && oldInv.quantity > 0) {
+              await tx.inventoryItem.update({ where: { id: oldInv.id }, data: { quantity: oldInv.quantity - 1 } });
+           }
+
+           await tx.disposalRecord.create({
+             data: {
+                inventoryId: params.removedInsertId,
+                locationId: insert.locationId,
+                reason: (params.removedReason as any) || "OTHER",
+                createdBy: params.userId,
+                disposedAt: now
+             }
+           });
+         } else {
+           // Default DIRTY (sent back to garage shelf for Reupholstery)
+           await tx.seatInsert.update({
+             where: { id: params.removedInsertId },
+             data: { status: "DIRTY", installedBusId: null, dirtyAt: now }
+           });
+           // Explicit ReplacementActivity triggers on the Old Seat removal
+           await tx.replacementActivity.create({
+             data: {
+               inventoryId: params.removedInsertId,
+               busId: params.busId,
+               locationId: insert.locationId,
+               reason: (params.removedReason as any) || "OTHER",
+               createdBy: params.userId,
+             }
+           });
+         }
+      }
+
+      // 4. Optionally write WorkOrder usage link for new seat
+      if (params.workOrderId) {
+         await tx.workOrderPartUsage.create({
+            data: {
+               workOrderId: params.workOrderId,
+               seatInsertTypeId: insert.seatInsertTypeId,
+               garageId: insert.locationId,
+               quantity: 1,
+               issuedByUserId: params.userId,
+               notes: `Serialized Seat Swap. Installed: ${params.insertId}` + (params.removedInsertId ? ` Removed: ${params.removedInsertId}` : '')
+            }
+         });
+      }
+
+      return updated;
     });
   }
 }

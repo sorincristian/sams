@@ -162,6 +162,7 @@ model SeatInsertType {
   inventoryItems         InventoryItem[]
   inventoryTransactions  InventoryTransaction[]
   workOrderPartUsages    WorkOrderPartUsage[]
+  seatInserts            SeatInsert[]
   busCompatibilities     BusCompatibility[]     @relation("SeatInsertBusCompat")
   catalogAttachments     CatalogAttachment[]
   diagramHotspots        DiagramHotspot[]
@@ -363,14 +364,18 @@ model SeatInsert {
   color          String
   hardwareCode   String
   fleetType      String
-  status         InventoryStatus @default(NEW)
-  locationId     String
-  batchId        String?
-  installedBusId String?
+  status            InventoryStatus @default(NEW)
+  locationId        String
+  batchId           String?
+  installedBusId    String?
+  seatInsertTypeId  String?
+  vendorOrderLineId String?
 
-  location     Garage             @relation(fields: [locationId], references: [id])
-  batch        ReupholsteryBatch? @relation(fields: [batchId], references: [id])
-  installedBus Bus?               @relation(fields: [installedBusId], references: [id])
+  location       Garage             @relation(fields: [locationId], references: [id])
+  batch          ReupholsteryBatch? @relation(fields: [batchId], references: [id])
+  installedBus   Bus?               @relation(fields: [installedBusId], references: [id])
+  seatInsertType SeatInsertType?    @relation(fields: [seatInsertTypeId], references: [id])
+  vendorOrderLine VendorOrderLine?  @relation(fields: [vendorOrderLineId], references: [id])
 
   replacementActivities ReplacementActivity[]
   disposalRecords       DisposalRecord[]
@@ -447,6 +452,7 @@ model VendorOrderLine {
 
   order          VendorOrder    @relation(fields: [orderId], references: [id])
   seatInsertType SeatInsertType @relation(fields: [seatInsertTypeId], references: [id])
+  seatInserts    SeatInsert[]
 }
 
 model VendorReceipt {

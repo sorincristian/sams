@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import type { WorkOrder, InventoryTransaction, InventoryRow } from "@sams/types";
 import { IssueInventoryModal } from "./IssueInventoryModal";
+import { InstallSeatModal } from "./InstallSeatModal";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString();
@@ -42,6 +43,7 @@ export function WorkOrderDetailPage() {
   const [wo, setWo] = React.useState<WorkOrder | null>(null);
   const [parts, setParts] = React.useState<InventoryTransaction[]>([]);
   const [issueTarget, setIssueTarget] = React.useState<InventoryRow | null>(null);
+  const [showInstallSeat, setShowInstallSeat] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
   const [transitioning, setTransitioning] = React.useState<WOStatus | null>(null);
   const [error, setError] = React.useState<string | null>(null);
@@ -88,6 +90,7 @@ export function WorkOrderDetailPage() {
 
   function handleIssueDone() {
     setIssueTarget(null);
+    setShowInstallSeat(false);
     void load();
   }
 
@@ -195,12 +198,20 @@ export function WorkOrderDetailPage() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
           <h3 style={{ margin: 0 }}>Parts Issued</h3>
           {!isLocked && (
-            <button
-              style={{ width: "auto", padding: "6px 14px", background: "#dc2626" }}
-              onClick={() => setIssueTarget({ __prefilledWorkOrderId: id } as any)}
-            >
-              + Issue Part
-            </button>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                style={{ width: "auto", padding: "6px 14px", background: "#10b981" }}
+                onClick={() => setShowInstallSeat(true)}
+              >
+                + Install Seat Swap
+              </button>
+              <button
+                style={{ width: "auto", padding: "6px 14px", background: "#dc2626" }}
+                onClick={() => setIssueTarget({ __prefilledWorkOrderId: id } as any)}
+              >
+                + Issue Generic Part
+              </button>
+            </div>
           )}
           {isLocked && currentStatus === "COMPLETED" && (
             <span className="muted" style={{ fontSize: "0.82rem" }}>Parts issuance locked on completed WOs</span>
@@ -273,6 +284,14 @@ export function WorkOrderDetailPage() {
           item={(issueTarget as any).__prefilledWorkOrderId ? null : issueTarget}
           prefilledWorkOrderId={id}
           onClose={() => setIssueTarget(null)}
+          onDone={handleIssueDone}
+        />
+      )}
+
+      {showInstallSeat && id && (
+        <InstallSeatModal
+          workOrderId={id}
+          onClose={() => setShowInstallSeat(false)}
           onDone={handleIssueDone}
         />
       )}

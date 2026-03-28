@@ -160,8 +160,30 @@ export class SeatInsertsController {
         reason: z.string(),
         notes: z.string().optional(),
       }).parse(req.body);
-      // Try resolving user from req object if auth middleware applied, else pass undefined for fallback logic
       const data = await seatInsertsService.disposeInsert({ id: req.params.id as string, userId: (req as any).user?.id, ...parsed });
+      res.json({ success: true, data });
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  }
+
+  async installSeat(req: Request, res: Response) {
+    try {
+      const parsed = z.object({
+        busId: z.string(),
+        workOrderId: z.string().optional(),
+        removedInsertId: z.string().optional(),
+        removedDisposition: z.enum(["DIRTY", "DISPOSED"]).optional(),
+        removedReason: z.string().optional()
+      }).parse(req.body);
+      
+      const data = await seatInsertsService.installSeat({
+        insertId: req.params.id as string,
+        busId: parsed.busId,
+        workOrderId: parsed.workOrderId,
+        userId: (req as any).user?.id || 'system',
+        removedInsertId: parsed.removedInsertId,
+        removedDisposition: parsed.removedDisposition,
+        removedReason: parsed.removedReason
+      });
       res.json({ success: true, data });
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   }
