@@ -89,7 +89,7 @@ export function LoginPage() {
             autoComplete="current-password"
           />
 
-          <div className="flex justify-end w-full mb-6 -mt-2">
+          <div className="flex justify-end w-full mb-6 -mt-2 relative z-10 pointer-events-auto">
             <Link to="/forgot-password" className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors select-none outline-none">
               Forgot password?
             </Link>
