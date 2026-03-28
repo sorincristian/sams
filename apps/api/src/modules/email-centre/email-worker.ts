@@ -1,16 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import nodemailer from "nodemailer";
 
 const prisma = new PrismaClient() as any;
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  auth: {
-    user: process.env.SMTP_USER || 'mock_user',
-    pass: process.env.SMTP_PASS || 'mock_pass'
-  }
-});
 
 // Exact backoff ladder
 const BACKOFF_MS = [
@@ -51,18 +41,40 @@ export async function processOutboundEmails() {
     for (const email of unfulfilled) {
       const profile = email.garage?.emailProfile;
       try {
-        const mailOptions: any = {
-          from: profile ? `"${profile.fromName}" <${profile.fromEmail}>` : process.env.SMTP_FROM,
-          to: email.to,
+        if (!process.env.RESEND_API_KEY) {
+          throw new Error("Missing RESEND_API_KEY environment variable required for Resend.");
+        }
+        
+        const fromAddress = profile ? `"${profile.fromName}" <${profile.fromEmail}>` : process.env.SMTP_FROM;
+        if (!fromAddress) {
+          throw new Error("Missing Sender (From) profile or system default.");
+        }
+
+        const resendPayload = {
+          from: fromAddress,
+          to: email.to.split(",").map((s: string) => s.trim()),
           subject: email.subject,
           html: email.bodyHtml,
+          cc: email.cc ? email.cc.split(",").map((s: string) => s.trim()) : undefined,
+          bcc: email.bcc ? email.bcc.split(",").map((s: string) => s.trim()) : undefined,
+          reply_to: profile?.replyToEmail || undefined
         };
-        if (email.cc) mailOptions.cc = email.cc;
-        if (email.bcc) mailOptions.bcc = email.bcc;
-        if (profile?.replyToEmail) mailOptions.replyTo = profile.replyToEmail;
 
-        const info = await transporter.sendMail(mailOptions);
-        const providerMessageId = info.messageId || 'MOCK_ID';
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.RESEND_API_KEY || "mock_key"}`
+          },
+          body: JSON.stringify(resendPayload)
+        });
+
+        const info = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(`Resend API Error: ${info.message || JSON.stringify(info)}`);
+        }
+
+        const providerMessageId = info.id || 'MOCK_ID';
 
         await prisma.$transaction(async (tx: any) => {
           // Success Event
@@ -70,7 +82,7 @@ export async function processOutboundEmails() {
             data: {
               emailId: email.id,
               status: "SENT" as any,
-              message: "Sent via SMTP",
+              message: "Sent via Resend",
               providerResponse: JSON.stringify(info)
             }
           });
