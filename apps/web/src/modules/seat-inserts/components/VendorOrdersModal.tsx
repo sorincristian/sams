@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, PackagePlus, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { api } from "../../../api";
+import { CatalogAutocomplete } from "../../../components/CatalogAutocomplete";
 
 interface VendorOrdersModalProps {
   locationId: string;
@@ -62,14 +63,12 @@ export function VendorOrdersModal({ locationId, vendorId, onClose, onMutationSuc
             <p className="text-xs text-muted-foreground mt-1">Manage replacements and new stock from active vendors.</p>
           </div>
           <div className="flex items-center gap-3">
-            {locationId && (
-              <button 
-                onClick={() => setIsCreating(true)}
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold text-sm flex items-center gap-2 shadow-sm hover:bg-primary/90 transition-colors"
-              >
-                <PackagePlus className="w-4 h-4" /> New Order
-              </button>
-            )}
+            <button 
+              onClick={() => setIsCreating(true)}
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-md font-semibold text-sm flex items-center gap-2 shadow-sm hover:bg-primary/90 transition-colors"
+            >
+              <PackagePlus className="w-4 h-4" /> New Order
+            </button>
             <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-lg text-slate-500 transition-colors">
               <X className="w-5 h-5" />
             </button>
@@ -114,7 +113,7 @@ export function VendorOrdersModal({ locationId, vendorId, onClose, onMutationSuc
                         <div className="flex flex-col gap-1 w-full mx-auto">
                           {order.lines.map((l: any) => (
                              <div key={l.id} className="flex justify-between text-xs items-center gap-4 bg-white border border-border px-2 py-1 rounded">
-                               <span className="font-medium text-slate-700 truncate">{l.seatInsertType?.name || "Insert"}</span>
+                               <span className="font-medium text-slate-700 truncate">{l.seatInsertType ? `${l.seatInsertType.partNumber} - ${l.seatInsertType.description}` : "Insert"}</span>
                                <span className="font-mono">{l.quantityReceived}/{l.quantityOrdered}</span>
                              </div>
                           ))}
@@ -138,7 +137,7 @@ export function VendorOrdersModal({ locationId, vendorId, onClose, onMutationSuc
         </div>
       </div>
       
-      {isCreating && locationId && (
+      {isCreating && (
         <CreateVendorOrderModal 
           locationId={locationId}
           onClose={() => setIsCreating(false)}
@@ -157,30 +156,44 @@ function CreateVendorOrderModal({ locationId, onClose, onSuccess }: any) {
   const [vendorId, setVendorId] = useState("");
   const [expectedReturnDate, setExpectedReturnDate] = useState("");
   const [vendors, setVendors] = useState<any[]>([]);
-  const [insertTypes, setInsertTypes] = useState<any[]>([]);
+  const [catalogParts, setCatalogParts] = useState<any[]>([]);
+  const [garages, setGarages] = useState<any[]>([]);
+  const [selectedGarageId, setSelectedGarageId] = useState(locationId || "");
   
-  const [items, setItems] = useState<{seatInsertTypeId: string, quantity: number}[]>([{seatInsertTypeId: "", quantity: 1}]);
+  const [items, setItems] = useState<{seatInsertTypeId: string, quantity: number, queryLocal: string}[]>([{seatInsertTypeId: "", quantity: 1, queryLocal: ""}]);
 
   useEffect(() => {
     api.get("/seat-inserts/vendors").then(res => {
       setVendors(res.data);
-      if (res.data.length === 1) setVendorId(res.data[0].id);
+      // Hardcode Harvey Shop default rule if explicitly matched, else use first active
+      const harvey = res.data.find((v: any) => v.name.toLowerCase().includes("harvey"));
+      if (harvey) setVendorId(harvey.id);
+      else if (res.data.length > 0) setVendorId(res.data[0].id);
     }).catch(console.error);
 
-    api.get("/seat-inserts/types").then(res => setInsertTypes(res.data)).catch(console.error);
-  }, []);
+    api.get("/v1/catalog").then(res => setCatalogParts(res.data)).catch(console.error);
+    
+    if (!locationId) {
+       api.get("/garages").then(res => {
+         setGarages(res.data);
+         if (res.data.length > 0) setSelectedGarageId(res.data[0].id);
+       }).catch(console.error);
+    }
+  }, [locationId]);
 
   const handleSubmit = async () => {
     try {
       const validItems = items.filter(i => i.seatInsertTypeId && i.quantity > 0);
-      if (validItems.length === 0) throw new Error("Add at least one item.");
+      if (validItems.length === 0) throw new Error("Add at least one valid part line with quantity.");
+      if (!selectedGarageId) throw new Error("A target Garage must be specified.");
       
       await api.post("/seat-inserts/vendor-orders", {
-        garageId: locationId,
+        garageId: selectedGarageId,
         vendorId,
         expectedDeliveryDate: expectedReturnDate,
-        items: validItems
+        items: validItems.map(item => ({ seatInsertTypeId: item.seatInsertTypeId, quantity: item.quantity }))
       });
+      alert("Order SUBMITTED successfully.");
       onSuccess();
     } catch(e: any) {
       alert("Failed to create order: " + e.message);
@@ -204,6 +217,22 @@ function CreateVendorOrderModal({ locationId, onClose, onSuccess }: any) {
           ))}
         </select>
         
+        {!locationId && (
+          <>
+            <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">Receiving Garage</label>
+            <select 
+              className="w-full border border-input bg-background px-3 py-2 rounded-md mb-4 text-sm" 
+              value={selectedGarageId} 
+              onChange={e => setSelectedGarageId(e.target.value)} 
+            >
+              <option value="">Select Garage...</option>
+              {garages.map(g => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </>
+        )}
+        
         <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">Expected Delivery</label>
         <input 
           type="date"
@@ -213,18 +242,28 @@ function CreateVendorOrderModal({ locationId, onClose, onSuccess }: any) {
         />
         
         <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">Order Lines</label>
-        <div className="space-y-2 mb-6 max-h-[30vh] overflow-y-auto">
+        <div className="space-y-3 mb-6 max-h-[30vh] overflow-y-auto pr-2 pb-14">
           {items.map((line, i) => (
-             <div key={i} className="flex gap-2">
-               <select className="flex-1 border px-2 py-1 rounded text-sm" value={line.seatInsertTypeId} onChange={e => {
-                 const newItems = [...items];
-                 newItems[i].seatInsertTypeId = e.target.value;
-                 setItems(newItems);
-               }}>
-                 <option value="">Select Insert Type...</option>
-                 {insertTypes.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-               </select>
-               <input type="number" min="1" className="w-20 border px-2 py-1 rounded text-sm" value={line.quantity} onChange={e => {
+             <div key={i} className="flex gap-2 items-start relative overflow-visible z-10" style={{ zIndex: 50 - i }}>
+               <div className="flex-1 max-w-[calc(100%-8rem)]">
+                 <CatalogAutocomplete 
+                   catalogParts={catalogParts}
+                   queryLocal={line.queryLocal}
+                   setQueryLocal={(val) => {
+                     const newItems = [...items];
+                     newItems[i].queryLocal = val;
+                     setItems(newItems);
+                   }}
+                   selectedPartId={line.seatInsertTypeId}
+                   setSelectedPartId={(id) => {
+                     const newItems = [...items];
+                     newItems[i].seatInsertTypeId = id || "";
+                     setItems(newItems);
+                   }}
+                   placeholder="Search exact part number..."
+                 />
+               </div>
+               <input type="number" min="1" className="w-20 border px-2 py-1.5 rounded text-sm h-10" value={line.quantity} onChange={e => {
                  const newItems = [...items];
                  newItems[i].quantity = parseInt(e.target.value) || 0;
                  setItems(newItems);
@@ -235,7 +274,7 @@ function CreateVendorOrderModal({ locationId, onClose, onSuccess }: any) {
                }} disabled={items.length === 1} className="p-1 px-2 text-red-500 hover:bg-red-50 rounded disabled:opacity-50">X</button>
              </div>
           ))}
-          <button onClick={() => setItems([...items, {seatInsertTypeId: "", quantity: 1}])} className="text-sm font-medium text-blue-600 hover:underline">+ Add Line</button>
+          <button onClick={() => setItems([...items, {seatInsertTypeId: "", quantity: 1, queryLocal: ""}])} className="text-sm font-medium text-blue-600 hover:underline cursor-pointer">+ Add Line</button>
         </div>
 
         <div className="flex gap-2 justify-end">
