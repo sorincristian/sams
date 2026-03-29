@@ -196,17 +196,18 @@ export function InstallSeatModal({ workOrderId, onClose, onDone }: Props) {
 
 const selectStyle: React.CSSProperties = {
   width: "100%",
-  background: "#1f2937",
-  color: "#f9fafb",
-  border: "1px solid #4b5563",
+  background: "#0f172a",
+  color: "#ffffff",
+  border: "1px solid #334155",
   borderRadius: 6,
   padding: "8px 10px",
+  outline: "none"
 };
 
 const overlayStyle: React.CSSProperties = {
   position: "fixed",
   inset: 0,
-  background: "rgba(0,0,0,0.7)",
+  background: "rgba(15, 23, 42, 0.95)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -214,8 +215,8 @@ const overlayStyle: React.CSSProperties = {
 };
 
 const modalStyle: React.CSSProperties = {
-  background: "#1f2937",
-  border: "1px solid #374151",
+  background: "#0f172a",
+  border: "1px solid #334155",
   borderRadius: 12,
   padding: 24,
   width: "100%",

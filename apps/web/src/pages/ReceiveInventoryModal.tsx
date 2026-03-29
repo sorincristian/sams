@@ -55,7 +55,7 @@ export function ReceiveInventoryModal({ item, onClose, onDone }: Props) {
               value={quantity}
               onChange={(e) => setQuantity(Number(e.target.value))}
               required
-              style={{ width: "100%" }}
+              className="w-full bg-[#0f172a] text-white border border-[#334155] rounded-md p-2 placeholder-slate-400 outline-none focus:border-blue-500"
             />
           </label>
           <label>
@@ -65,14 +65,14 @@ export function ReceiveInventoryModal({ item, onClose, onDone }: Props) {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="e.g. PO #12345, vendor delivery"
-              style={{ width: "100%" }}
+              className="w-full bg-[#0f172a] text-white border border-[#334155] rounded-md p-2 placeholder-slate-400 outline-none focus:border-blue-500"
             />
           </label>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <button type="button" style={{ width: "auto", background: "#374151" }} onClick={onClose}>
+            <button type="button" className="px-4 py-2 bg-slate-800 text-white rounded hover:bg-slate-700 font-semibold" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" style={{ width: "auto" }} disabled={loading}>
+            <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold" disabled={loading}>
               {loading ? "Saving..." : "Confirm Receive"}
             </button>
           </div>
@@ -85,7 +85,7 @@ export function ReceiveInventoryModal({ item, onClose, onDone }: Props) {
 const overlayStyle: React.CSSProperties = {
   position: "fixed",
   inset: 0,
-  background: "rgba(0,0,0,0.6)",
+  background: "rgba(15, 23, 42, 0.95)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
@@ -93,8 +93,8 @@ const overlayStyle: React.CSSProperties = {
 };
 
 const modalStyle: React.CSSProperties = {
-  background: "#1f2937",
-  border: "1px solid #374151",
+  background: "#0f172a",
+  border: "1px solid #334155",
   borderRadius: 10,
   padding: 28,
   width: "100%",

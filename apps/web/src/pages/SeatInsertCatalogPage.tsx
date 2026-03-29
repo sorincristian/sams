@@ -101,24 +101,24 @@ function PartModal({ initial, onClose, onSaved }: {
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <label><div style={labelStyle}>Part Number *</div>
-              <input className="placeholder:text-slate-400" value={form.partNumber} onChange={(e) => set("partNumber", e.target.value)} required style={{ width: "100%" }} /></label>
+              <input className="placeholder-slate-400" value={form.partNumber} onChange={(e) => set("partNumber", e.target.value)} required style={inputStyle} /></label>
             <label><div style={labelStyle}>Vendor</div>
-              <input className="placeholder:text-slate-400" value={form.vendor} onChange={(e) => set("vendor", e.target.value)} style={{ width: "100%" }} /></label>
+              <input className="placeholder-slate-400" value={form.vendor} onChange={(e) => set("vendor", e.target.value)} style={inputStyle} /></label>
           </div>
           <label><div style={labelStyle}>Description *</div>
-            <input className="placeholder:text-slate-400" value={form.description} onChange={(e) => set("description", e.target.value)} required style={{ width: "100%" }} /></label>
+            <input className="placeholder-slate-400" value={form.description} onChange={(e) => set("description", e.target.value)} required style={inputStyle} /></label>
           <label><div style={labelStyle}>Compatible Bus Models</div>
-            <input className="placeholder:text-slate-400" value={form.compatibleBusModels} onChange={(e) => set("compatibleBusModels", e.target.value)} style={{ width: "100%" }} /></label>
+            <input className="placeholder-slate-400" value={form.compatibleBusModels} onChange={(e) => set("compatibleBusModels", e.target.value)} style={inputStyle} /></label>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
             <label><div style={labelStyle}>Min Stock</div>
-              <input className="placeholder:text-slate-400" type="number" min={0} value={form.minStockLevel} onChange={(e) => set("minStockLevel", Number(e.target.value))} style={{ width: "100%" }} /></label>
+              <input className="placeholder-slate-400" type="number" min={0} value={form.minStockLevel} onChange={(e) => set("minStockLevel", Number(e.target.value))} style={inputStyle} /></label>
             <label><div style={labelStyle}>Reorder At</div>
-              <input className="placeholder:text-slate-400" type="number" min={0} value={form.reorderPoint} onChange={(e) => set("reorderPoint", Number(e.target.value))} style={{ width: "100%" }} /></label>
+              <input className="placeholder-slate-400" type="number" min={0} value={form.reorderPoint} onChange={(e) => set("reorderPoint", Number(e.target.value))} style={inputStyle} /></label>
             <label><div style={labelStyle}>Unit Cost ($)</div>
-              <input className="placeholder:text-slate-400" type="number" min={0} step={0.01} value={form.unitCost} onChange={(e) => set("unitCost", Number(e.target.value))} style={{ width: "100%" }} /></label>
+              <input className="placeholder-slate-400" type="number" min={0} step={0.01} value={form.unitCost} onChange={(e) => set("unitCost", Number(e.target.value))} style={inputStyle} /></label>
           </div>
           <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", color: "#f1f5f9" }}>
-            <input className="placeholder:text-slate-400" type="checkbox" checked={form.active} onChange={(e) => set("active", e.target.checked)} />
+            <input className="placeholder-slate-400" type="checkbox" checked={form.active} onChange={(e) => set("active", e.target.checked)} />
             <span>Active</span>
           </label>
           <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
@@ -333,8 +333,8 @@ export function SeatInsertCatalogPage() {
   function handleSaved() { setEditing(null); load(); }
 
   const selectStyle: React.CSSProperties = {
-    background: "#111827", color: "#f9fafb", border: "1px solid #374151",
-    borderRadius: 6, padding: "7px 10px",
+    background: "#0f172a", color: "#ffffff", border: "1px solid #334155",
+    borderRadius: 6, padding: "7px 10px", outline: "none"
   };
 
   return (
@@ -487,5 +487,6 @@ export function SeatInsertCatalogPage() {
 }
 
 const labelStyle: React.CSSProperties = { marginBottom: 4, fontWeight: 600, fontSize: "0.85rem", color: "#f1f5f9" };
-const overlayStyle: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 };
-const modalStyle: React.CSSProperties = { background: "#1f2937", border: "1px solid #374151", borderRadius: 10, padding: 28, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" };
+const overlayStyle: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.95)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 };
+const modalStyle: React.CSSProperties = { background: "#0f172a", border: "1px solid #334155", borderRadius: 10, padding: 28, width: "100%", maxWidth: 600, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" };
+const inputStyle: React.CSSProperties = { width: "100%", background: "#0f172a", color: "#ffffff", border: "1px solid #334155", padding: "8px", borderRadius: 6, outline: "none" };

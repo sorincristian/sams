@@ -97,7 +97,7 @@ export function OperationsModal({ locationId, locationName, onClose, onMutationS
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-[#0f172a]/95 flex items-center justify-center p-4">
       <div className="bg-card w-full max-w-4xl max-h-[90vh] rounded-xl shadow-lg border border-border flex flex-col overflow-hidden">
         
         {/* Header */}
@@ -217,7 +217,7 @@ function CreateBatchForm({ onCancel, onSubmit, count }: any) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[60] bg-background/80 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] bg-[#0f172a]/95 flex items-center justify-center p-4">
       <div className="bg-card w-full max-w-sm rounded-xl shadow-xl border border-border flex flex-col p-5">
         <h3 className="text-lg font-bold mb-4">Create Reupholstery Batch</h3>
         <p className="text-sm text-slate-500 mb-4">Packing {count} items for external processing.</p>
@@ -225,7 +225,7 @@ function CreateBatchForm({ onCancel, onSubmit, count }: any) {
         <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">Vendor</label>
         <select 
           autoFocus
-          className="w-full border border-input bg-background px-3 py-2 rounded-md mb-4 text-sm" 
+          className="w-full bg-[#0f172a] text-white border border-[#334155] px-3 py-2 rounded-md mb-4 text-sm outline-none focus:border-blue-500" 
           value={vendorId} 
           onChange={e => setVendorId(e.target.value)} 
         >
@@ -238,7 +238,7 @@ function CreateBatchForm({ onCancel, onSubmit, count }: any) {
         <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">Expected Return</label>
         <input 
           type="date"
-          className="w-full border border-input bg-background px-3 py-2 rounded-md mb-6 text-sm" 
+          className="w-full bg-[#0f172a] text-white border border-[#334155] px-3 py-2 rounded-md mb-6 text-sm outline-none focus:border-blue-500" 
           value={expectedReturnDate} 
           onChange={e => setExpectedReturnDate(e.target.value)} 
         />
@@ -273,7 +273,7 @@ function DisposeForm({ onCancel, onSubmit, count }: any) {
         
         <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">Reason</label>
         <select 
-          className="w-full border border-input bg-background px-3 py-2 rounded-md mb-4 text-sm" 
+          className="w-full bg-[#0f172a] text-white border border-[#334155] px-3 py-2 rounded-md mb-4 text-sm outline-none focus:border-blue-500" 
           value={reason} 
           onChange={e => setReason(e.target.value)}
         >
@@ -286,7 +286,7 @@ function DisposeForm({ onCancel, onSubmit, count }: any) {
         
         <label className="text-xs font-semibold uppercase text-slate-500 mb-1 block">Notes (Optional)</label>
         <textarea 
-          className="w-full border border-input bg-background px-3 py-2 rounded-md mb-6 text-sm resize-none" 
+          className="w-full bg-[#0f172a] text-white border border-[#334155] placeholder-slate-400 px-3 py-2 rounded-md mb-6 text-sm resize-none outline-none focus:border-blue-500" 
           rows={3}
           value={notes} 
           onChange={e => setNotes(e.target.value)} 
