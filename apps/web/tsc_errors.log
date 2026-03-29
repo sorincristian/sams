@@ -1,0 +1,2 @@
+﻿src/modules/seat-orders/pages/SeatOrderDetailPage.tsx(305,74): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+src/modules/seat-orders/pages/SeatOrderDetailPage.tsx(306,71): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?

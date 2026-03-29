@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useEffect, useCallback, useMemo } from "react";
 import { api } from "../api";
 import type { InventoryRow, InventoryTransactionType } from "@sams/types";
 import { CatalogAutocomplete } from "../components/CatalogAutocomplete";
+import { MinusCircle, X, Loader2 } from "lucide-react";
+import { Button } from "../components/ui/Button";
 
 interface WorkOrder {
   id: string;
@@ -23,18 +25,17 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
   const [loadingWOs, setLoadingWOs] = React.useState(true);
   const [loadingItems, setLoadingItems] = React.useState(!initialItem);
 
-  // selected state
   const [selectedWO, setSelectedWO] = React.useState(prefilledWorkOrderId ?? "");
   const [selectedItemId, setSelectedItemId] = React.useState(initialItem?.id ?? "");
-  const [quantity, setQuantity] = React.useState(1);
+  const [quantity, setQuantity] = React.useState("1");
   const [notes, setNotes] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [queryLocal, setQueryLocal] = React.useState("");
 
-  // Resolved item (from picker or prop)
+  const parsedQuantity = Number(quantity || 0);
   const resolvedItem = initialItem ?? inventoryItems.find((i) => i.id === selectedItemId) ?? null;
-  const projectedQOH = resolvedItem ? resolvedItem.quantityOnHand - quantity : null;
+  const projectedQOH = resolvedItem ? resolvedItem.quantityOnHand - parsedQuantity : null;
 
   React.useEffect(() => {
     api.get("/work-orders")
@@ -59,9 +60,9 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
         })
         .finally(() => setLoadingItems(false));
     }
-  }, []);
+  }, [initialItem, prefilledWorkOrderId, selectedWO]);
 
-  const mappedCatalogParts = React.useMemo(() => {
+  const mappedCatalogParts = useMemo(() => {
     return inventoryItems.map(item => ({
       id: item.id,
       partNumber: item.seatInsertType.partNumber,
@@ -71,23 +72,28 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
     }));
   }, [inventoryItems]);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
+  const handleSubmit = useCallback(async (e?: React.FormEvent) => {
+    if (loading) return;
+    if (e) e.preventDefault();
+    if (workOrders.length === 0) {
+      setError("No open work orders available.");
+      return;
+    }
     if (!selectedWO) { setError("Please select a work order."); return; }
     if (!resolvedItem) { setError("Please select an inventory item."); return; }
-    if (quantity < 1) { setError("Quantity must be at least 1."); return; }
+    if (parsedQuantity < 1) { setError("Quantity must be at least 1."); return; }
     if (projectedQOH !== null && projectedQOH < 0) {
-      setError(`Cannot issue ${quantity} — only ${resolvedItem.quantityOnHand} on hand.`);
+      setError(`Cannot issue ${parsedQuantity} — only ${resolvedItem.quantityOnHand} on hand.`);
       return;
     }
 
     setLoading(true);
+    setError(null);
     try {
       await api.post("/inventory/transaction", {
         inventoryItemId: resolvedItem.id,
         type: "ISSUE" as InventoryTransactionType,
-        quantity,
+        quantity: parsedQuantity,
         notes: notes.trim() || undefined,
         referenceType: "WORK_ORDER",
         referenceId: selectedWO,
@@ -95,152 +101,191 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
       onDone();
     } catch (err: any) {
       setError(err?.response?.data?.message ?? "Transaction failed.");
-    } finally {
       setLoading(false);
     }
-  }
+  }, [selectedWO, resolvedItem, parsedQuantity, projectedQOH, notes, onDone]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "TEXTAREA") {
+        e.preventDefault();
+        handleSubmit();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, handleSubmit]);
 
   return (
-    <div style={overlayStyle}>
-      <div style={modalStyle}>
-        <h3 style={{ marginBottom: 4 }}>Issue Parts</h3>
-
-        {resolvedItem && (
-          <p className="muted" style={{ marginBottom: 16 }}>
-            {resolvedItem.seatInsertType.partNumber} — {resolvedItem.seatInsertType.description}
-            <br />Garage: {resolvedItem.garage.name}
-            <br />Current on hand: <strong>{resolvedItem.quantityOnHand}</strong>
-          </p>
-        )}
-
-        {error && <div style={{ color: "#ef4444", marginBottom: 12 }}>{error}</div>}
-
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* Inventory item picker — only shown when not pre-selected */}
-          {!initialItem && (
-            <label>
-              <div style={{ marginBottom: 4, fontWeight: 600 }}>Inventory Item</div>
-              {loadingItems ? (
-                <div className="muted">Loading inventory...</div>
-              ) : (
-                <CatalogAutocomplete
-                  catalogParts={mappedCatalogParts}
-                  queryLocal={queryLocal}
-                  setQueryLocal={setQueryLocal}
-                  selectedPartId={selectedItemId}
-                  setSelectedPartId={(id) => setSelectedItemId(id || "")}
-                  placeholder="Search parts by number, description, or garage..."
-                />
-              )}
-            </label>
-          )}
-
-          {/* Work Order picker */}
-          <label>
-            <div style={{ marginBottom: 4, fontWeight: 600 }}>Work Order</div>
-            {prefilledWorkOrderId ? (
-              <div style={{ padding: "8px 10px", background: "#111827", borderRadius: 6, color: "#9ca3af", fontSize: "0.9rem" }}>
-                {workOrders.find((wo) => wo.id === prefilledWorkOrderId)?.workOrderNumber ?? prefilledWorkOrderId}
-                <span style={{ marginLeft: 8, fontSize: "0.75rem" }}>(pre-selected)</span>
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6 bg-[#020617]/75 backdrop-blur-[10px]">
+      <div 
+        className="bg-gradient-to-b from-[#1e293b] to-[#0f172a] rounded-[24px] flex flex-col relative"
+        style={{
+          width: "min(92vw, 720px)",
+          border: "1px solid rgba(148, 163, 184, 0.16)",
+          boxShadow: "0 24px 80px rgba(0, 0, 0, 0.45)",
+          color: "#e5e7eb"
+        }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+      >
+        <div className="p-7 sm:p-8 flex flex-col h-full max-h-[90vh] overflow-y-auto">
+          
+          {/* Header section */}
+          <div className="mb-8">
+            <h3 id="modal-title" className="text-[28px] font-bold text-[#f8fafc] mb-1 tracking-tight">Issue Parts</h3>
+            
+            {resolvedItem ? (
+              <div className="text-[15px] sm:text-[16px] text-[#94a3b8] leading-snug flex flex-col gap-1">
+                <span className="font-medium text-slate-300">{resolvedItem.seatInsertType.partNumber} — {resolvedItem.seatInsertType.description}</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <span>Garage: <strong className="text-slate-200">{resolvedItem.garage.name}</strong></span>
+                  <span className="text-slate-600 font-bold">•</span>
+                  <span className={resolvedItem.quantityOnHand <= 5 ? "text-amber-400" : ""}>Current on hand: <strong className={resolvedItem.quantityOnHand <= 5 ? "text-amber-400 font-bold" : "text-slate-200"}>{resolvedItem.quantityOnHand}</strong></span>
+                </div>
               </div>
-            ) : loadingWOs ? (
-              <div className="muted">Loading work orders...</div>
-            ) : workOrders.length === 0 ? (
-              <div style={{ color: "#f59e0b" }}>No open work orders found.</div>
             ) : (
-              <select
-                value={selectedWO}
-                onChange={(e) => setSelectedWO(e.target.value)}
-                required
-                className="w-full bg-[#0f172a] text-white border border-[#334155] rounded-md p-2 outline-none focus:border-blue-500"
-              >
-                {workOrders.map((wo) => (
-                  <option key={wo.id} value={wo.id}>
-                    {wo.workOrderNumber} — Bus {wo.bus.fleetNumber} ({wo.bus.garage.name})
-                  </option>
-                ))}
-              </select>
+              <div className="text-[15px] sm:text-[16px] text-[#94a3b8] leading-snug">
+                Select an item to issue
+              </div>
             )}
-          </label>
+          </div>
 
-          <label>
-            <div style={{ marginBottom: 4, fontWeight: 600 }}>Quantity</div>
-            <input
-              type="number"
-              min={1}
-              max={resolvedItem?.quantityOnHand}
-              value={quantity}
-              onChange={(e) => setQuantity(Number(e.target.value))}
-              required
-              className="w-full bg-[#0f172a] text-white border border-[#334155] rounded-md p-2 placeholder-slate-400 outline-none focus:border-blue-500"
-            />
-          </label>
-
-          {resolvedItem && projectedQOH !== null && (
-            <div style={{ padding: "10px 14px", background: "#111827", borderRadius: 6, fontSize: "0.9rem" }}>
-              Remaining after issue:{" "}
-              <strong style={{ color: projectedQOH < 0 ? "#ef4444" : projectedQOH === 0 ? "#f59e0b" : "#10b981" }}>
-                {projectedQOH}
-              </strong>
+          {error && (
+            <div className="mb-6 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium">
+              {error}
             </div>
           )}
 
-          <label>
-            <div style={{ marginBottom: 4, fontWeight: 600 }}>Notes (optional)</div>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. row 3 replacement"
-              className="w-full bg-[#0f172a] text-white border border-[#334155] rounded-md p-2 placeholder-slate-400 outline-none focus:border-blue-500"
-            />
-          </label>
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1">
+            <div className="flex flex-col gap-6 flex-1">
 
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <button type="button" style={{ width: "auto", background: "#374151" }} onClick={onClose}>
-              Cancel
-            </button>
-            <button
-              type="submit"
-              style={{ width: "auto", background: "#dc2626" }}
-              disabled={loading || (projectedQOH !== null && projectedQOH < 0) || workOrders.length === 0}
-            >
-              {loading ? "Saving..." : "Confirm Issue"}
-            </button>
-          </div>
-        </form>
+              {/* Inventory item picker */}
+              {!initialItem && (
+                <div>
+                  <label className="block text-[13px] tracking-[0.01em] text-[#cbd5e1] mb-2 font-medium">
+                    Inventory Item
+                  </label>
+                  {loadingItems ? (
+                    <div className="text-[14px] text-slate-500 font-medium">Loading inventory...</div>
+                  ) : (
+                    <div className="catalog-autocomplete-dark-override">
+                      <CatalogAutocomplete
+                        catalogParts={mappedCatalogParts}
+                        queryLocal={queryLocal}
+                        setQueryLocal={setQueryLocal}
+                        selectedPartId={selectedItemId}
+                        setSelectedPartId={(id) => setSelectedItemId(id || "")}
+                        placeholder="Search parts by number, description, or garage..."
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Work Order picker */}
+              <div>
+                <label className="block text-[13px] tracking-[0.01em] text-[#cbd5e1] mb-2 font-medium">
+                  Work Order
+                </label>
+                {prefilledWorkOrderId ? (
+                  <div className="w-full bg-[#0f172a]/90 border border-slate-400/20 rounded-[14px] text-[#f8fafc] px-4 py-[14px] text-[16px]">
+                    {workOrders.find((wo) => wo.id === prefilledWorkOrderId)?.workOrderNumber ?? prefilledWorkOrderId}
+                    <span className="ml-[8px] text-[13px] text-[#94a3b8]">(pre-selected)</span>
+                  </div>
+                ) : loadingWOs ? (
+                  <div className="text-[14px] text-slate-500 font-medium">Loading work orders...</div>
+                ) : workOrders.length === 0 ? (
+                  <div className="text-[14px] text-amber-500 font-medium">No open work orders found.</div>
+                ) : (
+                  <select
+                    value={selectedWO}
+                    onChange={(e) => setSelectedWO(e.target.value)}
+                    required
+                    aria-label="Target work order"
+                    className="w-full bg-[#0f172a]/90 border border-slate-400/20 rounded-[14px] text-[#f8fafc] min-h-[52px] px-4 py-[14px] text-[16px] outline-none transition-all duration-120 hover:border-slate-400/30 focus:border-blue-500/70 focus:ring-4 focus:ring-blue-500/15"
+                  >
+                    {workOrders.map((wo) => (
+                      <option key={wo.id} value={wo.id}>
+                        {wo.workOrderNumber} — Bus {wo.bus.fleetNumber} ({wo.bus.garage.name})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Quantity */}
+              <div>
+                <label className="block text-[13px] tracking-[0.01em] text-[#cbd5e1] mb-2 font-medium">
+                  Quantity
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={resolvedItem?.quantityOnHand}
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  required
+                  autoFocus
+                  aria-label="Quantity to issue"
+                  className="w-full bg-[#0f172a]/90 border border-slate-400/20 rounded-[14px] text-[#f8fafc] min-h-[52px] px-4 py-[14px] text-[16px] outline-none transition-all duration-120 hover:border-slate-400/30 focus:border-blue-500/70 focus:ring-4 focus:ring-blue-500/15 placeholder-[#64748b]"
+                />
+              </div>
+
+              {/* Quantity preview */}
+              {resolvedItem && projectedQOH !== null && (
+                <div className={`flex flex-col items-center justify-center p-[18px] rounded-2xl bg-[#020617]/55 border mt-2 ${resolvedItem.quantityOnHand <= 5 ? 'border-amber-500/30' : 'border-blue-500/20'}`}>
+                  <span className={`text-[13px] mb-1 font-medium tracking-wide uppercase ${resolvedItem.quantityOnHand <= 5 ? 'text-amber-500/80' : 'text-[#94a3b8]'}`}>Projected on hand</span>
+                  <span className={`text-[36px] font-bold leading-none ${projectedQOH < 0 ? 'text-red-400' : projectedQOH === 0 ? 'text-amber-400' : 'text-[#34d399]'}`}>
+                    {projectedQOH}
+                  </span>
+                </div>
+              )}
+
+              {/* Notes field */}
+              <div className={!resolvedItem ? "hidden" : "mt-2"}>
+                <label className="block text-[13px] tracking-[0.01em] text-[#cbd5e1] mb-2 font-medium">
+                  Notes (optional)
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="e.g. row 3 replacement"
+                  aria-label="Issue notes"
+                  className="w-full bg-[#0f172a]/90 border border-slate-400/20 rounded-[14px] text-[#f8fafc] min-h-[96px] px-4 py-[14px] text-[16px] outline-none transition-all duration-120 hover:border-slate-400/30 focus:border-blue-500/70 focus:ring-4 focus:ring-blue-500/15 placeholder-[#64748b] resize-y"
+                />
+              </div>
+
+            </div>
+
+            {/* Footer actions */}
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-10 pt-6 border-t border-slate-700/50">
+              <Button
+                type="button"
+                variant="ghostDark"
+                className="h-11 sm:h-12 px-[18px] rounded-[14px] transition-colors"
+                onClick={onClose}
+                aria-label="Cancel issue"
+              >
+                <X className="w-4 h-4" /> Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="danger"
+                disabled={loading || (projectedQOH !== null && projectedQOH < 0) || parsedQuantity < 1 || workOrders.length === 0}
+                className="h-11 sm:h-12 px-[18px] rounded-[14px]"
+                aria-label="Confirm inventory issue"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <MinusCircle className="w-4 h-4" />} 
+                {loading ? "Saving..." : "Confirm Issue"}
+              </Button>
+            </div>
+          </form>
+
+        </div>
       </div>
     </div>
   );
 }
-
-const selectStyle: React.CSSProperties = {
-  width: "100%",
-  background: "#111827",
-  color: "#f9fafb",
-  border: "1px solid #374151",
-  borderRadius: 6,
-  padding: "8px 10px",
-};
-
-const overlayStyle: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(15, 23, 42, 0.95)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  zIndex: 1000,
-};
-
-const modalStyle: React.CSSProperties = {
-  background: "#0f172a",
-  border: "1px solid #334155",
-  borderRadius: 10,
-  padding: 28,
-  width: "100%",
-  maxWidth: 500,
-  maxHeight: "90vh",
-  overflowY: "auto",
-  boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-};
