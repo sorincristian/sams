@@ -10,7 +10,6 @@ interface OrderLight {
   createdAt: string;
   status: string;
   totalQuantity: number;
-  totalCost: number;
   garage: { name: string } | null;
 }
 

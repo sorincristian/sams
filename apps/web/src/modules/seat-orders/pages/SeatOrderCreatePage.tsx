@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { api } from "../../../api";
 import { Button } from "../../../components/ui/Button";
 import { CatalogAutocomplete } from "../../../components/CatalogAutocomplete";
+import { SeatOrderPreviewPanel } from "../components/SeatOrderPreviewPanel";
 
 interface LineItem {
   id: string; // temp ui id
@@ -11,7 +12,6 @@ interface LineItem {
   partNumber: string;
   description: string;
   quantity: string;
-  unitCost: number;
 }
 
 export function SeatOrderCreatePage() {
@@ -38,8 +38,7 @@ export function SeatOrderCreatePage() {
         seatInsertTypeId: location.state.item.id,
         partNumber: location.state.item.partNumber || "SKU",
         description: location.state.item.description || "Prefilled Item",
-        quantity: "1",
-        unitCost: location.state.item.unitCost || 0
+        quantity: "1"
       }];
     }
     return [];
@@ -56,8 +55,7 @@ export function SeatOrderCreatePage() {
   }, [location.state]);
 
   const totalQuantity = lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0);
-  const totalCost = lines.reduce((sum, l) => sum + (Number(l.quantity || 0) * l.unitCost), 0);
-  const requiresApproval = totalQuantity > 20 || totalCost > 1000;
+  const requiresApproval = totalQuantity > 20;
 
   const handleAddLine = () => {
     if (!selectedPartId) {
@@ -77,8 +75,7 @@ export function SeatOrderCreatePage() {
       seatInsertTypeId: part.id,
       partNumber: part.partNumber,
       description: part.description,
-      quantity: "1",
-      unitCost: part.unitCost || 0
+      quantity: "1"
     }]);
     setSelectedPartId(null);
     setQueryLocal("");
@@ -86,7 +83,18 @@ export function SeatOrderCreatePage() {
   };
 
   const handleUpdateQuantity = (id: string, qty: string) => {
+    if (qty !== "") {
+      const parsed = parseInt(qty, 10);
+      if (isNaN(parsed) || parsed < 1) qty = "1";
+      else qty = String(parsed);
+    }
     setLines(lines.map(l => l.id === id ? { ...l, quantity: qty } : l));
+  };
+
+  const handleBlurQuantity = (id: string, qty: string) => {
+    if (qty === "" || Number(qty) < 1) {
+      setLines(lines.map(l => l.id === id ? { ...l, quantity: "1" } : l));
+    }
   };
 
   const handleRemoveLine = (id: string) => {
@@ -117,7 +125,6 @@ export function SeatOrderCreatePage() {
       const payloadLines = lines.map(l => ({
         seatInsertTypeId: l.seatInsertTypeId,
         quantity: Number(l.quantity || 0),
-        unitCost: l.unitCost,
         description: l.description
       }));
 
@@ -240,14 +247,13 @@ export function SeatOrderCreatePage() {
                     <th className="p-4 pl-6 sm:pl-8 font-semibold">SKU / Part Number</th>
                     <th className="p-4 font-semibold">Description</th>
                     <th className="p-4 font-semibold w-32">Quantity</th>
-                    <th className="p-4 font-semibold text-right w-32">Unit Cost</th>
                     <th className="p-4 pr-6 sm:pr-8 font-semibold text-right w-16"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#334155]/50">
                   {lines.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-12 text-center text-slate-500 font-medium">
+                      <td colSpan={4} className="p-12 text-center text-slate-500 font-medium">
                         Order is empty. Add a line item from the catalog.
                       </td>
                     </tr>
@@ -262,19 +268,20 @@ export function SeatOrderCreatePage() {
                             min="1"
                             value={l.quantity}
                             onChange={(e) => handleUpdateQuantity(l.id, e.target.value)}
+                            onBlur={(e) => handleBlurQuantity(l.id, e.target.value)}
                             className="w-full bg-[#0f172a] border border-slate-400/30 rounded-lg text-[#f8fafc] px-3 py-2 text-center font-bold focus:border-blue-500 focus:outline-none"
                             aria-label="Quantity"
                           />
                         </td>
-                        <td className="p-4 text-right text-[#94a3b8] font-mono">${l.unitCost.toFixed(2)}</td>
                         <td className="p-4 pr-6 sm:pr-8 text-right">
-                          <button 
+                          <Button 
+                            variant="ghostDark"
                             onClick={() => handleRemoveLine(l.id)}
                             className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition"
                             aria-label={`Remove ${l.partNumber}`}
                           >
                             <Trash2 className="w-4 h-4" />
-                          </button>
+                          </Button>
                         </td>
                       </tr>
                     ))
@@ -288,32 +295,27 @@ export function SeatOrderCreatePage() {
               <div className="bg-[#1e293b]/80 p-6 flex justify-end gap-10 border-t border-[#334155]">
                 <div className="text-right">
                   <div className="text-[12px] uppercase text-[#94a3b8] font-bold tracking-wider mb-1">Total Items</div>
-                  <div className="text-xl font-bold text-[#f8fafc]">{totalQuantity}</div>
+                  <div className="text-xl font-bold text-[#94a3b8]">{lines.length}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-[12px] uppercase text-[#94a3b8] font-bold tracking-wider mb-1">Estimated Cost</div>
-                  <div className="text-xl font-black text-[#f8fafc]">${totalCost.toFixed(2)}</div>
+                  <div className="text-[12px] uppercase text-[#94a3b8] font-bold tracking-wider mb-1">Total Quantity</div>
+                  <div className="text-xl font-bold text-[#f8fafc]">{totalQuantity}</div>
                 </div>
               </div>
             )}
             
           </div>
 
+          <SeatOrderPreviewPanel
+            garageName={garages.find(g => g.id === garageId)?.name}
+            lines={lines}
+            notes={notes}
+          />
+
         </div>
 
         {/* Sidebar Context */}
         <div className="lg:col-span-4 space-y-6">
-
-          {/* Email Preview Status */}
-          <div className="bg-[#0f172a] rounded-[24px] border border-[#334155] shadow-2xl p-6">
-            <h3 className="text-[15px] font-bold text-[#f8fafc] flex items-center gap-2 mb-4">
-              <Mail className="w-5 h-5 text-blue-400" />
-              Email Preview Tracker
-            </h3>
-            <div className="p-4 rounded-xl border border-dashed border-[#334155] bg-[#1e293b]/30 text-center">
-              <p className="text-sm font-medium text-slate-400">Preview rendering is unavailable until the order draft is saved.</p>
-            </div>
-          </div>
 
           {/* Approval Panel */}
           <div className="bg-[#0f172a] rounded-[24px] border border-[#334155] shadow-2xl p-6">
@@ -327,7 +329,6 @@ export function SeatOrderCreatePage() {
                 <p className="text-sm font-bold text-amber-500 mb-1">Manager Approval Required</p>
                 <div className="text-[13px] text-amber-500/80 font-medium">
                   {totalQuantity > 20 && <div>• Total quantity exceeds 20 items</div>}
-                  {totalCost > 1000 && <div>• Total cost exceeds $1,000 threshold</div>}
                 </div>
               </div>
             ) : (
@@ -342,7 +343,7 @@ export function SeatOrderCreatePage() {
             <Button
               variant="primary"
               onClick={handleSave}
-              disabled={saving || lines.length === 0}
+              disabled={saving || lines.length === 0 || !garageId}
               className="w-full rounded-[16px] h-[56px] text-[16px] shadow-lg shadow-blue-500/20"
             >
               {saving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
