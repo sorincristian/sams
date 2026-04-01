@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, StockClass, ConditionSource, ReservationStatus } from "@prisma/client";
 const prisma = new PrismaClient();
 
 export class SeatInsertsService {
@@ -17,27 +17,36 @@ export class SeatInsertsService {
     const whereLocation = params.locationId ? { locationId: params.locationId } : {};
     const whereVendor = params.vendorId ? { vendorId: params.vendorId } : {};
 
-    // 1. Total Inventory
     const totalInventoryCount = await prisma.seatInsert.count({
       where: params.locationId ? { locationId: params.locationId } : undefined,
     });
 
-    // 2. Inventory by current status (New, Dirty, Packed, Returned, Disposed)
-    const statusGroupsRaw = await prisma.seatInsert.groupBy({
-      by: ["status"],
+    const stockGroupsRaw = await prisma.seatInsert.groupBy({
+      by: ["stockClass"],
       where: whereLocation,
       _count: { id: true },
     });
 
-    const statusCounts = statusGroupsRaw.reduce((acc, curr) => {
-      acc[curr.status] = curr._count.id;
+    const conditionSourceGroupsRaw = await prisma.seatInsert.groupBy({
+      by: ["conditionSource"],
+      where: { ...whereLocation, stockClass: "REPLACEMENT_AVAILABLE" },
+      _count: { id: true },
+    });
+
+    const stockCounts = stockGroupsRaw.reduce((acc, curr) => {
+      acc[curr.stockClass] = curr._count.id;
       return acc;
     }, {} as Record<string, number>);
 
-    // 3. Replacements Completed (MTD logic or custom date range)
-    // If no date range provided, fallback to current month
+    let rebuiltCount = 0;
+    let newCount = 0;
+    conditionSourceGroupsRaw.forEach((g) => {
+      if (g.conditionSource === "REBUILT") rebuiltCount += g._count.id;
+      if (g.conditionSource === "NEW") newCount += g._count.id;
+    });
+
     const defaultStart = new Date();
-    defaultStart.setDate(1); // 1st of month
+    defaultStart.setDate(1); 
     defaultStart.setHours(0, 0, 0, 0);
 
     const start = params.dateRange?.start || defaultStart;
@@ -50,8 +59,6 @@ export class SeatInsertsService {
       },
     });
 
-    // 4. SLA % for returned batches
-    // Calculate batches returned on time or not
     const returnedBatches = await prisma.reupholsteryBatch.findMany({
       where: {
         ...whereLocation,
@@ -68,16 +75,7 @@ export class SeatInsertsService {
       slaPercentage = Math.round((onTime / returnedBatches.length) * 100);
     }
 
-    // Vendor metrics
-    const atVendorCount = await prisma.seatInsert.count({
-      where: {
-        ...whereLocation,
-        batch: {
-          ...whereVendor,
-          status: { in: ["PACKED", "SHIPPED", "RECEIVED_BY_VENDOR", "IN_REUPHOLSTERY", "READY_TO_RETURN"] }
-        }
-      }
-    });
+    const atVendorCount = stockCounts["HARVEY_IN_PROGRESS"] || 0;
 
     const overdueVendorBatches = await prisma.reupholsteryBatch.count({
       where: {
@@ -88,13 +86,40 @@ export class SeatInsertsService {
       }
     });
 
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const rebuiltReturningToday = await prisma.reupholsteryBatch.count({
+      where: {
+        ...whereLocation,
+        ...whereVendor,
+        status: { in: ["PACKED", "SHIPPED", "IN_REUPHOLSTERY", "READY_TO_RETURN"] },
+        expectedReturnDate: { gte: todayStart, lte: todayEnd },
+      }
+    });
+
+    const blockedSwaps = await prisma.replacementReservation.count({
+      where: {
+         status: "BLOCKED",
+         bus: params.locationId ? { garageId: params.locationId } : undefined
+      }
+    });
+
     return {
       totalInventory: totalInventoryCount,
-      newInventory: statusCounts["NEW"] || 0,
-      dirtyInventory: statusCounts["DIRTY"] || 0,
-      packedForReturn: statusCounts["PACKED_FOR_RETURN"] || 0,
-      returned: statusCounts["RETURNED"] || 0,
-      disposed: statusCounts["DISPOSED"] || 0,
+      replacementAvailable: stockCounts["REPLACEMENT_AVAILABLE"] || 0,
+      dirtyRecoveryQueue: stockCounts["DIRTY_RECOVERY"] || 0,
+      harveyInProgress: stockCounts["HARVEY_IN_PROGRESS"] || 0,
+      scrapped: stockCounts["SCRAPPED"] || 0,
+      rebuiltReturningToday,
+      blockedSwaps,
+      rebuiltCount,
+      newCount,
+      percentFromRebuilt: (rebuiltCount + newCount > 0) ? Math.round((rebuiltCount / (rebuiltCount + newCount)) * 100) : 0,
+      percentFromNew: (rebuiltCount + newCount > 0) ? Math.round((newCount / (rebuiltCount + newCount)) * 100) : 0,
+      costAvoidance: rebuiltCount * 450, 
       replacementsMtd,
       slaPercentage,
       atVendorCount,
@@ -103,46 +128,37 @@ export class SeatInsertsService {
     };
   }
 
-  /**
-   * Inventory by location matrix
-   */
   async getInventoryByLocation(params: { fleetType?: string; seatType?: string; locationId?: string }) {
     const whereClause: any = {};
     if (params.fleetType) whereClause.fleetType = params.fleetType;
     if (params.seatType) whereClause.seatType = params.seatType;
     if (params.locationId) whereClause.locationId = params.locationId;
 
-    // We need grouping by locationId and status. 
-    // Prisma grouping:
     const groups = await prisma.seatInsert.groupBy({
-      by: ["locationId", "status"],
+      by: ["locationId", "stockClass"],
       where: whereClause,
       _count: { id: true },
     });
 
-    // We also need location metadata (name, thresholds)
-    // Fetch all locations to map names and thresholds
     const locations = await prisma.garage.findMany({
       where: params.locationId ? { id: params.locationId } : undefined,
       select: { id: true, name: true, thresholdNewInventory: true, thresholdDirtyInventory: true },
     });
 
-    // Pivot the grouped data
     const results = locations.map((loc) => {
       const locGroups = groups.filter((g) => g.locationId === loc.id);
       
-      const statusMap = {
-        NEW: 0,
-        DIRTY: 0,
-        PACKED_FOR_RETURN: 0,
-        RETURNED: 0,
-        DISPOSED: 0,
+      const stockMap = {
+        REPLACEMENT_AVAILABLE: 0,
+        DIRTY_RECOVERY: 0,
+        HARVEY_IN_PROGRESS: 0,
+        SCRAPPED: 0,
         total: 0,
       };
 
       locGroups.forEach((g) => {
-        statusMap[g.status as keyof typeof statusMap] = g._count.id;
-        statusMap.total += g._count.id;
+        stockMap[g.stockClass as keyof typeof stockMap] = g._count.id;
+        stockMap.total += g._count.id;
       });
 
       return {
@@ -150,20 +166,16 @@ export class SeatInsertsService {
         locationName: loc.name,
         thresholdNew: loc.thresholdNewInventory,
         thresholdDirty: loc.thresholdDirtyInventory,
-        ...statusMap,
+        ...stockMap,
       };
     });
 
-    // remove locations with 0 inventory if desired, or keep all
     return results.filter(r => r.total > 0);
   }
 
-  /**
-   * Reupholstery Batches Tracker Map
-   */
   async getReupholsteryBatches(params: { status?: string; locationId?: string; vendorId?: string }) {
     const where: any = {};
-    if (params.status) where.status = params.status as any;
+    if (params.status) where.status = params.status;
     if (params.locationId) where.garageId = params.locationId;
     if (params.vendorId) where.vendorId = params.vendorId;
 
@@ -178,13 +190,10 @@ export class SeatInsertsService {
     });
   }
 
-  /**
-   * Alerts Engine Polling
-   */
   async getAlerts(params: { locationId?: string; status?: string }) {
     const where: any = {};
     if (params.locationId) where.locationId = params.locationId;
-    if (params.status) where.status = params.status as any;
+    if (params.status) where.status = params.status;
 
     return await prisma.alert.findMany({
       where,
@@ -195,9 +204,6 @@ export class SeatInsertsService {
     });
   }
 
-  /**
-   * Replacement Activity Trends
-   */
   async getReplacements(params: { locationId?: string; dateRange?: { start: Date; end: Date } }) {
     const where: any = {};
     if (params.locationId) where.locationId = params.locationId;
@@ -205,20 +211,17 @@ export class SeatInsertsService {
       where.replacedAt = { gte: params.dateRange.start, lte: params.dateRange.end };
     }
 
-    // Group by reason
     const byReason = await prisma.replacementActivity.groupBy({
       by: ["reason"],
       where,
       _count: { id: true },
     });
 
-    // For trends, we might want to return exact records or group by day. 
-    // The prompt asks for aggregates. Let's return the sum by reason, and the raw lines if needed.
     const records = await prisma.replacementActivity.findMany({
       where,
       orderBy: { replacedAt: "desc" },
       include: { location: { select: { name: true } }, bus: { select: { fleetNumber: true } } },
-      take: 100 // limit for API efficiency
+      take: 100 
     });
 
     return {
@@ -227,9 +230,6 @@ export class SeatInsertsService {
     };
   }
 
-  /**
-   * Disposal Records Trends
-   */
   async getDisposals(params: { locationId?: string; dateRange?: { start: Date; end: Date } }) {
     const where: any = {};
     if (params.locationId) where.locationId = params.locationId;
@@ -256,24 +256,18 @@ export class SeatInsertsService {
     };
   }
 
-  /**
-   * List individual inserts for operations
-   */
-  async getInserts(params: { locationId?: string; status?: string }) {
+  async getInserts(params: { locationId?: string; stockClass?: StockClass }) {
     const where: any = {};
     if (params.locationId) where.locationId = params.locationId;
-    if (params.status) where.status = params.status;
+    if (params.stockClass) where.stockClass = params.stockClass;
 
     return await prisma.seatInsert.findMany({
       where,
       include: { location: { select: { name: true } }, installedBus: { select: { fleetNumber: true } } },
-      take: 200, // Safe bounds for operational UI
+      take: 200, 
     });
   }
 
-  /**
-   * (A) Mark Insert as DIRTY
-   */
   async markDirty(id: string) {
     return await prisma.$transaction(async (tx) => {
       const insert = await tx.seatInsert.findUnique({ where: { id } });
@@ -282,14 +276,13 @@ export class SeatInsertsService {
       const updated = await tx.seatInsert.update({
         where: { id },
         data: {
-          status: "DIRTY",
+          stockClass: "DIRTY_RECOVERY",
           installedBusId: null,
           dirtyAt: new Date(),
         },
       });
 
-      // If the seat was sitting on the shelf as usable stock, we must deduct it from bulk availability
-      if ((insert.status === "NEW" || insert.status === "RETURNED_FROM_VENDOR") && insert.seatInsertTypeId) {
+      if ((insert.stockClass === "REPLACEMENT_AVAILABLE") && insert.seatInsertTypeId) {
         const inv = await tx.inventoryItem.findFirst({
            where: { garageId: insert.locationId, seatInsertTypeId: insert.seatInsertTypeId }
         });
@@ -305,9 +298,6 @@ export class SeatInsertsService {
     });
   }
 
-  /**
-   * (A2) Dispose Seat from Shelf
-   */
   async disposeInsert(params: { id: string; locationId: string; reason: string; notes?: string; userId?: string }) {
     return await prisma.$transaction(async (tx) => {
       let createdBy = params.userId;
@@ -319,9 +309,9 @@ export class SeatInsertsService {
       const insert = await tx.seatInsert.findUnique({ where: { id: params.id } });
       if (!insert) throw new Error("Seat not found.");
 
-      const allowedStatuses = ["NEW", "RETURNED_FROM_VENDOR", "DIRTY"];
-      if (!allowedStatuses.includes(insert.status)) {
-        throw new Error(`Cannot dispose seat in status ${insert.status}.`);
+      const allowedStatuses: StockClass[] = ["REPLACEMENT_AVAILABLE", "DIRTY_RECOVERY"];
+      if (!allowedStatuses.includes(insert.stockClass)) {
+        throw new Error(`Cannot dispose seat in class ${insert.stockClass}.`);
       }
 
       const now = new Date();
@@ -329,7 +319,7 @@ export class SeatInsertsService {
       const updated = await tx.seatInsert.update({
         where: { id: params.id },
         data: {
-          status: "DISPOSED",
+          stockClass: "SCRAPPED",
           installedBusId: null,
           disposedAt: now,
         },
@@ -341,11 +331,9 @@ export class SeatInsertsService {
         });
 
         if (inv && inv.quantity > 0) {
-           // It's leaving existence entirely - drop gross quantity
            const updateData: any = { quantity: inv.quantity - 1 };
            
-           // If it was previously sitting on the shelf exactly (not dirty), we must also drop quantityOnHand
-           if ((insert.status === "NEW" || insert.status === "RETURNED_FROM_VENDOR") && inv.quantityOnHand > 0) {
+           if ((insert.stockClass === "REPLACEMENT_AVAILABLE") && inv.quantityOnHand > 0) {
              updateData.quantityOnHand = inv.quantityOnHand - 1;
            }
 
@@ -371,19 +359,14 @@ export class SeatInsertsService {
     });
   }
 
-  /**
-   * (B) Send to Harvey (Create Batch)
-   */
   async sendToVendor(params: { insertIds: string[]; garageId: string; vendorId: string; expectedReturnDate: string }) {
     if (params.insertIds.length === 0) throw new Error("No inserts selected");
-    // Ensure all are DIRTY
     const inserts = await prisma.seatInsert.findMany({ where: { id: { in: params.insertIds } } });
-    if (inserts.some(i => i.status !== "DIRTY")) throw new Error("Only DIRTY inserts can be sent to the vendor.");
+    if (inserts.some(i => i.stockClass !== "DIRTY_RECOVERY")) throw new Error("Only DIRTY_RECOVERY inserts can be sent to the vendor.");
 
     const sample = inserts[0];
     
     return await prisma.$transaction(async (tx) => {
-      // 1. Create Batch
       const batch = await tx.reupholsteryBatch.create({
         data: {
           batchNumber: `VEN-${Date.now().toString().slice(-6)}`,
@@ -397,12 +380,11 @@ export class SeatInsertsService {
         },
       });
 
-      // 2. Move inserts to PACKED_FOR_RETURN
       await tx.seatInsert.updateMany({
         where: { id: { in: params.insertIds } },
         data: {
           batchId: batch.id,
-          status: "PACKED_FOR_RETURN",
+          stockClass: "HARVEY_IN_PROGRESS",
           packedAt: new Date(),
         },
       });
@@ -411,9 +393,6 @@ export class SeatInsertsService {
     });
   }
 
-  /**
-   * (C) Update Batch Status (e.g. Ship, Vendor Receives)
-   */
   async updateBatchStatus(id: string, status: string) {
     if (status === "RETURNED" || status === "CLOSED") {
       throw new Error("Use receiveBatch for returning/receiving finalized batches.");
@@ -424,29 +403,17 @@ export class SeatInsertsService {
       if (!batch) throw new Error("Batch not found");
 
       const updateData: any = { status };
-      let insertStatus: string | null = null;
       
       if (status === "SHIPPED") {
         updateData.shippedDate = new Date();
-        insertStatus = "IN_TRANSIT_TO_VENDOR";
       } else if (status === "RECEIVED_BY_VENDOR" || status === "IN_REUPHOLSTERY") {
         updateData.status = "IN_REUPHOLSTERY";
-        insertStatus = "AT_VENDOR";
       }
       
-      const updatedBatch = await tx.reupholsteryBatch.update({ where: { id }, data: updateData });
-      
-      if (insertStatus) {
-        await tx.seatInsert.updateMany({ where: { batchId: id }, data: { status: insertStatus as any } });
-      }
-      
-      return updatedBatch;
+      return await tx.reupholsteryBatch.update({ where: { id }, data: updateData });
     });
   }
 
-  /**
-   * (D) Receive Batch (Return back to Garage)
-   */
   async receiveBatch(id: string, params: { userId: string; notes?: string }) {
     return await prisma.$transaction(async (tx) => {
       const batch = await tx.reupholsteryBatch.findUnique({ where: { id } });
@@ -455,7 +422,6 @@ export class SeatInsertsService {
       const now = new Date();
       const onTime = batch.expectedReturnDate >= now;
 
-      // Ensure we create a VendorReceipt record
       await tx.vendorReceipt.create({
         data: {
           type: "BATCH_RETURN",
@@ -478,17 +444,16 @@ export class SeatInsertsService {
         },
       });
 
-      // Update inserts to RETURNED_FROM_VENDOR and immediately to NEW since it's back in inventory
       const inserts = await tx.seatInsert.findMany({ where: { batchId: id } });
       await tx.seatInsert.updateMany({
         where: { batchId: id },
         data: {
-          status: "NEW", // The inserts are returned cleanly to the shelf
+          stockClass: "REPLACEMENT_AVAILABLE",
+          conditionSource: "REBUILT",
           returnedAt: now,
         },
       });
 
-      // Synchronize aggregate quantityOnHand matching new returned stock
       for (const insert of inserts) {
          if (insert.seatInsertTypeId) {
             const inventory = await tx.inventoryItem.findFirst({
@@ -511,11 +476,6 @@ export class SeatInsertsService {
     });
   }
 
-
-
-  /**
-   * (F) Alert Actions
-   */
   async acknowledgeAlert(id: string) {
     return await prisma.alert.update({
       where: { id },
@@ -529,8 +489,6 @@ export class SeatInsertsService {
       data: { status: "RESOLVED", resolvedAt: new Date() },
     });
   }
-
-  // --- Vendor Orders Methods --- //
 
   async getVendorOrders(params: { garageId?: string; vendorId?: string; status?: string }) {
     const where: any = {};
@@ -607,12 +565,12 @@ export class SeatInsertsService {
         if (newReceived > 0) partiallyReceived = true;
 
         if (line.receiveQuantity > 0) {
-           // 1. auto-serialize the new inserts
            const newInserts = Array.from({ length: line.receiveQuantity }).map(() => ({
              seatInsertTypeId: orderLine.seatInsertTypeId,
              vendorOrderLineId: line.lineId,
              locationId: order.garageId,
-             status: "NEW" as const,
+             stockClass: StockClass.REPLACEMENT_AVAILABLE,
+             conditionSource: ConditionSource.NEW,
              seatType: orderLine.seatInsertType?.componentType || "UNKNOWN",
              color: "N/A",
              hardwareCode: "N/A",
@@ -620,7 +578,6 @@ export class SeatInsertsService {
            }));
            await tx.seatInsert.createMany({ data: newInserts });
 
-           // 2. increase aggregate bulk inventory
            const inventory = await tx.inventoryItem.findFirst({
              where: { garageId: order.garageId, seatInsertTypeId: orderLine.seatInsertTypeId }
            });
@@ -663,113 +620,161 @@ export class SeatInsertsService {
     });
   }
 
-  // --- Bus Installation / Consumption --- //
+  // --- Strict Local Engine: Reservation --- //
+  private async reserveBestReplacementTx(
+    tx: any, 
+    garageId: string, 
+    seatInsertTypeId: string, 
+    userId: string, 
+    busId: string, 
+    workOrderId?: string
+  ) {
+    const maxRetries = 3;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      // Priority 1: REBUILT
+      let candidate = await tx.seatInsert.findFirst({
+        where: {
+          locationId: garageId,
+          seatInsertTypeId,
+          stockClass: "REPLACEMENT_AVAILABLE",
+          conditionSource: "REBUILT"
+        },
+        orderBy: { returnedAt: 'asc' }
+      });
 
+      // Priority 2: NEW
+      if (!candidate) {
+        candidate = await tx.seatInsert.findFirst({
+          where: {
+            locationId: garageId,
+            seatInsertTypeId,
+            stockClass: "REPLACEMENT_AVAILABLE",
+            conditionSource: "NEW"
+          },
+          orderBy: { createdAt: 'asc' }
+        });
+      }
+
+      if (!candidate) {
+        // Hard Block - log it to feed KPI
+        await tx.replacementReservation.create({
+          data: {
+            reservedByUserId: userId,
+            status: "BLOCKED",
+            busId,
+            workOrderId
+          }
+        });
+        throw new Error("Removal blocked: no local replacement available.");
+      }
+
+      // ATOMIC GUARD: Try to claim the exact unit
+      // This protects against double-allocation in concurrent requests
+      const { count } = await tx.seatInsert.updateMany({
+        where: {
+          id: candidate.id,
+          stockClass: "REPLACEMENT_AVAILABLE" // Critical: Must still be available
+        },
+        data: {
+          stockClass: "INSTALLED",
+          installedBusId: busId,
+          installedAt: new Date()
+        }
+      });
+
+      if (count === 1) {
+        // Successfully bound atomicaly
+        const reservation = await tx.replacementReservation.create({
+          data: {
+            actualInventoryUnitId: candidate.id,
+            reservedByUserId: userId,
+            status: "INSTALLED", // Finalized swap
+            busId,
+            workOrderId
+          }
+        });
+
+        return { reservation, chosen: candidate };
+      }
+
+      // If count === 0, someone else won the race condition. 
+      // The loop continues to the next attempt.
+    }
+
+    // Exhausted retries
+    throw new Error("Conflict: could not secure a replacement seat due to high concurrency. Please try again.");
+  }
+
+  // --- Bus Installation / Consumption --- //
   async installSeat(params: { 
-    insertId: string; 
+    seatInsertTypeId: string; 
+    garageId: string;
     busId: string; 
     workOrderId?: string; 
     userId: string;
     removedInsertId?: string;
-    removedDisposition?: "DIRTY" | "DISPOSED";
     removedReason?: string;
   }) {
     return await prisma.$transaction(async (tx) => {
-      const insert = await tx.seatInsert.findUnique({ 
-        where: { id: params.insertId }, 
-        include: { location: true, seatInsertType: true } 
-      });
-      if (!insert) throw new Error("Seat not found.");
-      if (insert.status !== "NEW" && insert.status !== "RETURNED_FROM_VENDOR") {
-        throw new Error("Seat is not available for installation. Status must be NEW or RETURNED_FROM_VENDOR.");
-      }
+      // 1. Reserve explicitly within atomic guard loop
+      const { reservation, chosen } = await this.reserveBestReplacementTx(
+        tx, 
+        params.garageId, 
+        params.seatInsertTypeId, 
+        params.userId, 
+        params.busId, 
+        params.workOrderId
+      );
 
+      const insertId = chosen.id;
       const now = new Date();
 
-      // 1. Mark uniquely serialized seat as INSTALLED and bound to Bus
-      const updated = await tx.seatInsert.update({
-        where: { id: params.insertId },
-        data: { 
-          status: "INSTALLED", 
-          installedBusId: params.busId, 
-          installedAt: now 
-        }
+      // 2. Decrement aggregate local inventory pool
+      const inv = await tx.inventoryItem.findFirst({ 
+        where: { garageId: params.garageId, seatInsertTypeId: params.seatInsertTypeId } 
       });
-
-      // 2. Decrement aggregate bulk inventory
-      if (insert.seatInsertTypeId) {
-        const inv = await tx.inventoryItem.findFirst({ 
-          where: { garageId: insert.locationId, seatInsertTypeId: insert.seatInsertTypeId } 
+      if (inv && inv.quantityOnHand > 0) {
+        await tx.inventoryItem.update({
+          where: { id: inv.id },
+          data: { quantityOnHand: inv.quantityOnHand - 1 }
         });
-        if (inv && inv.quantityOnHand > 0) {
-          await tx.inventoryItem.update({
-            where: { id: inv.id },
-            data: { quantityOnHand: inv.quantityOnHand - 1 }
-          });
-        }
-      } else {
-        throw new Error("Cannot consume seat: physical Insert lacks a core SeatInsertType mapping.");
       }
 
-      // 3. Atomically Handle the Removed Seat if flagged
+      // 3. Atomically handle the removed seat
       if (params.removedInsertId) {
-         if (params.removedDisposition === "DISPOSED") {
-           await tx.seatInsert.update({
-             where: { id: params.removedInsertId },
-             data: { status: "DISPOSED", installedBusId: null, disposedAt: now }
-           });
-           
-           // Decrement gross ownership quantity ONLY when explicitly disposed
-           const oldInv = await tx.inventoryItem.findFirst({
-              where: { garageId: insert.locationId, seatInsertTypeId: insert.seatInsertTypeId }
-           });
-           if (oldInv && oldInv.quantity > 0) {
-              await tx.inventoryItem.update({ where: { id: oldInv.id }, data: { quantity: oldInv.quantity - 1 } });
-           }
-
-           await tx.disposalRecord.create({
-             data: {
-                inventoryId: params.removedInsertId,
-                locationId: insert.locationId,
-                reason: (params.removedReason as any) || "OTHER",
-                createdBy: params.userId,
-                disposedAt: now
-             }
-           });
-         } else {
-           // Default DIRTY (sent back to garage shelf for Reupholstery)
-           await tx.seatInsert.update({
-             where: { id: params.removedInsertId },
-             data: { status: "DIRTY", installedBusId: null, dirtyAt: now }
-           });
-           // Explicit ReplacementActivity triggers on the Old Seat removal
-           await tx.replacementActivity.create({
-             data: {
-               inventoryId: params.removedInsertId,
-               busId: params.busId,
-               locationId: insert.locationId,
-               reason: (params.removedReason as any) || "OTHER",
-               createdBy: params.userId,
-             }
-           });
-         }
+        // Transition dirty swap unit explicitly to DIRTY_RECOVERY
+        await tx.seatInsert.update({
+          where: { id: params.removedInsertId },
+          data: { stockClass: "DIRTY_RECOVERY", installedBusId: null, dirtyAt: now }
+        });
+        
+        await tx.replacementActivity.create({
+          data: {
+            inventoryId: params.removedInsertId,
+            busId: params.busId,
+            locationId: params.garageId,
+            reason: (params.removedReason as any) || "OTHER",
+            createdBy: params.userId,
+          }
+        });
       }
 
-      // 4. Optionally write WorkOrder usage link for new seat
+      // 4. WorkOrder logging
       if (params.workOrderId) {
          await tx.workOrderPartUsage.create({
             data: {
                workOrderId: params.workOrderId,
-               seatInsertTypeId: insert.seatInsertTypeId,
-               garageId: insert.locationId,
+               seatInsertTypeId: params.seatInsertTypeId,
+               garageId: params.garageId,
                quantity: 1,
                issuedByUserId: params.userId,
-               notes: `Serialized Seat Swap. Installed: ${params.insertId}` + (params.removedInsertId ? ` Removed: ${params.removedInsertId}` : '')
+               notes: `Reserved & Installed: ${insertId} (Source: ${chosen.conditionSource})` + (params.removedInsertId ? ` Removed: ${params.removedInsertId}` : '')
             }
          });
       }
 
-      return updated;
+      // Return the successfully guarded reservation along with the chosen DB object
+      return { reservation, chosen };
     });
   }
 }

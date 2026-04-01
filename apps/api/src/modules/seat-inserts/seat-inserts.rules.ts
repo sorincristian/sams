@@ -68,9 +68,9 @@ export class SeatInsertsRuleEngine {
       select: { id: true, name: true, thresholdNewInventory: true, thresholdDirtyInventory: true },
     });
 
-    // 2. Fetch inventory counts grouped by location + status
+    // 2. Fetch inventory counts grouped by location + stockClass
     const groups = await prisma.seatInsert.groupBy({
-      by: ["locationId", "status"],
+      by: ["locationId", "stockClass"],
       _count: { id: true },
     });
 
@@ -79,8 +79,10 @@ export class SeatInsertsRuleEngine {
       
       const counts = { NEW: 0, DIRTY: 0, PACKED: 0, RETURNED: 0, DISPOSED: 0, TOTAL: 0 };
       locGroups.forEach((g) => {
-        if (g.status === "PACKED_FOR_RETURN") counts.PACKED = g._count.id;
-        else counts[g.status as keyof typeof counts] = g._count.id;
+        if (g.stockClass === "REPLACEMENT_AVAILABLE") counts.NEW += g._count.id;
+        else if (g.stockClass === "DIRTY_RECOVERY") counts.DIRTY = g._count.id;
+        else if (g.stockClass === "HARVEY_IN_PROGRESS") counts.PACKED = g._count.id;
+        else if (g.stockClass === "SCRAPPED") counts.DISPOSED = g._count.id;
         counts.TOTAL += g._count.id;
       });
 

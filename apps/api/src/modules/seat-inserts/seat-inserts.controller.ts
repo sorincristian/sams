@@ -107,8 +107,11 @@ export class SeatInsertsController {
 
   async getInserts(req: Request, res: Response) {
     try {
-      const parsed = z.object({ locationId: z.string().optional(), status: z.string().optional() }).parse(req.query);
-      const data = await seatInsertsService.getInserts(parsed);
+      const parsed = z.object({ locationId: z.string().optional(), stockClass: z.string().optional() }).parse(req.query);
+      const data = await seatInsertsService.getInserts({
+         locationId: parsed.locationId,
+         stockClass: parsed.stockClass as any
+      });
       res.json(data);
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   }
@@ -168,20 +171,21 @@ export class SeatInsertsController {
   async installSeat(req: Request, res: Response) {
     try {
       const parsed = z.object({
+        garageId: z.string(),
         busId: z.string(),
         workOrderId: z.string().optional(),
         removedInsertId: z.string().optional(),
-        removedDisposition: z.enum(["DIRTY", "DISPOSED"]).optional(),
+        removedDisposition: z.string().optional(),
         removedReason: z.string().optional()
       }).parse(req.body);
       
       const data = await seatInsertsService.installSeat({
-        insertId: req.params.id as string,
+        seatInsertTypeId: req.params.id as string,
+        garageId: parsed.garageId,
         busId: parsed.busId,
         workOrderId: parsed.workOrderId,
         userId: (req as any).user?.id || 'system',
         removedInsertId: parsed.removedInsertId,
-        removedDisposition: parsed.removedDisposition,
         removedReason: parsed.removedReason
       });
       res.json({ success: true, data });

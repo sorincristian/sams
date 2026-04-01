@@ -7,12 +7,19 @@ interface WorkOrder {
   bus: { id: string; fleetNumber: string; garageId: string; garage: { name: string } };
 }
 
+interface SeatInsertType {
+  id: string;
+  partNumber: string;
+  description: string;
+}
+
 interface SeatInsert {
   id: string;
-  status: string;
+  stockClass: string;
   locationId: string;
   installedBusId: string | null;
-  seatInsertType?: { partNumber: string; description: string };
+  seatInsertTypeId: string;
+  seatInsertType?: SeatInsertType;
 }
 
 interface Props {
@@ -23,16 +30,19 @@ interface Props {
 
 export function InstallSeatModal({ workOrderId, onClose, onDone }: Props) {
   const [wo, setWo] = React.useState<WorkOrder | null>(null);
-  const [availableSeats, setAvailableSeats] = React.useState<SeatInsert[]>([]);
+  
+  // Available pool grouped by type
+  const [availableTypes, setAvailableTypes] = React.useState<{ type: SeatInsertType; count: number }[]>([]);
+  
   const [installedSeats, setInstalledSeats] = React.useState<SeatInsert[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   // Form State
-  const [selectedNewSeatId, setSelectedNewSeatId] = React.useState("");
+  const [selectedTypeId, setSelectedTypeId] = React.useState("");
   const [selectedRemovedSeatId, setSelectedRemovedSeatId] = React.useState("");
-  const [removeDisposition, setRemoveDisposition] = React.useState<"DIRTY" | "DISPOSED">("DIRTY");
+  const [removeDisposition, setRemoveDisposition] = React.useState<"DIRTY_RECOVERY" | "SCRAPPED">("DIRTY_RECOVERY");
   const [removeReason, setRemoveReason] = React.useState("OTHER");
 
   React.useEffect(() => {
@@ -42,21 +52,33 @@ export function InstallSeatModal({ workOrderId, onClose, onDone }: Props) {
         const activeWo = woRes.data;
         setWo(activeWo);
 
-        // Fetch all seats for the garage to find Available ones
-        const seatsRes = await api.get(`/seat-inserts/items?locationId=${activeWo.bus.garageId}`);
-        const allSeats: SeatInsert[] = seatsRes.data || [];
+        // Fetch replacement pool at this garage
+        const seatsRes = await api.get(`/seat-inserts/items?locationId=${activeWo.bus.garageId}&stockClass=REPLACEMENT_AVAILABLE`);
+        const pool: SeatInsert[] = seatsRes.data || [];
 
-        // Also fetch all seats globally in case the currently installed seat has a mismatched locationId
-        const allGlobalSeatsRes = await api.get(`/seat-inserts/items`);
+        // Group into physical counts per type
+        const typeMap = new Map<string, { type: SeatInsertType; count: number }>();
+        pool.forEach(s => {
+          if (!s.seatInsertType) return;
+          if (typeMap.has(s.seatInsertTypeId)) {
+            typeMap.get(s.seatInsertTypeId)!.count++;
+          } else {
+            typeMap.set(s.seatInsertTypeId, { type: s.seatInsertType, count: 1 });
+          }
+        });
+        
+        const grouped = Array.from(typeMap.values());
+        setAvailableTypes(grouped);
+
+        // Fetch installed seats globally for the removals
+        const allGlobalSeatsRes = await api.get(`/seat-inserts/items?stockClass=INSTALLED`);
         const allGlobalSeats: SeatInsert[] = allGlobalSeatsRes.data || [];
+        const currentlyInstalled = allGlobalSeats.filter(s => s.installedBusId === activeWo.bus.id);
 
-        const installable = allSeats.filter(s => s.status === "NEW" || s.status === "RETURNED_FROM_VENDOR");
-        const currentlyInstalled = allGlobalSeats.filter(s => s.installedBusId === activeWo.bus.id && s.status === "INSTALLED");
-
-        setAvailableSeats(installable);
         setInstalledSeats(currentlyInstalled);
 
-        if (installable.length > 0) setSelectedNewSeatId(installable[0].id);
+        // Sane defaults
+        if (grouped.length > 0) setSelectedTypeId(grouped[0].type.id);
         if (currentlyInstalled.length > 0) setSelectedRemovedSeatId(currentlyInstalled[0].id);
 
       } catch (e: any) {
@@ -70,14 +92,17 @@ export function InstallSeatModal({ workOrderId, onClose, onDone }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedNewSeatId) return setError("Must select a new seat to install.");
+    if (!selectedTypeId) return setError("Must select a seat type to replace.");
+    if (!wo) return;
 
     setSubmitting(true);
     setError(null);
     try {
-      await api.post(`/seat-inserts/${selectedNewSeatId}/install`, {
-        busId: wo!.bus.id,
-        workOrderId: wo!.id,
+      // Send seatInsertTypeId as the route param now, matching Phase 2 backend
+      await api.post(`/seat-inserts/${selectedTypeId}/install`, {
+        garageId: wo.bus.garageId,
+        busId: wo.bus.id,
+        workOrderId: wo.id,
         removedInsertId: selectedRemovedSeatId || undefined,
         removedDisposition: selectedRemovedSeatId ? removeDisposition : undefined,
         removedReason: selectedRemovedSeatId ? removeReason : undefined
@@ -92,15 +117,21 @@ export function InstallSeatModal({ workOrderId, onClose, onDone }: Props) {
   if (loading) {
     return (
       <div style={overlayStyle}>
-        <div style={modalStyle} className="text-center p-10 text-slate-400">Loading seat context...</div>
+        <div style={modalStyle} className="text-center p-10 text-slate-400">Loading replacement pool logic...</div>
       </div>
     );
   }
 
+  const selectedPool = availableTypes.find(t => t.type.id === selectedTypeId);
+  const availableCount = selectedPool?.count || 0;
+  
+  // Logic blocks
+  const isZero = availableCount === 0;
+
   return (
     <div style={overlayStyle}>
       <div style={modalStyle}>
-        <h3 style={{ marginBottom: 4, fontSize: "1.2rem", fontWeight: 700 }}>Install Serialized Seat</h3>
+        <h3 style={{ marginBottom: 4, fontSize: "1.2rem", fontWeight: 700 }}>Seat Swap Utility</h3>
         <p className="muted" style={{ marginBottom: 20, fontSize: "0.9rem" }}>
           Bus {wo?.bus.fleetNumber} • {wo?.bus.garage.name}
         </p>
@@ -109,28 +140,48 @@ export function InstallSeatModal({ workOrderId, onClose, onDone }: Props) {
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           
-          {/* New Seat Selection */}
+          {/* New Seat / Pool Selection */}
           <div style={{ background: "#111827", padding: 16, borderRadius: 8, border: "1px solid #374151" }}>
             <label style={{ display: "flex", marginBottom: 8, fontWeight: 600, color: "#10b981", alignItems: 'center', gap: 6 }}>
               <span style={{ background: "#10b981", color: "#fff", width: 18, height: 18, borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>1</span>
-              Seat to Install
+              Replacement Pool Selection
             </label>
-            {availableSeats.length === 0 ? (
-              <div style={{ color: "#f59e0b", fontSize: "0.9rem" }}>No seats available in NEW or RETURNED_FROM_VENDOR status at this garage.</div>
+            
+            {availableTypes.length === 0 ? (
+              <div style={{ color: "#ef4444", background: "#7f1d1d20", padding: "12px", borderRadius: 6, fontSize: "0.9rem", marginTop: 8 }}>
+                <strong>Removal blocked: no local replacement available.</strong><br/>
+                Wait for a Harvey return or a new order shipment to restock.
+              </div>
             ) : (
-              <select 
-                value={selectedNewSeatId} 
-                onChange={e => setSelectedNewSeatId(e.target.value)}
-                style={selectStyle}
-                required
-              >
-                <option value="" disabled>Select a physical seat...</option>
-                {availableSeats.map(s => (
-                  <option key={s.id} value={s.id}>
-                    [{s.id.slice(-6).toUpperCase()}] {s.seatInsertType?.partNumber} — {s.seatInsertType?.description}
-                  </option>
-                ))}
-              </select>
+              <>
+                <select 
+                  value={selectedTypeId} 
+                  onChange={e => setSelectedTypeId(e.target.value)}
+                  style={selectStyle}
+                  required
+                >
+                  <option value="" disabled>Select seat component type...</option>
+                  {availableTypes.map(t => (
+                    <option key={t.type.id} value={t.type.id}>
+                      {t.type.partNumber} — {t.type.description}
+                    </option>
+                  ))}
+                </select>
+
+                {selectedTypeId && (
+                  <div style={{ marginTop: 12, padding: 12, background: isZero ? "#7f1d1d20" : "#0f172a", border: isZero ? "1px solid #ef444450" : "1px dashed #334155", borderRadius: 6 }}>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                      <span style={{ fontSize: "1.4rem", fontWeight: 800, color: isZero ? "#ef4444" : "#10b981" }}>{availableCount}</span>
+                      <span style={{ color: "#9ca3af", fontWeight: 500 }}>Replacement Available</span>
+                    </div>
+                    {isZero ? (
+                      <div style={{ color: "#ef4444", fontSize: "0.85rem", marginTop: 4, fontWeight: 500 }}>Removal blocked: no local replacement available.</div>
+                    ) : (
+                      <div style={{ color: "#10b981", fontSize: "0.85rem", marginTop: 4 }}>Optimized source selected automatically</div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -158,8 +209,8 @@ export function InstallSeatModal({ workOrderId, onClose, onDone }: Props) {
                 <label>
                   <div style={{ fontSize: "0.8rem", color: "#9ca3af", marginBottom: 4 }}>Condition / Destination</div>
                   <select value={removeDisposition} onChange={e => setRemoveDisposition(e.target.value as any)} style={selectStyle}>
-                    <option value="DIRTY">DIRTY (Send to Harvey)</option>
-                    <option value="DISPOSED">SCRAP / DESTROY</option>
+                    <option value="DIRTY_RECOVERY">DIRTY (Send to Harvey)</option>
+                    <option value="SCRAPPED">SCRAP / DESTROY</option>
                   </select>
                 </label>
                 <label>
@@ -182,10 +233,18 @@ export function InstallSeatModal({ workOrderId, onClose, onDone }: Props) {
             </button>
             <button
               type="submit"
-              disabled={submitting || availableSeats.length === 0 || !selectedNewSeatId}
-              style={{ width: "auto", background: "#10b981", padding: "8px 16px", borderRadius: 6, color: "#fff", fontWeight: 600 }}
+              disabled={submitting || isZero || !selectedTypeId}
+              style={{ 
+                width: "auto", 
+                background: isZero ? "#374151" : "#10b981", 
+                padding: "8px 16px", 
+                borderRadius: 6, 
+                color: isZero ? "#9ca3af" : "#fff", 
+                fontWeight: 600,
+                cursor: isZero ? "not-allowed" : "pointer"
+              }}
             >
-              {submitting ? "Installing..." : "Confirm Installation Swap"}
+              {submitting ? "Processing Swap..." : "Replace & Send Dirty to Harvey"}
             </button>
           </div>
         </form>

@@ -114,10 +114,13 @@ export function SeatInsertsDashboard() {
 
   const safeSummary = summary ?? {
     totalInventory: 0,
-    newInventory: 0,
-    dirtyInventory: 0,
-    packedForReturn: 0,
-    returned: 0,
+    replacementAvailable: 0,
+    dirtyRecoveryQueue: 0,
+    harveyInProgress: 0,
+    scrapped: 0,
+    rebuiltReturningToday: 0,
+    blockedSwaps: 0,
+    costAvoidance: 0,
     slaPercentage: 100
   };
 
@@ -171,29 +174,38 @@ export function SeatInsertsDashboard() {
       </div>
 
       {/* Top Section - KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
         <KPIBox 
-          title="Total Inserts" 
-          value={loading && !summary ? "-" : safeSummary.totalInventory} 
+          title="Replacement Available" 
+          value={loading && !summary ? "-" : safeSummary.replacementAvailable} 
           trendValue={0} 
-          trendLabel="stable baseline" 
+          state={safeSummary.replacementAvailable < 10 ? "warning" : "normal"}
         />
         <KPIBox 
-          title="New Inventory" 
-          value={loading && !summary ? "-" : safeSummary.newInventory} 
-          trendValue={0} 
-          state={safeSummary.newInventory < 50 ? "warning" : "normal"}
-        />
-        <KPIBox 
-          title="Dirty &amp; Packed" 
-          value={loading && !summary ? "-" : (safeSummary.dirtyInventory + safeSummary.packedForReturn)} 
+          title="Dirty Recovery Queue" 
+          value={loading && !summary ? "-" : safeSummary.dirtyRecoveryQueue} 
           trendValue={0} 
         />
         <KPIBox 
-          title="Vendor SLA %" 
-          value={loading && !summary ? "-" : `${safeSummary.slaPercentage}%`} 
+          title="Harvey In Rebuild" 
+          value={loading && !summary ? "-" : safeSummary.harveyInProgress} 
           trendValue={0} 
-          state={safeSummary.slaPercentage < 90 ? "critical" : "normal"}
+        />
+        <KPIBox 
+          title="Rebuilt Returning Today" 
+          value={loading && !summary ? "-" : safeSummary.rebuiltReturningToday} 
+          trendValue={0} 
+        />
+        <KPIBox 
+          title="Blocked Swaps" 
+          value={loading && !summary ? "-" : safeSummary.blockedSwaps} 
+          trendValue={0}
+          state={safeSummary.blockedSwaps > 0 ? "critical" : "normal"}
+        />
+        <KPIBox 
+          title="Cost Avoidance" 
+          value={loading && !summary ? "-" : `$${safeSummary.costAvoidance.toLocaleString()}`} 
+          trendValue={0} 
         />
       </div>
 
