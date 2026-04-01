@@ -7,6 +7,7 @@ interface CatalogAutocompleteProps {
   selectedPartId: string | null;
   setSelectedPartId: (id: string | null) => void;
   placeholder?: string;
+  emptyStateMessage?: string;
   getDisplayValue?: (part: any) => string;
   renderItem?: (part: any, isHighlighted: boolean) => React.ReactNode;
 }
@@ -18,6 +19,7 @@ export function CatalogAutocomplete({
   selectedPartId,
   setSelectedPartId,
   placeholder = "Search part #, description, or type…",
+  emptyStateMessage = "No matching parts found.",
   getDisplayValue = (p) => `${p.partNumber} — ${p.description}`,
   renderItem
 }: CatalogAutocompleteProps) {
@@ -110,7 +112,7 @@ export function CatalogAutocomplete({
         }}>
           {filteredCatalogParts.length === 0 ? (
             <div style={{ padding: "10px 14px", color: "#64748b", fontSize: "0.85rem" }}>
-              No matching parts found.
+              {emptyStateMessage}
             </div>
           ) : (
             filteredCatalogParts.map((part, index) => {

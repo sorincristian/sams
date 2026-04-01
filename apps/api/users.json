@@ -1,0 +1,38 @@
+[
+  {
+    "id": "cmmrah3op000011ysf200z0ey",
+    "name": "Admin User",
+    "email": "admin@ttc.ca",
+    "passwordHash": "$2a$10$WmDj7uXI5RVjx4fAyK9.y.AiwfTWkbzzHyQmuhNv3ADIF3g37Vs0y",
+    "role": "ADMIN",
+    "roleId": null,
+    "garageId": null,
+    "createdAt": "2026-03-15T05:03:22.345Z",
+    "updatedAt": "2026-03-15T05:03:22.345Z",
+    "tokenVersion": 0
+  },
+  {
+    "id": "system",
+    "name": "System",
+    "email": "system@sams.local",
+    "passwordHash": "none",
+    "role": "SYSTEM",
+    "roleId": null,
+    "garageId": null,
+    "createdAt": "2026-03-26T06:30:09.088Z",
+    "updatedAt": "2026-03-26T06:30:09.088Z",
+    "tokenVersion": 0
+  },
+  {
+    "id": "cmmnwunli000nf7yu1ialcadk",
+    "name": "SAMS Admin",
+    "email": "admin@sams.local",
+    "passwordHash": "$2a$10$xzuBVAOFs84FsNRIPL0TmuH9JefYA/FIURkyplF2f.Rx32OSEf.Pi",
+    "role": "ADMIN",
+    "roleId": null,
+    "garageId": null,
+    "createdAt": "2026-03-12T20:18:41.526Z",
+    "updatedAt": "2026-03-28T04:21:34.157Z",
+    "tokenVersion": 0
+  }
+]

@@ -45,8 +45,8 @@ export function SeatOrderCreatePage() {
   });
 
   useEffect(() => {
-    api.get("/api/garages").then((res: any) => setGarages(res.data)).catch(console.error);
-    api.get("/api/seat-insert-types").then((res: any) => setCatalogParts(res.data)).catch(console.error);
+    api.get("/garages").then((res: any) => setGarages(res.data)).catch(err => console.error("Failed to load garages:", err));
+    api.get("/catalog").then((res: any) => setCatalogParts(res.data)).catch(err => console.error("Failed to load catalog parts:", err));
 
     // Dedup route state
     if (location.state) {
@@ -142,28 +142,28 @@ export function SeatOrderCreatePage() {
   };
 
   return (
-    <div className="p-6 max-w-[1200px] mx-auto space-y-6">
+    <div className="p-6 max-w-[1400px] mx-auto space-y-6">
       
       {/* Header Block */}
-      <div className="flex items-center space-x-4">
-        <Button 
-          variant="ghostDark" 
-          onClick={() => navigate("/procurement/seat-orders")}
-          className="!p-3 rounded-full border-[#334155] !bg-[#1e293b]"
-          aria-label="Back to orders"
-        >
-          <ArrowLeft className="w-5 h-5 text-slate-300" />
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#f8fafc] flex items-center gap-3">
-            <ShoppingCart className="w-7 h-7 text-blue-500" />
-            Create Seat Order
-          </h1>
-          <p className="text-[#94a3b8] mt-1 text-sm font-medium">Draft a new procurement request to Harvey Shop.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghostDark" 
+            onClick={() => navigate("/procurement/seat-orders")}
+            className="shrink-0 !w-11 !h-11 !p-0 rounded-full border-[#334155] !bg-[#1e293b]"
+            aria-label="Back to orders"
+          >
+            <ArrowLeft className="w-5 h-5 text-slate-300" />
+          </Button>
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#f8fafc] leading-tight flex items-center gap-3 whitespace-nowrap">
+              <ShoppingCart className="w-6 h-6 sm:w-7 sm:h-7 text-blue-500 shrink-0" />
+              Create Seat Order
+            </h1>
+            <p className="text-[#94a3b8] mt-1 text-sm font-medium">Draft a new procurement request to Harvey Shop.</p>
+          </div>
         </div>
-        <div className="ml-auto">
-          <span className="px-3 py-1 bg-slate-800 text-slate-400 border border-slate-700 rounded-[8px] text-[11px] font-bold tracking-wider uppercase">DRAFT</span>
-        </div>
+        <span className="shrink-0 px-3 py-1 bg-slate-800 text-slate-400 border border-slate-700 rounded-[8px] text-[11px] font-bold tracking-wider uppercase mt-1">DRAFT</span>
       </div>
 
       {error && (
@@ -192,9 +192,13 @@ export function SeatOrderCreatePage() {
                   className="w-full bg-[#1e293b]/50 border border-slate-400/20 rounded-[14px] text-[#f8fafc] min-h-[52px] px-4 py-[14px] text-[16px] outline-none transition-all focus:border-blue-500/70 focus:ring-4 focus:ring-blue-500/15 cursor-pointer"
                 >
                   <option value="">-- Select Garage --</option>
-                  {garages.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
+                  {garages.length === 0 ? (
+                    <option value="" disabled>No garages configured</option>
+                  ) : (
+                    garages.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))
+                  )}
                 </select>
               </div>
               <div className="row-span-2">
@@ -227,6 +231,7 @@ export function SeatOrderCreatePage() {
                     selectedPartId={selectedPartId}
                     setSelectedPartId={setSelectedPartId}
                     placeholder="Search Seat Insert part # or description..."
+                    emptyStateMessage="No seat insert parts found in catalog"
                   />
                 </div>
                 <Button 
