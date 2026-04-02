@@ -10,7 +10,10 @@ const router = Router();
 router.post("/login", async (req, res) => {
   try {
     const schema = z.object({
-      email: z.string().email(),
+      email: z.string().refine(
+        (value) => value.toLowerCase() === 'dev@local' || z.string().email().safeParse(value).success,
+        { message: 'Invalid email' }
+      ),
       password: z.string().min(1)
     });
 
