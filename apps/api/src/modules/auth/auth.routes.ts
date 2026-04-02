@@ -19,6 +19,47 @@ router.post("/login", async (req, res) => {
 
     console.log("LOGIN ATTEMPT:", { email: parsed.data.email });
 
+    // Development / staging only
+    // Never enabled in production
+    // Requires DEV_BYPASS=true
+    const devBypassEnabled = process.env.DEV_BYPASS === 'true' && process.env.NODE_ENV !== 'production';
+
+    // === DEV BYPASS ===
+    if (devBypassEnabled && parsed.data.email.toLowerCase() === 'dev@local' && parsed.data.password === 'bypass') {
+      const jwtSecret = process.env.JWT_SECRET;
+
+      if (!jwtSecret) return res.status(500).json({ message: "Server auth misconfiguration" });
+      
+      const expiresIn = (process.env.JWT_EXPIRES_IN || "12h") as SignOptions["expiresIn"];
+      
+      const payload = {
+        sub: 'dev-bypass-user-id',
+        email: 'dev@local',
+        role: 'ADMIN',
+        permissions: {
+          inventory: "manage", fleet: "manage", reports: "manage", catalog: "manage",
+          work_orders: "manage", dashboard: "manage", transactions: "manage", admin: "manage"
+        },
+        scope: { garages: [] },
+        tokenVersion: 1
+      };
+      
+      const token = jwt.sign(payload, jwtSecret, { expiresIn });
+      console.log("DEV BYPASS LOGIN SUCCESS");
+      return res.json({
+        token,
+        user: { 
+          id: payload.sub, 
+          email: payload.email, 
+          name: 'Dev Bypass', 
+          role: payload.role, 
+          permissions: payload.permissions, 
+          scope: payload.scope 
+        }
+      });
+    }
+    // ==================
+
     const user = await prisma.user.findUnique({ 
       where: { email: parsed.data.email },
       include: {

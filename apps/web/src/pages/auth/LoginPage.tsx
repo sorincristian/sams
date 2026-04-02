@@ -31,6 +31,29 @@ export function LoginPage() {
     }
   }, [explicitStatus, explicitMessage]);
 
+  const handleDevBypass = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await authService.login('dev@local', 'bypass');
+      login(data.token, data.user);
+      const destination = authRedirect.getSavedDestination() || "/dashboard";
+      authRedirect.clearSavedDestination();
+      navigate(destination, { replace: true });
+    } catch (err: any) {
+      setError("Dev bypass login failed");
+      setLoading(false);
+    }
+  };
+
+  // Optional auto-login mode
+  React.useEffect(() => {
+    if (import.meta.env.VITE_DEV_BYPASS === 'true') {
+      // Auto-login disabled by default to show the UI. Uncomment the line below to enable auto-login.
+      // handleDevBypass();
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -107,6 +130,18 @@ export function LoginPage() {
               </>
             ) : "Sign in"}
           </button>
+
+          {import.meta.env.VITE_DEV_BYPASS === 'true' && (
+            <div className="mt-4 flex justify-center opacity-30 hover:opacity-100 transition-opacity">
+              <button 
+                type="button"
+                onClick={handleDevBypass}
+                className="text-xs font-medium text-slate-500 hover:text-slate-700 outline-none cursor-pointer"
+              >
+                Dev Login
+              </button>
+            </div>
+          )}
         </form>
       </AuthCard>
     </AuthPageShell>
