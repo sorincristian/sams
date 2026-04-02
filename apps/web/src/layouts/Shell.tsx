@@ -18,40 +18,62 @@ import { SeatOrderCreatePage } from "../modules/seat-orders/pages/SeatOrderCreat
 import { SeatOrderDetailPage } from "../modules/seat-orders/pages/SeatOrderDetailPage";
 import { canView } from "../lib/rbac";
 
+type NavModule = {
+  path: string;
+  label: string;
+  exact?: boolean;
+  guard?: string;
+};
+
+const MODULE_REGISTRY: NavModule[] = [
+  { path: '/', label: 'Dashboard', exact: true, guard: 'dashboard' },
+  { path: '/fleet', label: 'Fleet', guard: 'fleet' },
+  { path: '/garages', label: 'Garages' },
+  { path: '/inventory', label: 'Inventory', exact: true, guard: 'inventory' },
+  { path: '/catalog', label: 'Catalog', guard: 'catalog' },
+  { path: '/work-orders', label: 'Work Orders', guard: 'work_orders' },
+  { path: '/transactions', label: 'Ledger', guard: 'transactions' },
+  { path: '/procurement/seat-orders', label: 'Seat Orders', guard: 'procurement' },
+  { path: '/import-history', label: 'Import History' },
+  { path: '/seat-inserts', label: 'Command Centre' },
+  { path: '/inventory/seat-changes', label: 'Seat Change Report', guard: 'reports' },
+  { path: '/help', label: 'Help' }
+];
+
+const ADMIN_REGISTRY: NavModule[] = [
+  { path: '/admin/users', label: 'Users', guard: 'admin' },
+  { path: '/admin/roles', label: 'Roles', guard: 'admin' },
+  { path: '/admin/email-centre', label: 'Email Centre', guard: 'admin' },
+];
+
 export function Shell({ user, onLogout }: { user: any; onLogout: () => void }) {
   return (
     <div className="shell">
       <aside className="sidebar">
         <h2>SAMS</h2>
         <p className="muted" style={{ color: "#9ca3af", fontSize: "0.72rem", marginTop: -6 }}>Seat &amp; Asset Mgmt System</p>
-        <div style={{ marginTop: 4, marginBottom: 8, padding: "4px 8px", background: "#1e3a5f", borderRadius: 5, display: "inline-block" }}>
-          <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#60a5fa", letterSpacing: "0.04em" }}>SIMS</span>
-          <span style={{ fontSize: "0.72rem", color: "#93c5fd", marginLeft: 6 }}>Inventory Module</span>
-        </div>
-        <nav>
-          {canView(user, 'dashboard') && <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>Dashboard</NavLink>}
-          {canView(user, 'fleet') && <NavLink to="/fleet" className={({ isActive }) => (isActive ? "active" : "")}>Fleet</NavLink>}
-          <NavLink to="/garages" className={({ isActive }) => (isActive ? "active" : "")}>Garages</NavLink>
-          {canView(user, 'inventory') && (
-            <>
-              <NavLink to="/inventory" end className={({ isActive }) => (isActive ? "active" : "")}>Inventory</NavLink>
-              {canView(user, 'reports') && <NavLink to="/inventory/seat-changes" className={({ isActive }) => (isActive ? "active" : "")}>Seat Change Report</NavLink>}
-            </>
-          )}
-          {canView(user, 'transactions') && <NavLink to="/transactions" className={({ isActive }) => (isActive ? "active" : "")}>Ledger</NavLink>}
-          {canView(user, 'catalog') && <NavLink to="/catalog" className={({ isActive }) => (isActive ? "active" : "")}>Catalog</NavLink>}
-          {canView(user, 'work_orders') && <NavLink to="/work-orders" className={({ isActive }) => (isActive ? "active" : "")}>Work Orders</NavLink>}
-          <NavLink to="/import-history" className={({ isActive }) => (isActive ? "active" : "")}>Import History</NavLink>
-          <NavLink to="/seat-inserts" className={({ isActive }) => (isActive ? "active" : "")}>Command Centre</NavLink>
-          <NavLink to="/help" className={({ isActive }) => (isActive ? "active" : "")}>Help</NavLink>
-          {canView(user, 'admin') && (
+        <nav style={{ marginTop: "16px" }}>
+          {MODULE_REGISTRY.map(mod => (
+            (!mod.guard || canView(user, mod.guard)) && (
+              <NavLink key={mod.path} to={mod.path} end={mod.exact} className={({ isActive }) => (isActive ? "active" : "")}>
+                {mod.label}
+              </NavLink>
+            )
+          ))}
+          
+          {(user?.role === 'SYSTEM_ADMIN' || canView(user, 'admin')) && (
             <>
               <div style={{ marginTop: 16, marginBottom: 8, padding: "4px 8px", background: "#1e293b", borderRadius: 5, display: "inline-block" }}>
                 <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#94a3b8", letterSpacing: "0.04em" }}>SYSTEM</span>
                 <span style={{ fontSize: "0.72rem", color: "#64748b", marginLeft: 6 }}>Admin</span>
               </div>
-              <NavLink to="/admin/users" className={({ isActive }) => (isActive ? "active" : "")}>Users</NavLink>
-              <NavLink to="/admin/roles" className={({ isActive }) => (isActive ? "active" : "")}>Roles</NavLink>
+              {ADMIN_REGISTRY.map(mod => (
+                (!mod.guard || canView(user, mod.guard)) && (
+                  <NavLink key={mod.path} to={mod.path} end={mod.exact} className={({ isActive }) => (isActive ? "active" : "")}>
+                    {mod.label}
+                  </NavLink>
+                )
+              ))}
             </>
           )}
         </nav>
