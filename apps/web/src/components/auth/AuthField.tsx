@@ -12,14 +12,14 @@ export function AuthField({ label, error, type = "text", ...props }: AuthFieldPr
   const inputType = isPassword && showPassword ? "text" : type;
 
   return (
-    <div className="flex flex-col gap-1.5 w-full text-left mb-4 relative z-20">
+    <div className="flex flex-col gap-1.5 w-full text-left mb-4 relative z-20 pointer-events-auto">
       <label className="text-sm font-semibold text-slate-700">
         {label}
       </label>
-      <div className="relative w-full">
+      <div className="relative w-full block pointer-events-auto flex-1">
         <input
           type={inputType}
-          className={`w-full relative z-10 bg-white border pointer-events-auto ${
+          className={`block w-full relative z-10 bg-white border pointer-events-auto ${
             error 
               ? 'border-red-300 focus:border-red-500 focus:ring-red-500/20' 
               : 'border-slate-300 focus:border-blue-600 focus:ring-blue-600/20'
@@ -27,15 +27,17 @@ export function AuthField({ label, error, type = "text", ...props }: AuthFieldPr
           {...props}
         />
         {isPassword && (
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 outline-none transition-colors select-none z-20 pointer-events-auto"
-            tabIndex={-1}
-            title={showPassword ? "Hide password" : "Show password"}
-          >
-            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-          </button>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 z-30 pointer-events-auto flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="text-slate-400 hover:text-slate-600 p-1 outline-none transition-colors select-none"
+              tabIndex={-1}
+              title={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="w-5 h-5 pointer-events-none" /> : <Eye className="w-5 h-5 pointer-events-none" />}
+            </button>
+          </div>
         )}
       </div>
       {error && (

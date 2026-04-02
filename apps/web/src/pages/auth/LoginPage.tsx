@@ -90,7 +90,7 @@ export function LoginPage() {
         {explicitMessage && !error && <AuthMessageBanner type="success" message={explicitMessage} />}
         {error && <AuthMessageBanner type="error" message={error} />}
 
-        <form onSubmit={handleSubmit} className="flex flex-col">
+        <form onSubmit={handleSubmit} className="flex flex-col w-full relative z-50 pointer-events-auto">
           <AuthField 
             label="Email Address"
             type="email"
@@ -121,7 +121,7 @@ export function LoginPage() {
           <button 
             type="submit" 
             disabled={loading || !email || !password}
-            className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all border outline-none border-transparent flex items-center justify-center gap-2"
+            className="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 text-white font-bold py-3 px-4 rounded-xl shadow-md transition-all border outline-none border-transparent flex items-center justify-center gap-2 pointer-events-auto cursor-pointer"
           >
             {loading ? (
               <>
