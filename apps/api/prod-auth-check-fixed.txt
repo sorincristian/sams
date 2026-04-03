@@ -1,0 +1,6 @@
+﻿--- Verifying Login on PRODUCTION APP ---
+[SUCCESS] Login successful! {
+  statusCode: 200,
+  user: { email: 'admin@sams.local', role: 'SYSTEM_ADMIN' },
+  tokenReceived: true
+}

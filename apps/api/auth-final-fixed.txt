@@ -1,0 +1,6 @@
+﻿--- Checking admin user ---
+[ACTION] User exists. Updating password and role...
+[RESULT] User updated successfully.
+
+--- Verifying Login via real auth path ---
+[ERROR] Fetch error: fetch failed

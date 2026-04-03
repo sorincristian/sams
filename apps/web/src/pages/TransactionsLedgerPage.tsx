@@ -55,13 +55,16 @@ export function TransactionsLedgerPage() {
   React.useEffect(() => {
     Promise.all([
       api.get("/inventory/transactions"),
-      api.get("/v1/catalog")
+      api.get("/catalog")
     ])
       .then(([txRes, catRes]) => {
         setRows(txRes.data);
         setCatalogParts(catRes.data);
       })
-      .catch(() => setError("Failed to load transactions."))
+      .catch((err) => {
+        console.error("Failed to load ledger data:", err);
+        setError("Failed to load transactions.");
+      })
       .finally(() => setLoading(false));
   }, []);
 

@@ -1,0 +1,15 @@
+src/modules/seat-inserts/seat-inserts.rules.ts(73,7): error TS2322: Type '("status" | "locationId")[]' is not assignable to type 'SeatInsertScalarFieldEnum | SeatInsertScalarFieldEnum[]'.
+  Type '("status" | "locationId")[]' is not assignable to type 'SeatInsertScalarFieldEnum[]'.
+    Type '"status" | "locationId"' is not assignable to type 'SeatInsertScalarFieldEnum'.
+      Type '"status"' is not assignable to type 'SeatInsertScalarFieldEnum'.
+src/modules/seat-inserts/seat-inserts.rules.ts(82,15): error TS2339: Property 'status' does not exist on type 'PickEnumerable<SeatInsertGroupByOutputType, SeatInsertScalarFieldEnum | SeatInsertScalarFieldEnum[]> & { ...; }'.
+src/modules/seat-inserts/seat-inserts.rules.ts(82,63): error TS18048: 'g._count' is possibly 'undefined'.
+src/modules/seat-inserts/seat-inserts.rules.ts(82,72): error TS2339: Property 'id' does not exist on type 'true | { id?: number | undefined; seatType?: number | undefined; color?: number | undefined; hardwareCode?: number | undefined; fleetType?: number | undefined; stockClass?: number | undefined; ... 15 more ...; _all?: number | undefined; }'.
+  Property 'id' does not exist on type 'true'.
+src/modules/seat-inserts/seat-inserts.rules.ts(83,23): error TS2339: Property 'status' does not exist on type 'PickEnumerable<SeatInsertGroupByOutputType, SeatInsertScalarFieldEnum | SeatInsertScalarFieldEnum[]> & { ...; }'.
+src/modules/seat-inserts/seat-inserts.rules.ts(83,56): error TS18048: 'g._count' is possibly 'undefined'.
+src/modules/seat-inserts/seat-inserts.rules.ts(83,65): error TS2339: Property 'id' does not exist on type 'true | { id?: number | undefined; seatType?: number | undefined; color?: number | undefined; hardwareCode?: number | undefined; fleetType?: number | undefined; stockClass?: number | undefined; ... 15 more ...; _all?: number | undefined; }'.
+  Property 'id' does not exist on type 'true'.
+src/modules/seat-inserts/seat-inserts.rules.ts(84,25): error TS18048: 'g._count' is possibly 'undefined'.
+src/modules/seat-inserts/seat-inserts.rules.ts(84,34): error TS2339: Property 'id' does not exist on type 'true | { id?: number | undefined; seatType?: number | undefined; color?: number | undefined; hardwareCode?: number | undefined; fleetType?: number | undefined; stockClass?: number | undefined; ... 15 more ...; _all?: number | undefined; }'.
+  Property 'id' does not exist on type 'true'.

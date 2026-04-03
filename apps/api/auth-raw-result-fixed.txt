@@ -1,0 +1,4 @@
+﻿--- 1) INSPECT PRODUCTION USERS ---
+[]
+--- 4) CREATING ADMIN ---
+Created admin@sams.local with raw sql

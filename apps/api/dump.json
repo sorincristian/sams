@@ -1,0 +1,5 @@
+
+Invalid `prisma.user.findFirst()` invocation:
+
+
+The column `User.tokenVersion` does not exist in the current database.

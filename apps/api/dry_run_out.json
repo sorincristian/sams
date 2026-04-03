@@ -1,0 +1,161 @@
+{
+  "count": 26,
+  "parsed": [
+    {
+      "orig": "NOVA L729, L738 - Bus #9000 - 9026.pdf",
+      "manuf": "Nova Bus",
+      "model": "L729, L738",
+      "partNumber": "SI-NOVA-L729L738"
+    },
+    {
+      "orig": "NOVA L777 - Bus #9027 - 9152.pdf",
+      "manuf": "Nova Bus",
+      "model": "L777",
+      "partNumber": "SI-NOVA-L777"
+    },
+    {
+      "orig": "NOVA L859 - Bus #8400.pdf",
+      "manuf": "Nova Bus",
+      "model": "L859",
+      "partNumber": "SI-NOVA-L859"
+    },
+    {
+      "orig": "NOVA L860 - Bus #8401 - 8504.pdf",
+      "manuf": "Nova Bus",
+      "model": "L860",
+      "partNumber": "SI-NOVA-L860"
+    },
+    {
+      "orig": "NOVA L937 - Bus #8510 - 8617.pdf",
+      "manuf": "Nova Bus",
+      "model": "L937",
+      "partNumber": "SI-NOVA-L937"
+    },
+    {
+      "orig": "NOVA L998 - Bus #8620 - 8716.pdf",
+      "manuf": "Nova Bus",
+      "model": "L998",
+      "partNumber": "SI-NOVA-L998"
+    },
+    {
+      "orig": "NOVA LA67 - Bus #8720 - 8919.pdf",
+      "manuf": "Nova Bus",
+      "model": "LA67",
+      "partNumber": "SI-NOVA-LA67"
+    },
+    {
+      "orig": "NOVA LA68 - Bus #8920 - 8964.pdf",
+      "manuf": "Nova Bus",
+      "model": "LA68",
+      "partNumber": "SI-NOVA-LA68"
+    },
+    {
+      "orig": "NOVA LA69 - Bus #9200 - 9239.pdf",
+      "manuf": "Nova Bus",
+      "model": "LA69",
+      "partNumber": "SI-NOVA-LA69"
+    },
+    {
+      "orig": "NOVA LB28 - Bus #3180 - 3329.pdf",
+      "manuf": "Nova Bus",
+      "model": "LB28",
+      "partNumber": "SI-NOVA-LB28"
+    },
+    {
+      "orig": "NOVA LB45 - Bus #3100 - 3179.pdf",
+      "manuf": "Nova Bus",
+      "model": "LB45",
+      "partNumber": "SI-NOVA-LB45"
+    },
+    {
+      "orig": "NOVA LB57 - Bus #3455 - 3569.pdf",
+      "manuf": "Nova Bus",
+      "model": "LB57",
+      "partNumber": "SI-NOVA-LB57"
+    },
+    {
+      "orig": "NOVA LB62, LB79 - Bus #3400 - 3454.pdf",
+      "manuf": "Nova Bus",
+      "model": "LB62, LB79",
+      "partNumber": "SI-NOVA-LB62LB79"
+    },
+    {
+      "orig": "NOVA LB75 - Bus #3330 - 3369.pdf",
+      "manuf": "Nova Bus",
+      "model": "LB75",
+      "partNumber": "SI-NOVA-LB75"
+    },
+    {
+      "orig": "NOVA LB89 - Bus #3570 - 3654.pdf",
+      "manuf": "Nova Bus",
+      "model": "LB89",
+      "partNumber": "SI-NOVA-LB89"
+    },
+    {
+      "orig": "NOVA LE65 - Bus #7000 - 7123.pdf",
+      "manuf": "Nova Bus",
+      "model": "LE65",
+      "partNumber": "SI-NOVA-LE65"
+    },
+    {
+      "orig": "NOVA LF42 - Bus #7124 - 7133.pdf",
+      "manuf": "Nova Bus",
+      "model": "LF42",
+      "partNumber": "SI-NOVA-LF42"
+    },
+    {
+      "orig": "NOVA LF65, LF76- Bus #6600 - 6735.pdf",
+      "manuf": "Nova Bus",
+      "model": "LF65, LF76",
+      "partNumber": "SI-NOVA-LF65LF76"
+    },
+    {
+      "orig": "1336AB - Bus #8100 - 8219.pdf",
+      "manuf": "Orion",
+      "model": "1336AB",
+      "partNumber": "SI-ORIO-1336AB"
+    },
+    {
+      "orig": "1358AB-1359AB - Bus #8300-8396.pdf",
+      "manuf": "Orion",
+      "model": "1358AB-1359AB",
+      "partNumber": "SI-ORIO-1358AB13"
+    },
+    {
+      "orig": "BYD Bus #3750-3759 (1).pdf",
+      "manuf": "BYD",
+      "model": "BYD Bus #3750-3759",
+      "partNumber": "SI-BYD-BYDBUS37"
+    },
+    {
+      "orig": "New Flyer 40 ft. Electric - Bus #3700 - 3709 (1).pdf",
+      "manuf": "New Flyer",
+      "model": "40 ft. Electric",
+      "partNumber": "SI-NEW -40FTELEC"
+    },
+    {
+      "orig": "New Flyer 40 ft. Electric - Bus #3710 - 3724 (1).pdf",
+      "manuf": "New Flyer",
+      "model": "40 ft. Electric",
+      "partNumber": "SI-NEW -40FTELEC"
+    },
+    {
+      "orig": "New Flyer 40 ft. Electric - Bus #6000-6203 (1).pdf",
+      "manuf": "New Flyer",
+      "model": "40 ft. Electric",
+      "partNumber": "SI-NEW -40FTELEC"
+    },
+    {
+      "orig": "New Flyer 40 ft. HYB - Bus #7200 - 7333 (1).pdf",
+      "manuf": "New Flyer",
+      "model": "40 ft. HYB",
+      "partNumber": "SI-NEW -40FTHYB"
+    },
+    {
+      "orig": "Proterra Bus #3725 - 3749 (1).pdf",
+      "manuf": "Proterra",
+      "model": "Proterra Bus #3725 - 3749",
+      "partNumber": "SI-PROT-PROTERRA"
+    }
+  ]
+}
