@@ -1,6 +1,7 @@
 import React from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../api";
+import { resolveAssetUrl } from "../utils/assetUrl";
 import { AttachmentsModal } from "../modules/seat-inserts/components/AttachmentsModal";
 
 export function PartDetailsPage() {
@@ -189,7 +190,7 @@ function AttachmentRow({ attachment, isDiagram, partId, reload }: { attachment: 
     <div className="flex items-center justify-between p-3 bg-gray-900/50 rounded border border-gray-700 shadow-sm">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          <a href={attachment.urlOrPath} target="_blank" rel="noreferrer" className="text-blue-400 text-sm font-semibold hover:underline no-underline">
+          <a href={resolveAssetUrl(attachment.urlOrPath) || ""} target="_blank" rel="noreferrer" className="text-blue-400 text-sm font-semibold hover:underline no-underline">
             {attachment.fileName}
           </a>
           {attachment.isPrimary && <span className="bg-blue-600 text-white text-[0.65rem] px-2 py-0.5 rounded-full font-bold">PRIMARY_BOUND</span>}

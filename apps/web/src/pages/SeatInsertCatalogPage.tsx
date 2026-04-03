@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { resolveAssetUrl } from "../utils/assetUrl";
 import { CatalogAutocomplete } from "../components/CatalogAutocomplete";
 
 interface CatalogPart {
@@ -225,7 +226,6 @@ function DetailPanel({ partId, onClose }: { partId: string; onClose: () => void 
             )}
           </div>
 
-          {/* PDF Diagrams via compatibility */}
           {(() => {
             const allAttachments: (CatalogAttach & { via?: string })[] = [
               ...detail.catalogAttachments.map((a) => ({ ...a, via: "direct" })),
@@ -236,51 +236,66 @@ function DetailPanel({ partId, onClose }: { partId: string; onClose: () => void 
             const unique = allAttachments.filter((a, i, arr) => arr.findIndex((b) => b.id === a.id) === i);
 
             if (unique.length === 0) return (
-              <div>
-                <h4 style={{ marginBottom: 10, color: "#60a5fa" }}>Attached Diagrams</h4>
-                <div className="muted" style={{ fontSize: "0.85rem" }}>No PDF diagrams linked yet.</div>
+              <div style={{ marginTop: 24, borderTop: "1px solid #374151", paddingTop: 16 }}>
+                <h4 style={{ marginBottom: 10, color: "#60a5fa", display: "flex", gap: 8, alignItems: "center" }}>
+                  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
+                  Attached Diagrams
+                </h4>
+                <div className="muted" style={{ fontSize: "0.85rem", background: "#1f2937", padding: "16px", borderRadius: 8, textAlign: "center" }}>No PDF diagrams linked yet.</div>
               </div>
             );
 
+            // Group by Fleet Range
+            const grouped = unique.reduce((acc, att) => {
+               const label = att.fleetRangeLabel || att.via || "General / Base Configuration";
+               if (!acc[label]) acc[label] = [];
+               acc[label].push(att);
+               return acc;
+            }, {} as Record<string, typeof unique>);
+
             return (
-              <div>
-                <h4 style={{ marginBottom: 10, color: "#60a5fa" }}>Attached Diagrams ({unique.length})</h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {unique.map((att) => (
-                    <div key={att.id} style={{ background: "#1f2937", borderRadius: 6, padding: "10px 12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                      <div>
-                        <div style={{ fontSize: "0.85rem", fontWeight: 600 }}>📄 {att.fileName}</div>
-                        <div className="muted" style={{ fontSize: "0.75rem", marginTop: 2 }}>
-                          {att.busTypeLabel} · {att.fleetRangeLabel}
-                          {att.via && att.via !== "direct" && ` · via fleet ${att.via}`}
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                        {att.previewImageUrl && (
-                          <Link
-                            to={`/diagram/${att.id}`}
-                            style={{
-                              display: "inline-block", padding: "4px 10px",
-                              background: "#1e3a5f", color: "#93c5fd", borderRadius: 4,
-                              fontSize: "0.78rem", textDecoration: "none", whiteSpace: "nowrap",
-                            }}
-                          >
-                            🗺 Interactive
-                          </Link>
-                        )}
-                        <a
-                          href={att.urlOrPath}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{
-                            display: "inline-block", padding: "4px 10px",
-                            background: "#2563eb", color: "#fff", borderRadius: 4,
-                            fontSize: "0.78rem", textDecoration: "none", whiteSpace: "nowrap",
-                          }}
-                        >
-                          Open ↗
-                        </a>
-                      </div>
+              <div style={{ marginTop: 24, borderTop: "1px solid #374151", paddingTop: 16 }}>
+                <h4 style={{ marginBottom: 16, color: "#60a5fa", display: "flex", gap: 8, alignItems: "center" }}>
+                  <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "#38bdf8" }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                  Diagrams & Schematics ({unique.length})
+                </h4>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {Object.entries(grouped).map(([rangeLabel, atts]) => (
+                    <div key={rangeLabel} style={{ background: "#111827", border: "1px solid #374151", borderRadius: 8, overflow: "hidden" }}>
+                       <div style={{ background: "#1f2937", padding: "8px 12px", borderBottom: "1px solid #374151", fontSize: "0.85rem", fontWeight: 700, color: "#e2e8f0", display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ display: "inline-block", background: "#38bdf8", width: 6, height: 6, borderRadius: "50%" }}></span>
+                          Fleet Range: {rangeLabel}
+                       </div>
+                       <div style={{ padding: "12px", display: "flex", flexDirection: "column", gap: 8 }}>
+                          {atts.map((att) => (
+                            <div key={att.id} style={{ background: "#1e293b", border: "1px solid #475569", borderRadius: 6, padding: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "#f8fafc", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={att.fileName}>
+                                  {att.fileName}
+                                </div>
+                                <div className="muted" style={{ fontSize: "0.75rem", marginTop: 4 }}>
+                                  Document ID: {att.id}
+                                </div>
+                              </div>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", flexShrink: 0 }}>
+                                <a
+                                  href={resolveAssetUrl(att.urlOrPath) || ""}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  style={{
+                                    display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
+                                    background: "#2563eb", color: "#fff", borderRadius: 6,
+                                    fontSize: "0.85rem", fontWeight: 600, textDecoration: "none",
+                                    boxShadow: "0 2px 4px rgba(37,99,235,0.2)", width: "100%", justifyContent: "center"
+                                  }}
+                                >
+                                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+                                  Open PDF
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                       </div>
                     </div>
                   ))}
                 </div>

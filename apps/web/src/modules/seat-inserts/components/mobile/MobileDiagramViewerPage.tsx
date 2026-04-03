@@ -1,6 +1,7 @@
 import React from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { api } from "../../../../api";
+import { resolveAssetUrl } from "../../../../utils/assetUrl";
 import { DiagramCanvas } from "./DiagramCanvas";
 import { HotspotOverlay } from "./HotspotOverlay";
 import { PartBottomSheet } from "./PartBottomSheet";
@@ -57,7 +58,7 @@ export function MobileDiagramViewerPage() {
 
       {/* Canvas Area */}
       <div className="flex-1 relative w-full h-full overflow-hidden touch-none p-safe">
-        <DiagramCanvas pdfUrl={attachment.urlOrPath} focusHotspot={selectedHotspot}>
+        <DiagramCanvas pdfUrl={resolveAssetUrl(attachment.urlOrPath) || ""} focusHotspot={selectedHotspot}>
           {(scale: number, offset: { x: number; y: number }) => (
             <HotspotOverlay 
               hotspots={hotspots}
