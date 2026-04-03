@@ -34,7 +34,7 @@ export const IMPORT_COLUMNS = {
 // ── Unified alias table (single source of truth) ──
 const FIELD_ALIASES: Record<string, string[]> = {
   fleetNumber: ['fleetnumber', 'fleetno', 'busnumber', 'busno', 'vehiclenumber', 'vehicleno', 'bus', 'unit', 'unitnumber', 'vehicle'],
-  model: ['model', 'busmodel', 'vehiclemodel'],
+  model: ['model', 'busmodel', 'vehiclemodel', 'bustype', 'type'],
   manufacturer: ['manufacturer', 'make', 'brand', 'oem', 'mfg'],
   garage: ['garage', 'garagename', 'garagedepot', 'depot', 'yard', 'facility', 'location', 'base', 'division'],
   status: ['status', 'busstatus', 'vehiclestatus']
@@ -166,8 +166,54 @@ router.post("/import/preview", requireAuth, handleUpload, async (req: any, res: 
 
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
-    const rawRows = xlsx.utils.sheet_to_json<any>(workbook.Sheets[sheetName]);
-    const rawHeaders = rawRows.length > 0 ? Object.keys(rawRows[0]) : [];
+
+    // ── Pre-process raw data to catch hierarchical matrix formats ──
+    const matrixRaw = xlsx.utils.sheet_to_json<any>(workbook.Sheets[sheetName], { header: 1 });
+    let isMatrix = false;
+    let rawRows: any[] = [];
+    let rawHeaders: string[] = [];
+
+    if (matrixRaw.length > 0 && matrixRaw[0].some((c: any) => String(c).includes('Bus Status'))) {
+      isMatrix = true;
+      let currentGarage = 'Unknown Garage';
+      let currentModel = 'Unknown Model';
+      for (const row of matrixRaw) {
+        const rowVals = row.filter((x: any) => x && String(x).trim() !== "");
+        if (rowVals.length === 0) continue;
+        const v0 = String(row[0] || '').trim();
+        const v1 = String(row[1] || '').trim();
+
+        if (v0.toLowerCase().includes('garage') || v0.toLowerCase().includes('division')) {
+           currentGarage = v0;
+        } else if (v1.toLowerCase().includes('bus') && !v1.toLowerCase().includes('status')) {
+           currentModel = v1;
+        } else {
+          for (let col of row) {
+             if (col && String(col).match(/^[0-9]{4}$/)) {
+                // Determine manufacturer blindly from model
+                let manufacturer = 'Unknown';
+                if (currentModel.toLowerCase().includes('orion')) manufacturer = 'Orion';
+                if (currentModel.toLowerCase().includes('nova')) manufacturer = 'Nova Bus';
+                if (currentModel.toLowerCase().includes('new flyer')) manufacturer = 'New Flyer';
+                if (currentModel.toLowerCase().includes('proterra')) manufacturer = 'Proterra';
+                if (currentModel.toLowerCase().includes('byd')) manufacturer = 'BYD';
+
+                rawRows.push({
+                   'Bus Number': String(col),
+                   'Bus Type': currentModel,
+                   'Location': currentGarage,
+                   'Manufacturer': manufacturer
+                });
+             }
+          }
+        }
+      }
+      rawHeaders = ['Bus Number', 'Bus Type', 'Location', 'Manufacturer'];
+    } else {
+      // Standard tabular format
+      rawRows = xlsx.utils.sheet_to_json<any>(workbook.Sheets[sheetName]);
+      rawHeaders = rawRows.length > 0 ? Object.keys(rawRows[0]) : [];
+    }
 
     // ── Load saved mapping if no manual mapping provided ──
     let savedMapping: Record<string, string | null> | null = null;
