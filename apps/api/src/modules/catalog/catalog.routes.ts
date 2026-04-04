@@ -24,10 +24,31 @@ router.get("/", requireAuth, async (req, res) => {
         orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
         take: 1,
         select: { id: true, previewImageUrl: true, urlOrPath: true, isPrimary: true, attachmentType: true }
+      },
+      busCompatibilities: { select: { fleetRangeLabel: true } },
+      usedInAssemblies: {
+        include: {
+          parentAssembly: {
+            include: { busCompatibilities: { select: { fleetRangeLabel: true } } }
+          }
+        }
       }
     }
   });
-  res.json(parts);
+
+  const mapped = parts.map(p => {
+    const directRanges = p.busCompatibilities.map(b => b.fleetRangeLabel);
+    const parentRanges = p.usedInAssemblies.flatMap(u => 
+      u.parentAssembly.busCompatibilities.map(b => b.fleetRangeLabel)
+    );
+    const busRanges = Array.from(new Set([...directRanges, ...parentRanges].filter(Boolean)));
+
+    const { unitCost, usedInAssemblies, busCompatibilities, ...safePart } = p as any;
+    safePart.busRanges = busRanges;
+    return safePart;
+  });
+
+  res.json(mapped);
 });
 
 // GET /api/catalog/bus-compat — list all bus compatibility rows

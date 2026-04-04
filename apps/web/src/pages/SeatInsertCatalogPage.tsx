@@ -13,7 +13,7 @@ interface CatalogPart {
   compatibleBusModels: string;
   minStockLevel: number;
   reorderPoint: number;
-  unitCost: number;
+  unitCost?: number;
   active: boolean;
   manufacturerPartNumber?: string;
   alternatePartNumbers?: string[];
@@ -70,7 +70,6 @@ const EMPTY_FORM = {
   compatibleBusModels: "",
   minStockLevel: 0,
   reorderPoint: 0,
-  unitCost: 0,
   active: true,
 };
 
@@ -84,7 +83,7 @@ function PartModal({ initial, onClose, onSaved }: {
     partNumber: initial.partNumber, description: initial.description,
     vendor: initial.vendor, compatibleBusModels: initial.compatibleBusModels ?? "",
     minStockLevel: initial.minStockLevel, reorderPoint: initial.reorderPoint,
-    unitCost: initial.unitCost, active: initial.active,
+    active: initial.active,
   } : { ...EMPTY_FORM });
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -119,13 +118,11 @@ function PartModal({ initial, onClose, onSaved }: {
             <input className="placeholder-slate-400" value={form.description} onChange={(e) => set("description", e.target.value)} required style={inputStyle} /></label>
           <label><div style={labelStyle}>Compatible Bus Models</div>
             <input className="placeholder-slate-400" value={form.compatibleBusModels} onChange={(e) => set("compatibleBusModels", e.target.value)} style={inputStyle} /></label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <label><div style={labelStyle}>Min Stock</div>
               <input className="placeholder-slate-400" type="number" min={0} value={form.minStockLevel} onChange={(e) => set("minStockLevel", Number(e.target.value))} style={inputStyle} /></label>
             <label><div style={labelStyle}>Reorder At</div>
               <input className="placeholder-slate-400" type="number" min={0} value={form.reorderPoint} onChange={(e) => set("reorderPoint", Number(e.target.value))} style={inputStyle} /></label>
-            <label><div style={labelStyle}>Unit Cost ($)</div>
-              <input className="placeholder-slate-400" type="number" min={0} step={0.01} value={form.unitCost} onChange={(e) => set("unitCost", Number(e.target.value))} style={inputStyle} /></label>
           </div>
           <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", color: "#f1f5f9" }}>
             <input className="placeholder-slate-400" type="checkbox" checked={form.active} onChange={(e) => set("active", e.target.checked)} />
@@ -181,8 +178,7 @@ function DetailPanel({ partId, onClose }: { partId: string; onClose: () => void 
               { label: "Trim Spec", value: detail.trimSpec || "—" },
               { label: "Min Stock", value: String(detail.minStockLevel) },
               { label: "Reorder At", value: String(detail.reorderPoint) },
-              { label: "Unit Cost", value: `$${Number(detail.unitCost || 0).toFixed(2)}` },
-            ].filter(f => f.label !== "Unit Cost" || detail.componentType !== "TEMPLATE").map(({ label, value }) => (
+            ].map(({ label, value }) => (
               <div key={label} style={{ padding: "8px 10px", background: "#1f2937", borderRadius: 6 }}>
                 <div className="muted" style={{ fontSize: "0.72rem", marginBottom: 2 }}>{label}</div>
                 <div style={{ fontSize: "0.88rem" }}>{value}</div>
@@ -416,7 +412,8 @@ export function SeatInsertCatalogPage() {
       if (q) out = out.filter((p) =>
         p.partNumber.toLowerCase().includes(q) ||
         p.description.toLowerCase().includes(q) ||
-        (p.vendor ?? "").toLowerCase().includes(q)
+        (p.vendor ?? "").toLowerCase().includes(q) ||
+        (p.busRanges?.some(r => r.toLowerCase().includes(q)))
       );
     }
     if (activeFilter === "active") out = out.filter((p) => p.active);
@@ -477,7 +474,6 @@ export function SeatInsertCatalogPage() {
                     <th>Type</th>
                     <th>Vendor</th>
                     <th style={{ textAlign: "right" }}>Min Stock</th>
-                    <th style={{ textAlign: "right" }}>Unit Cost</th>
                     <th>Status</th>
                     <th style={{ textAlign: "center" }}>Diagrams</th>
                     <th>Actions</th>
@@ -495,7 +491,14 @@ export function SeatInsertCatalogPage() {
                           {part.partNumber}
                         </button>
                       </td>
-                      <td>{part.description}</td>
+                      <td>
+                        {part.description}
+                        {part.busRanges && part.busRanges.length > 0 && (
+                          <div className="muted" style={{ fontSize: "0.75rem", marginTop: 4, color: "#38bdf8" }}>
+                            Used in fleets: {part.busRanges.join(", ")}
+                          </div>
+                        )}
+                      </td>
                       <td>
                         {part.componentType ? (
                           <span style={{
@@ -507,7 +510,6 @@ export function SeatInsertCatalogPage() {
                       </td>
                       <td>{part.vendor || <span className="muted">—</span>}</td>
                       <td style={{ textAlign: "right" }}>{part.minStockLevel}</td>
-                      <td style={{ textAlign: "right" }}>${Number(part.unitCost).toFixed(2)}</td>
                       <td>
                         <span style={{
                           background: part.active ? "#16a34a" : "#374151",
