@@ -256,7 +256,7 @@ export function InventoryAddPage() {
              </div>
              
              <div className="flex items-center justify-end border-t border-[#374151] pt-6 gap-4">
-                <Button variant="ghost" onClick={() => navigate('/inventory')} disabled={saving}>Cancel</Button>
+                <Button variant="ghostDark" onClick={() => navigate('/inventory')} disabled={saving}>Cancel</Button>
                 <Button 
                   variant="primary" 
                   disabled={!hasAnyPositiveQty || saving}
