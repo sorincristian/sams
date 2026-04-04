@@ -1,0 +1,98 @@
+[
+  {
+    "partNumber": "SI-NOVA-L729L738",
+    "description": "Nova Bus L729, L738 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-L777",
+    "description": "Nova Bus L777 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-L859",
+    "description": "Nova Bus L859 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-L860",
+    "description": "Nova Bus L860 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-L937",
+    "description": "Nova Bus L937 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-L998",
+    "description": "Nova Bus L998 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-LA67",
+    "description": "Nova Bus LA67 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-LA68",
+    "description": "Nova Bus LA68 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-LA69",
+    "description": "Nova Bus LA69 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-LB28",
+    "description": "Nova Bus LB28 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-LB45",
+    "description": "Nova Bus LB45 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-LB57",
+    "description": "Nova Bus LB57 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-LB62LB79",
+    "description": "Nova Bus LB62, LB79 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-LB75",
+    "description": "Nova Bus LB75 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-LB89",
+    "description": "Nova Bus LB89 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-LE65",
+    "description": "Nova Bus LE65 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-LF42",
+    "description": "Nova Bus LF42 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NOVA-LF65LF76",
+    "description": "Nova Bus LF65, LF76 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-ORIO-1336AB",
+    "description": "Orion 1336AB Default Seat Config"
+  },
+  {
+    "partNumber": "SI-ORIO-1358AB13",
+    "description": "Orion 1358AB-1359AB Default Seat Config"
+  },
+  {
+    "partNumber": "SI-BYD-BYDBUS37",
+    "description": "BYD BYD Bus #3750-3759 Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NEW-40FTELEC",
+    "description": "New Flyer 40 ft. Electric Default Seat Config"
+  },
+  {
+    "partNumber": "SI-NEW-40FTHYB",
+    "description": "New Flyer 40 ft. HYB Default Seat Config"
+  },
+  {
+    "partNumber": "SI-PROT-PROTERRA",
+    "description": "Proterra Proterra Bus #3725 - 3749 Default Seat Config"
+  }
+]

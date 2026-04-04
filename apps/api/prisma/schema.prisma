@@ -68,6 +68,11 @@ enum VendorOrderStatus {
   CANCELLED
 }
 
+enum SeatInsertCategory {
+  CUSHION
+  BACK
+}
+
 enum VendorReceiptStatus {
   PENDING
   PARTIAL
@@ -174,6 +179,7 @@ model SeatInsertType {
   manufacturerPartNumber String?
   alternatePartNumbers   String[]               @default([])
   componentType          String? // BACK | CUSHION
+  category               SeatInsertCategory?
   trimSpec               String?
   inventoryItems         InventoryItem[]
   inventoryTransactions  InventoryTransaction[]

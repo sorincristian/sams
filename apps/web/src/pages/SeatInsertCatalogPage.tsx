@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import { resolveAssetUrl } from "../utils/assetUrl";
 import { CatalogAutocomplete } from "../components/CatalogAutocomplete";
+import { SeatInsertImportWizard } from "../components/SeatInsertImportWizard";
 
 interface CatalogPart {
   id: string;
@@ -381,6 +382,7 @@ export function SeatInsertCatalogPage() {
   const [search, setSearch] = React.useState("");
   const [selectedPartId, setSelectedPartId] = React.useState<string | null>(null);
   const [activeFilter, setActiveFilter] = React.useState<"all" | "active" | "inactive">("active");
+  const [showImport, setShowImport] = React.useState(false);
 
   function load() {
     setLoading(true);
@@ -417,9 +419,14 @@ export function SeatInsertCatalogPage() {
     <div className="grid" style={{ gap: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
         <h1 style={{ margin: 0 }}>Seat Insert Catalog</h1>
-        <button style={{ width: "auto", padding: "6px 16px", marginLeft: "auto" }} onClick={() => setEditing("new")}>
-          + Add Part
-        </button>
+        <div style={{ marginLeft: "auto", display: "flex", gap: "10px" }}>
+          <button style={{ width: "auto", padding: "6px 16px", background: "#374151" }} onClick={() => setShowImport(true)}>
+            Import Catalog
+          </button>
+          <button style={{ width: "auto", padding: "6px 16px" }} onClick={() => setEditing("new")}>
+            + Add Part
+          </button>
+        </div>
       </div>
 
       <div className="card" style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
@@ -557,6 +564,13 @@ export function SeatInsertCatalogPage() {
           />
           <DetailPanel partId={detailId} onClose={() => setDetailId(null)} />
         </>
+      )}
+
+      {showImport && (
+        <SeatInsertImportWizard
+          onClose={() => setShowImport(false)}
+          onSuccess={() => { setShowImport(false); load(); }}
+        />
       )}
     </div>
   );

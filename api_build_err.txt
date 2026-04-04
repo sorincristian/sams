@@ -1,0 +1,11 @@
+
+> @sams/api@1.0.0 build C:\SIMS\sams-render\apps\api
+> prisma generate && tsc -p tsconfig.json
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+ ELIFECYCLE  Command failed with exit code 1.
+Error: 
+EPERM: operation not permitted, rename 'C:\SIMS\sams-render\apps\api\node_modules\.prisma\client\query_engine-windows.dll.node.tmp23896' -> 'C:\SIMS\sams-render\apps\api\node_modules\.prisma\client\query_engine-windows.dll.node'
+
+

@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { seatInsertsController } from "./seat-inserts.controller.js";
+import importRoutes from "./import.routes.js";
 
 const router = Router();
+
+router.use(importRoutes);
 
 // GET /api/seat-inserts/vendors
 router.get("/vendors", seatInsertsController.getVendors.bind(seatInsertsController));

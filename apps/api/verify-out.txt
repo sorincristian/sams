@@ -1,0 +1,195 @@
+PARENT:
+{
+  "id": "cmnjh1olq0000dr6tzvkenerx",
+  "partNumber": "SK3324-8030",
+  "description": "PASSENGER SEATS INSTALLATION, ROADSIDE",
+  "vendor": "IMPORTED",
+  "compatibleBusModels": [],
+  "minStockLevel": 0,
+  "reorderPoint": 0,
+  "unitCost": 0,
+  "active": true,
+  "manufacturerPartNumber": null,
+  "alternatePartNumbers": [],
+  "componentType": "ASSEMBLY",
+  "trimSpec": null,
+  "createdAt": "2026-04-03T22:24:53.196Z",
+  "updatedAt": "2026-04-03T22:24:53.196Z",
+  "components": [
+    {
+      "id": "cmnjh1ozg0003dr6tj4nng3xk",
+      "parentAssemblyId": "cmnjh1olq0000dr6tzvkenerx",
+      "childComponentId": "cmnjh1osm0001dr6tnvh40jhk",
+      "requiredQty": 42,
+      "createdAt": "2026-04-03T22:24:53.690Z",
+      "updatedAt": "2026-04-03T22:24:53.690Z"
+    },
+    {
+      "id": "cmnjh1rxl000mdr6tat9lazig",
+      "parentAssemblyId": "cmnjh1olq0000dr6tzvkenerx",
+      "childComponentId": "cmnjh1rt6000kdr6tijshoca5",
+      "requiredQty": 42,
+      "createdAt": "2026-04-03T22:24:57.513Z",
+      "updatedAt": "2026-04-03T22:24:57.513Z"
+    },
+    {
+      "id": "cmnjh1ujp0015dr6t3mdtp0hv",
+      "parentAssemblyId": "cmnjh1olq0000dr6tzvkenerx",
+      "childComponentId": "cmnjh1ufa0013dr6tddkvzwag",
+      "requiredQty": 42,
+      "createdAt": "2026-04-03T22:25:00.902Z",
+      "updatedAt": "2026-04-03T22:25:00.902Z"
+    },
+    {
+      "id": "cmnjh1x92001odr6tv5dihms7",
+      "parentAssemblyId": "cmnjh1olq0000dr6tzvkenerx",
+      "childComponentId": "cmnjh1x4s001mdr6tewza07v7",
+      "requiredQty": 42,
+      "createdAt": "2026-04-03T22:25:04.406Z",
+      "updatedAt": "2026-04-03T22:25:04.406Z"
+    },
+    {
+      "id": "cmnjh205t0027dr6t3onacj3l",
+      "parentAssemblyId": "cmnjh1olq0000dr6tzvkenerx",
+      "childComponentId": "cmnjh201b0025dr6tnpqg2bq0",
+      "requiredQty": 20,
+      "createdAt": "2026-04-03T22:25:08.177Z",
+      "updatedAt": "2026-04-03T22:25:08.177Z"
+    }
+  ]
+}
+
+CHILDREN:
+[
+  {
+    "id": "cmnjh1osm0001dr6tnvh40jhk",
+    "partNumber": "BS-4175209",
+    "description": "BOLT, SEAT & STANCHION",
+    "vendor": "IMPORTED",
+    "compatibleBusModels": [],
+    "minStockLevel": 0,
+    "reorderPoint": 0,
+    "unitCost": 0,
+    "active": true,
+    "manufacturerPartNumber": null,
+    "alternatePartNumbers": [],
+    "componentType": "INVENTORY_STOCKED",
+    "trimSpec": null,
+    "createdAt": "2026-04-03T22:24:53.446Z",
+    "updatedAt": "2026-04-03T22:24:53.446Z"
+  },
+  {
+    "id": "cmnjh1rt6000kdr6tijshoca5",
+    "partNumber": "BS-4501132",
+    "description": "WASHER, FLAT 3/8\" STAINLESS STEEL",
+    "vendor": "IMPORTED",
+    "compatibleBusModels": [],
+    "minStockLevel": 0,
+    "reorderPoint": 0,
+    "unitCost": 0,
+    "active": true,
+    "manufacturerPartNumber": null,
+    "alternatePartNumbers": [],
+    "componentType": "INVENTORY_STOCKED",
+    "trimSpec": null,
+    "createdAt": "2026-04-03T22:24:57.354Z",
+    "updatedAt": "2026-04-03T22:24:57.354Z"
+  },
+  {
+    "id": "cmnjh1ufa0013dr6tddkvzwag",
+    "partNumber": "BS-4521122",
+    "description": "WASHER, LOCK 3/8\" STAINLESS STEEL",
+    "vendor": "IMPORTED",
+    "compatibleBusModels": [],
+    "minStockLevel": 0,
+    "reorderPoint": 0,
+    "unitCost": 0,
+    "active": true,
+    "manufacturerPartNumber": null,
+    "alternatePartNumbers": [],
+    "componentType": "INVENTORY_STOCKED",
+    "trimSpec": null,
+    "createdAt": "2026-04-03T22:25:00.742Z",
+    "updatedAt": "2026-04-03T22:25:00.742Z"
+  },
+  {
+    "id": "cmnjh1x4s001mdr6tewza07v7",
+    "partNumber": "BS-4212136",
+    "description": "NUT, ACORN 3/8\"-24 STAINLESS STEEL",
+    "vendor": "IMPORTED",
+    "compatibleBusModels": [],
+    "minStockLevel": 0,
+    "reorderPoint": 0,
+    "unitCost": 0,
+    "active": true,
+    "manufacturerPartNumber": null,
+    "alternatePartNumbers": [],
+    "componentType": "INVENTORY_STOCKED",
+    "trimSpec": null,
+    "createdAt": "2026-04-03T22:25:04.253Z",
+    "updatedAt": "2026-04-03T22:25:04.253Z"
+  },
+  {
+    "id": "cmnjh201b0025dr6tnpqg2bq0",
+    "partNumber": "BS-2600148",
+    "description": "INSERT, SEAT RAIL",
+    "vendor": "IMPORTED",
+    "compatibleBusModels": [],
+    "minStockLevel": 0,
+    "reorderPoint": 0,
+    "unitCost": 0,
+    "active": true,
+    "manufacturerPartNumber": null,
+    "alternatePartNumbers": [],
+    "componentType": "INVENTORY_STOCKED",
+    "trimSpec": null,
+    "createdAt": "2026-04-03T22:25:08.015Z",
+    "updatedAt": "2026-04-03T22:25:08.015Z"
+  }
+]
+
+BOM ROWS:
+[
+  {
+    "id": "cmnjh1ozg0003dr6tj4nng3xk",
+    "parentAssemblyId": "cmnjh1olq0000dr6tzvkenerx",
+    "childComponentId": "cmnjh1osm0001dr6tnvh40jhk",
+    "requiredQty": 42,
+    "createdAt": "2026-04-03T22:24:53.690Z",
+    "updatedAt": "2026-04-03T22:24:53.690Z"
+  },
+  {
+    "id": "cmnjh1rxl000mdr6tat9lazig",
+    "parentAssemblyId": "cmnjh1olq0000dr6tzvkenerx",
+    "childComponentId": "cmnjh1rt6000kdr6tijshoca5",
+    "requiredQty": 42,
+    "createdAt": "2026-04-03T22:24:57.513Z",
+    "updatedAt": "2026-04-03T22:24:57.513Z"
+  },
+  {
+    "id": "cmnjh1ujp0015dr6t3mdtp0hv",
+    "parentAssemblyId": "cmnjh1olq0000dr6tzvkenerx",
+    "childComponentId": "cmnjh1ufa0013dr6tddkvzwag",
+    "requiredQty": 42,
+    "createdAt": "2026-04-03T22:25:00.902Z",
+    "updatedAt": "2026-04-03T22:25:00.902Z"
+  },
+  {
+    "id": "cmnjh1x92001odr6tv5dihms7",
+    "parentAssemblyId": "cmnjh1olq0000dr6tzvkenerx",
+    "childComponentId": "cmnjh1x4s001mdr6tewza07v7",
+    "requiredQty": 42,
+    "createdAt": "2026-04-03T22:25:04.406Z",
+    "updatedAt": "2026-04-03T22:25:04.406Z"
+  },
+  {
+    "id": "cmnjh205t0027dr6t3onacj3l",
+    "parentAssemblyId": "cmnjh1olq0000dr6tzvkenerx",
+    "childComponentId": "cmnjh201b0025dr6tnpqg2bq0",
+    "requiredQty": 20,
+    "createdAt": "2026-04-03T22:25:08.177Z",
+    "updatedAt": "2026-04-03T22:25:08.177Z"
+  }
+]
+
+STOCK records for BS-4175209: 8

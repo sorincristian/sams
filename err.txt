@@ -1,0 +1,13 @@
+src/components/FleetStatsWidget.tsx(3,33): error TS2307: Cannot find module '@sams/types' or its corresponding type declarations.
+src/pages/AdjustInventoryModal.tsx(3,61): error TS2307: Cannot find module '@sams/types' or its corresponding type declarations.
+src/pages/BusDetailPage.tsx(4,45): error TS2307: Cannot find module '@sams/types' or its corresponding type declarations.
+src/pages/BusDetailPage.tsx(47,14): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/pages/BusDetailPage.tsx(166,35): error TS7006: Parameter 'wo' implicitly has an 'any' type.
+src/pages/FleetPage.tsx(4,34): error TS2307: Cannot find module '@sams/types' or its corresponding type declarations.
+src/pages/GarageDashboard.tsx(4,29): error TS2307: Cannot find module '@sams/types' or its corresponding type declarations.
+src/pages/InventoryPage.tsx(4,35): error TS2307: Cannot find module '@sams/types' or its corresponding type declarations.
+src/pages/IssueInventoryModal.tsx(3,61): error TS2307: Cannot find module '@sams/types' or its corresponding type declarations.
+src/pages/ReceiveInventoryModal.tsx(3,35): error TS2307: Cannot find module '@sams/types' or its corresponding type declarations.
+src/pages/TransactionsLedgerPage.tsx(3,43): error TS2307: Cannot find module '@sams/types' or its corresponding type declarations.
+src/pages/WorkOrderDetailPage.tsx(4,68): error TS2307: Cannot find module '@sams/types' or its corresponding type declarations.
+src/pages/WorkOrdersPage.tsx(4,37): error TS2307: Cannot find module '@sams/types' or its corresponding type declarations.

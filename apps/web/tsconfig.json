@@ -11,6 +11,9 @@
     "jsx": "react-jsx",
     "strict": true,
     "baseUrl": ".",
+    "paths": {
+      "@sams/types": ["../../packages/types/src/index.ts"]
+    },
     "types": ["vite/client"]
   },
   "include": ["src"]
