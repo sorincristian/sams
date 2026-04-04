@@ -116,6 +116,13 @@ export class SeatInsertsController {
     } catch (e: any) { res.status(400).json({ error: e.message }); }
   }
 
+  async getTemplates(req: Request, res: Response) {
+    try {
+      const data = await seatInsertsService.getTemplates();
+      res.json(data);
+    } catch (e: any) { res.status(400).json({ error: e.message }); }
+  }
+
   async markDirty(req: Request, res: Response) {
     try {
       const data = await seatInsertsService.markDirty(req.params.id as string);

@@ -9,6 +9,9 @@ router.use(importRoutes);
 // GET /api/seat-inserts/vendors
 router.get("/vendors", seatInsertsController.getVendors.bind(seatInsertsController));
 
+// GET /api/seat-inserts/templates
+router.get("/templates", seatInsertsController.getTemplates.bind(seatInsertsController));
+
 // GET /api/seat-inserts/dashboard/summary
 router.get("/dashboard/summary", seatInsertsController.getDashboardSummary.bind(seatInsertsController));
 

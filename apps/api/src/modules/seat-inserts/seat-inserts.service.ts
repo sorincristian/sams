@@ -268,6 +268,21 @@ export class SeatInsertsService {
     });
   }
 
+  async getTemplates() {
+    return await prisma.seatInsertType.findMany({
+      where: { componentType: "TEMPLATE" },
+      include: {
+        components: {
+          include: {
+            childComponent: true
+          }
+        },
+        busCompatibilities: true
+      },
+      orderBy: { partNumber: "asc" }
+    });
+  }
+
   async markDirty(id: string) {
     return await prisma.$transaction(async (tx) => {
       const insert = await tx.seatInsert.findUnique({ where: { id } });
