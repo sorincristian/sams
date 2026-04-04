@@ -5,6 +5,8 @@ export function requirePermission(module: string, level: "view" | "manage") {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
 
+    if (req.user.role === "SYSTEM_ADMIN") return next();
+
     const userAccess = req.user.permissions?.[module] || "none";
 
     if (userAccess === "none") {
@@ -23,6 +25,8 @@ export function requireGarageScope(garageId: string) {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) return res.status(401).json({ message: "Unauthorized" });
     
+    if (req.user.role === "SYSTEM_ADMIN") return next();
+
     // Some routes might pass garageId in body, others in params. 
     // This explicit middleware requires garageId as an argument but we can also extract it from req.
     // For manual checks, developers usually check inside the route. Wait, the prompt said:
