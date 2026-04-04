@@ -64,12 +64,20 @@ function normalizeCategory(raw: string): "CUSHION" | "BACK" | null {
     "cushion",
     "seatcushion",
     "cushioninsert",
+    "seatbottom",
+    "bottomcushion",
+    "insertcushion",
   ]);
 
   const backAliases = new Set([
     "back",
     "seatback",
     "backinsert",
+    "backrest",
+    "seatbackrest",
+    "lowerback",
+    "upperback",
+    "insertback",
   ]);
 
   if (cushionAliases.has(norm)) return "CUSHION";

@@ -1,0 +1,7 @@
+﻿=== FULL PREVIEW TOTALS ===
+Total Valid Rows Detected: 6
+Inserted Cushions: 3
+Inserted Backs: 3
+Skipped Rows: 0
+=== SKIPPED CATEGORY EXAMPLES ===
+
