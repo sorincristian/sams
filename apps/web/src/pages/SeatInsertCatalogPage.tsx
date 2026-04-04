@@ -49,9 +49,16 @@ interface CatalogAttach {
   isPrimary: boolean;
 }
 
+interface BomComp {
+  id: string;
+  requiredQty: number;
+  childComponent: CatalogPart;
+}
+
 interface PartDetail extends CatalogPart {
   busCompatibilities: BusCompat[];
   catalogAttachments: CatalogAttach[];
+  components: BomComp[];
 }
 
 const EMPTY_FORM = {
@@ -195,8 +202,62 @@ function DetailPanel({ partId, onClose }: { partId: string; onClose: () => void 
             </div>
           </div>
 
+          {/* BOM Breakdown */}
+          {(!detail.components || detail.components.length === 0) ? (
+            <div style={{ marginTop: 24, borderTop: "1px solid #374151", paddingTop: 16 }}>
+              <h4 style={{ marginBottom: 16, color: "#60a5fa", display: "flex", gap: 8, alignItems: "center" }}>
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "#38bdf8" }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+                BOM Breakdown
+              </h4>
+              <div className="muted" style={{ fontSize: "0.85rem", background: "#1f2937", padding: "16px", borderRadius: 8, textAlign: "center" }}>
+                No BOM components linked.
+              </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: 24, borderTop: "1px solid #374151", paddingTop: 16 }}>
+              <h4 style={{ marginBottom: 16, color: "#60a5fa", display: "flex", gap: 8, alignItems: "center" }}>
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: "#38bdf8" }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+                BOM Breakdown
+              </h4>
+              <div style={{ overflowX: "auto" }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign: "left" }}>Part Number</th>
+                      <th style={{ textAlign: "left" }}>Description</th>
+                      <th style={{ textAlign: "right" }}>Required Qty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detail.components.map((comp) => (
+                      <tr key={comp.id}>
+                        <td>
+                          <button
+                            style={{ background: "none", border: "none", color: "#60a5fa", fontWeight: 700, cursor: "pointer", padding: 0, fontSize: "inherit" }}
+                            onClick={() => {
+                               navigator.clipboard.writeText(comp.childComponent.partNumber);
+                            }}
+                            title="Click to copy"
+                          >
+                            {comp.childComponent.partNumber}
+                          </button>
+                        </td>
+                        <td>{comp.childComponent.description}</td>
+                        <td style={{ textAlign: "right", fontWeight: 700 }}>Qty {comp.requiredQty}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Compatible Bus Fleets */}
-          <div>
+          <div style={{ marginTop: 24, borderTop: "1px solid #374151", paddingTop: 16 }}>
             <h4 style={{ marginBottom: 10, color: "#60a5fa" }}>Compatible Bus Fleets</h4>
             {detail.busCompatibilities.length === 0 ? (
               <div className="muted" style={{ fontSize: "0.85rem" }}>No compatibility data imported yet.</div>

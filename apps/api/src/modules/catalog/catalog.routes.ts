@@ -51,6 +51,14 @@ router.get("/:id/detail", requireAuth, async (req, res) => {
         include: { attachments: true }
       },
       catalogAttachments: true,
+      components: {
+        include: {
+          childComponent: true
+        },
+        orderBy: {
+          childComponent: { partNumber: 'asc' }
+        }
+      }
     }
   });
   if (!part) return res.status(404).json({ message: "Part not found" });

@@ -43,8 +43,7 @@ router.post("/login", async (req, res) => {
           inventory: "manage", fleet: "manage", reports: "manage", catalog: "manage",
           work_orders: "manage", dashboard: "manage", transactions: "manage", admin: "manage"
         },
-        scope: { garages: [] },
-        tokenVersion: 1
+        scope: { garages: [] }
       };
       
       const token = jwt.sign(payload, jwtSecret, { expiresIn });
