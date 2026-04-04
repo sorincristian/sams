@@ -62,7 +62,32 @@ router.get("/:id/detail", requireAuth, async (req, res) => {
     }
   });
   if (!part) return res.status(404).json({ message: "Part not found" });
-  res.json(part);
+
+  let safePart = { ...part } as any;
+
+  if (safePart.componentType === "TEMPLATE") {
+    delete safePart.unitCost;
+  }
+
+  // Derive busRanges for child mapping
+  const busRanges = Array.from(new Set(safePart.busCompatibilities?.map((b: any) => b.fleetRangeLabel).filter(Boolean) || []));
+  if (safePart.componentType === "TEMPLATE") {
+    safePart.busRanges = busRanges;
+  }
+
+  if (safePart.components) {
+    safePart.components = safePart.components.map((c: any) => {
+      if (c.childComponent) {
+        delete c.childComponent.unitCost;
+        if (safePart.componentType === "TEMPLATE") {
+          c.childComponent.busRanges = busRanges;
+        }
+      }
+      return c;
+    });
+  }
+
+  res.json(safePart);
 });
 
 

@@ -21,6 +21,7 @@ interface CatalogPart {
   trimSpec?: string | null;
   createdAt: string;
   updatedAt: string;
+  busRanges?: string[];
   _count?: { catalogAttachments: number };
   catalogAttachments?: { id: string; attachmentType: string; isPrimary: boolean; previewImageUrl?: string | null; urlOrPath?: string }[];
 }
@@ -180,13 +181,23 @@ function DetailPanel({ partId, onClose }: { partId: string; onClose: () => void 
               { label: "Trim Spec", value: detail.trimSpec || "—" },
               { label: "Min Stock", value: String(detail.minStockLevel) },
               { label: "Reorder At", value: String(detail.reorderPoint) },
-              { label: "Unit Cost", value: `$${Number(detail.unitCost).toFixed(2)}` },
-            ].map(({ label, value }) => (
+              { label: "Unit Cost", value: `$${Number(detail.unitCost || 0).toFixed(2)}` },
+            ].filter(f => f.label !== "Unit Cost" || detail.componentType !== "TEMPLATE").map(({ label, value }) => (
               <div key={label} style={{ padding: "8px 10px", background: "#1f2937", borderRadius: 6 }}>
                 <div className="muted" style={{ fontSize: "0.72rem", marginBottom: 2 }}>{label}</div>
                 <div style={{ fontSize: "0.88rem" }}>{value}</div>
               </div>
             ))}
+            {(detail.busRanges?.length ?? 0) > 0 && (
+              <div style={{ gridColumn: "1 / -1", padding: "8px 10px", background: "#1f2937", borderRadius: 6 }}>
+                <div style={{ fontSize: "0.72rem", marginBottom: 4, color: "#60a5fa", fontWeight: 600 }}>Fleet Ranges</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {detail.busRanges!.map((p) => (
+                    <span key={p} style={{ background: "#1e3a5f", color: "#60a5fa", borderRadius: 4, padding: "2px 8px", fontSize: "0.8rem", fontWeight: 600 }}>{p}</span>
+                  ))}
+                </div>
+              </div>
+            )}
             {(detail.alternatePartNumbers?.length ?? 0) > 0 && (
               <div style={{ gridColumn: "1 / -1", padding: "8px 10px", background: "#1f2937", borderRadius: 6 }}>
                 <div className="muted" style={{ fontSize: "0.72rem", marginBottom: 4 }}>Alternate Part Numbers</div>
@@ -246,6 +257,11 @@ function DetailPanel({ partId, onClose }: { partId: string; onClose: () => void 
                           >
                             {comp.childComponent.partNumber}
                           </button>
+                          {comp.childComponent.busRanges && comp.childComponent.busRanges.length > 0 && (
+                            <div className="muted" style={{ fontSize: "0.75rem", marginTop: 4 }}>
+                              Used in fleets: {comp.childComponent.busRanges.join(", ")}
+                            </div>
+                          )}
                         </td>
                         <td>{comp.childComponent.description}</td>
                         <td style={{ textAlign: "right", fontWeight: 700 }}>Qty {comp.requiredQty}</td>

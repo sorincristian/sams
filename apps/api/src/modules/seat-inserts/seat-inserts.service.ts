@@ -269,7 +269,7 @@ export class SeatInsertsService {
   }
 
   async getTemplates() {
-    return await prisma.seatInsertType.findMany({
+    const rawTemplates = await prisma.seatInsertType.findMany({
       where: { componentType: "TEMPLATE" },
       include: {
         components: {
@@ -280,6 +280,33 @@ export class SeatInsertsService {
         busCompatibilities: true
       },
       orderBy: { partNumber: "asc" }
+    });
+
+    return rawTemplates.map((t) => {
+      // 1. Gather bus properties
+      const busRanges = Array.from(new Set(t.busCompatibilities.map((b) => b.fleetRangeLabel).filter(Boolean)));
+      
+      // 2. Strip pricing from template
+      const { unitCost, ...templateSafe } = t as any;
+      
+      // 3. Map children
+      const safeComponents = templateSafe.components?.map((c: any) => {
+         const { unitCost: childCost, ...childSafe } = c.childComponent;
+         return {
+           ...childSafe,
+           quantity: c.requiredQty,
+           busRanges
+         };
+      }) || [];
+
+      // Clean up relations from response to avoid redundancy if desired, or keep them
+      delete templateSafe.busCompatibilities;
+
+      return {
+        ...templateSafe,
+        busRanges,
+        components: safeComponents
+      };
     });
   }
 
