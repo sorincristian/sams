@@ -38,7 +38,7 @@ router.post("/login", async (req, res) => {
       const payload = {
         sub: 'dev-bypass-user-id',
         email: 'dev@local',
-        role: 'ADMIN',
+        role: 'SYSTEM_ADMIN',
         permissions: {
           inventory: "manage", fleet: "manage", reports: "manage", catalog: "manage",
           work_orders: "manage", dashboard: "manage", transactions: "manage", admin: "manage"

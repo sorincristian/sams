@@ -32,14 +32,24 @@ const ReceiveSchema = z.object({
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-async function calculateTotals(lines: { quantity: number; seatInsertTypeId: string }[]) {
+async function prepareLines(lines: { quantity: number; seatInsertTypeId: string; description?: string }[]) {
   const totalQuantity = lines.reduce((sum, line) => sum + line.quantity, 0);
   let totalCost = 0;
+  
+  const enrichedLines = [];
   for (const line of lines) {
     const part = await prisma.seatInsertType.findUnique({ where: { id: line.seatInsertTypeId } });
-    totalCost += (part?.unitCost || 0) * line.quantity;
+    const unitCost = part?.unitCost || 0;
+    totalCost += unitCost * line.quantity;
+    
+    enrichedLines.push({
+      seatInsertTypeId: line.seatInsertTypeId,
+      quantity: line.quantity,
+      description: line.description,
+      unitCost
+    });
   }
-  return { totalQuantity, totalCost };
+  return { totalQuantity, totalCost, enrichedLines };
 }
 
 // ─── Controllers ─────────────────────────────────────────────────────────────
@@ -106,7 +116,7 @@ export async function createOrder(req: Request, res: Response) {
     const data = CreateOrderSchema.parse(req.body);
     const userId = (req as any).user.userId;
 
-    const { totalQuantity, totalCost } = await calculateTotals(data.lines);
+    const { totalQuantity, totalCost, enrichedLines } = await prepareLines(data.lines);
     
     // Generate Order Number: SO-YYYY-000123 (Format changed per spec)
     const yearStr = new Date().getFullYear().toString();
@@ -125,7 +135,7 @@ export async function createOrder(req: Request, res: Response) {
         totalCost,
         notes: data.notes,
         lines: {
-          create: data.lines
+          create: enrichedLines
         }
       },
       include: {
@@ -157,14 +167,14 @@ export async function updateOrder(req: Request, res: Response) {
       let updateData: any = { notes: data.notes };
 
       if (data.lines) {
-        // Recalculate totals
-        const { totalQuantity, totalCost } = await calculateTotals(data.lines);
+        // Recalculate totals and enrich
+        const { totalQuantity, totalCost, enrichedLines } = await prepareLines(data.lines);
         updateData.totalQuantity = totalQuantity;
         updateData.totalCost = totalCost;
 
         // Wipe old lines, insert new
         await tx.seatOrderLine.deleteMany({ where: { seatOrderId: id } });
-        updateData.lines = { create: data.lines };
+        updateData.lines = { create: enrichedLines };
       }
 
       return tx.seatOrder.update({

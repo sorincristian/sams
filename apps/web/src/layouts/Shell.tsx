@@ -3,6 +3,7 @@ import { NavLink, Route, Routes, Navigate } from "react-router-dom";
 import { DashboardPage } from "../pages/DashboardPage";
 import { FleetPage } from "../pages/FleetPage";
 import { InventoryPage } from "../pages/InventoryPage";
+import { InventoryAddPage } from "../pages/InventoryAddPage";
 import { TransactionsLedgerPage } from "../pages/TransactionsLedgerPage";
 import { WorkOrdersPage } from "../pages/WorkOrdersPage";
 import { WorkOrderDetailPage } from "../pages/WorkOrderDetailPage";
@@ -100,6 +101,7 @@ export function Shell({ user, onLogout }: { user: any; onLogout: () => void }) {
             </React.Suspense>
           } />
           <Route path="/inventory" element={<InventoryPage user={user} />} />
+          <Route path="/inventory/add" element={<InventoryAddPage />} />
           <Route path="/inventory/seat-changes" element={<SeatChangeReportPage />} />
           <Route path="/transactions" element={<TransactionsLedgerPage />} />
           <Route path="/work-orders" element={<WorkOrdersPage />} />

@@ -1,0 +1,453 @@
+
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
+
+async function main() {
+  const data = [
+  {
+    where: { partNumber: '70446' },
+    update: {},
+    create: {
+      partNumber: '70446',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '70449' },
+    update: {},
+    create: {
+      partNumber: '70449',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '70452' },
+    update: {},
+    create: {
+      partNumber: '70452',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '70730' },
+    update: {},
+    create: {
+      partNumber: '70730',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '71213' },
+    update: {},
+    create: {
+      partNumber: '71213',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '71062' },
+    update: {},
+    create: {
+      partNumber: '71062',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '71065' },
+    update: {},
+    create: {
+      partNumber: '71065',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '71068' },
+    update: {},
+    create: {
+      partNumber: '71068',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63109' },
+    update: {},
+    create: {
+      partNumber: '63109',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63110' },
+    update: {},
+    create: {
+      partNumber: '63110',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63112' },
+    update: {},
+    create: {
+      partNumber: '63112',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63113' },
+    update: {},
+    create: {
+      partNumber: '63113',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63044' },
+    update: {},
+    create: {
+      partNumber: '63044',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63045' },
+    update: {},
+    create: {
+      partNumber: '63045',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63056' },
+    update: {},
+    create: {
+      partNumber: '63056',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63057' },
+    update: {},
+    create: {
+      partNumber: '63057',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63050' },
+    update: {},
+    create: {
+      partNumber: '63050',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63051' },
+    update: {},
+    create: {
+      partNumber: '63051',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63015' },
+    update: {},
+    create: {
+      partNumber: '63015',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63016' },
+    update: {},
+    create: {
+      partNumber: '63016',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63052' },
+    update: {},
+    create: {
+      partNumber: '63052',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63053' },
+    update: {},
+    create: {
+      partNumber: '63053',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63047' },
+    update: {},
+    create: {
+      partNumber: '63047',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63048' },
+    update: {},
+    create: {
+      partNumber: '63048',
+      description: 'Seat Insert (NOVA 3000 SERIES BUS USSC INSERTS)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '22636' },
+    update: {},
+    create: {
+      partNumber: '22636',
+      description: 'Seat Insert (NOVA 8000-9000 SERIES & ORION 7)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '22909' },
+    update: {},
+    create: {
+      partNumber: '22909',
+      description: 'Seat Insert (NOVA 8000-9000 SERIES & ORION 7)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63115' },
+    update: {},
+    create: {
+      partNumber: '63115',
+      description: 'Seat Insert (NOVA 8000-9000 SERIES & ORION 7)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63116' },
+    update: {},
+    create: {
+      partNumber: '63116',
+      description: 'Seat Insert (NOVA 8000-9000 SERIES & ORION 7)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63142' },
+    update: {},
+    create: {
+      partNumber: '63142',
+      description: 'Seat Insert (NOVA 8000-9000 SERIES & ORION 7)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '63143' },
+    update: {},
+    create: {
+      partNumber: '63143',
+      description: 'Seat Insert (NOVA 8000-9000 SERIES & ORION 7)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '79283' },
+    update: {},
+    create: {
+      partNumber: '79283',
+      description: 'Seat Insert (PROTERRA)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '79287' },
+    update: {},
+    create: {
+      partNumber: '79287',
+      description: 'Seat Insert (PROTERRA)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '79211' },
+    update: {},
+    create: {
+      partNumber: '79211',
+      description: 'Seat Insert (PROTERRA)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '79206' },
+    update: {},
+    create: {
+      partNumber: '79206',
+      description: 'Seat Insert (PROTERRA)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '79208' },
+    update: {},
+    create: {
+      partNumber: '79208',
+      description: 'Seat Insert (PROTERRA)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '79212' },
+    update: {},
+    create: {
+      partNumber: '79212',
+      description: 'Seat Insert (PROTERRA)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '42886' },
+    update: {},
+    create: {
+      partNumber: '42886',
+      description: 'Seat Insert (PROTERRA)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '42885' },
+    update: {},
+    create: {
+      partNumber: '42885',
+      description: 'Seat Insert (PROTERRA)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '79629' },
+    update: {},
+    create: {
+      partNumber: '79629',
+      description: 'Seat Insert (BYD Ebus)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '79628' },
+    update: {},
+    create: {
+      partNumber: '79628',
+      description: 'Seat Insert (BYD Ebus)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '79627' },
+    update: {},
+    create: {
+      partNumber: '79627',
+      description: 'Seat Insert (BYD Ebus)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '79626' },
+    update: {},
+    create: {
+      partNumber: '79626',
+      description: 'Seat Insert (BYD Ebus)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '79632' },
+    update: {},
+    create: {
+      partNumber: '79632',
+      description: 'Seat Insert (BYD Ebus)',
+      vendor: 'TTC',
+      active: true
+    }
+  },
+  {
+    where: { partNumber: '79625' },
+    update: {},
+    create: {
+      partNumber: '79625',
+      description: 'Seat Insert (BYD Ebus)',
+      vendor: 'TTC',
+      active: true
+    }
+  }
+  ];
+
+  for (const item of data) {
+    await prisma.seatInsertType.upsert(item);
+  }
+}
+main().catch(console.error).finally(() => prisma.$disconnect());

@@ -1,0 +1,9 @@
+﻿Starting explicit SKU import into SeatInsertType...
+
+--- Final Import Results ---
+Inserted Rows: 0
+Updated Rows: 8
+Skipped Duplicates: Defined uniquely via Prisma UPSERT strategy (de-duped implicitly by unique Part Number key).
+Final Total Discovered SKUs: 8
+ - Cushions: 4
+ - Backs: 4

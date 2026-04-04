@@ -113,9 +113,14 @@ export function InventoryPage({ user }: { user?: any }) {
     <div className="grid" style={{ gap: 20 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <h1 style={{ margin: 0 }}>Inventory Control</h1>
-        <button style={{ width: "auto", padding: "8px 16px", background: "#fff", color: "#334155", border: "1px solid #e2e8f0", borderRadius: "8px", fontWeight: 600, cursor: "pointer" }} onClick={() => navigate("/inventory/seat-changes")}>
-          View Seat Change Report
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button style={{ width: "auto", padding: "8px 16px", background: "#10b981", color: "#fff", border: "none", borderRadius: "8px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }} onClick={() => navigate("/inventory/add")}>
+            <Download className="w-4 h-4" /> Add Inventory
+          </button>
+          <button style={{ width: "auto", padding: "8px 16px", background: "#fff", color: "#334155", border: "1px solid #e2e8f0", borderRadius: "8px", fontWeight: 600, cursor: "pointer" }} onClick={() => navigate("/inventory/seat-changes")}>
+            View Seat Change Report
+          </button>
+        </div>
       </div>
 
       {/* Filters bar */}
