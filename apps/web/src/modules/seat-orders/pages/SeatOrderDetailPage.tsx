@@ -112,7 +112,7 @@ export function SeatOrderDetailPage() {
     }
   };
 
-  const requiresApproval = order.totalQuantity > 20;
+  const requiresApproval = order.totalQuantity > 500;
 
   // ── Received Quantity Derivation ──
   // Priority: 1) line-level receivedQty  2) sum from receipt entries  3) null (unavailable)
@@ -364,7 +364,7 @@ export function SeatOrderDetailPage() {
                     {order.status === "APPROVED" ? "Manager Approved" : order.status === "REJECTED" ? "Manager Rejected" : "Pending Supervisor Override"}
                   </p>
                   <p className={`text-[13px] font-medium leading-relaxed ${order.status === 'APPROVED' ? 'text-emerald-500/80' : order.status === 'REJECTED' ? 'text-red-500/80' : 'text-amber-500/80'}`}>
-                    Order total ({order.totalQuantity} items) exceeds standard threshold of 20 items.
+                    Order total ({order.totalQuantity} items) exceeds standard threshold of 500 items.
                   </p>
                   
                   {/* Show actual approver details if logged */}

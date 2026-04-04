@@ -55,7 +55,7 @@ export function SeatOrderCreatePage() {
   }, [location.state]);
 
   const totalQuantity = lines.reduce((sum, l) => sum + Number(l.quantity || 0), 0);
-  const requiresApproval = totalQuantity > 20;
+  const requiresApproval = totalQuantity > 500;
 
   const handleAddLine = () => {
     if (!selectedPartId) {
@@ -128,7 +128,7 @@ export function SeatOrderCreatePage() {
         description: l.description
       }));
 
-      const res = await api.post("/api/seat-orders", {
+      const res = await api.post("/seat-orders", {
         garageId,
         notes: notes.trim() || undefined,
         lines: payloadLines
@@ -136,7 +136,12 @@ export function SeatOrderCreatePage() {
       navigate(`/procurement/seat-orders/${res.data.id}`);
     } catch (err: any) {
       console.error(err);
-      setError(err?.response?.data?.error || "Failed to create order");
+      const data = err?.response?.data;
+      if (data?.errors && Array.isArray(data.errors)) {
+        setError(`Validation failed: ${data.errors.map((e: any) => e.message || e.code).join(", ")}`);
+      } else {
+        setError(data?.error || data?.message || "Failed to create order");
+      }
       setSaving(false);
     }
   };
@@ -333,7 +338,7 @@ export function SeatOrderCreatePage() {
               <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
                 <p className="text-sm font-bold text-amber-500 mb-1">Manager Approval Required</p>
                 <div className="text-[13px] text-amber-500/80 font-medium">
-                  {totalQuantity > 20 && <div>• Total quantity exceeds 20 items</div>}
+                  {totalQuantity > 500 && <div>• Total quantity exceeds 500 items</div>}
                 </div>
               </div>
             ) : (

@@ -54,12 +54,14 @@ export function TransactionsLedgerPage() {
 
   React.useEffect(() => {
     Promise.all([
-      api.get("/inventory/transactions"),
-      api.get("/catalog")
+      api.get("inventory/transactions"),
+      api.get("catalog")
     ])
       .then(([txRes, catRes]) => {
-        setRows(txRes.data);
-        setCatalogParts(catRes.data);
+        const txData = txRes.data?.transactions || txRes.data?.items || txRes.data?.data || txRes.data;
+        const catData = catRes.data?.items || catRes.data?.data || catRes.data;
+        setRows(Array.isArray(txData) ? txData : []);
+        setCatalogParts(Array.isArray(catData) ? catData : []);
       })
       .catch((err) => {
         console.error("Failed to load ledger data:", err);

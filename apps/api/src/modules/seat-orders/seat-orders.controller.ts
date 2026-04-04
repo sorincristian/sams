@@ -12,7 +12,6 @@ const CreateOrderSchema = z.object({
   lines: z.array(z.object({
     seatInsertTypeId: z.string().cuid(),
     quantity: z.number().int().min(1),
-    unitCost: z.number().min(0),
     description: z.string().optional()
   })).min(1)
 });
@@ -33,9 +32,13 @@ const ReceiveSchema = z.object({
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-async function calculateTotals(lines: { quantity: number; unitCost: number }[]) {
+async function calculateTotals(lines: { quantity: number; seatInsertTypeId: string }[]) {
   const totalQuantity = lines.reduce((sum, line) => sum + line.quantity, 0);
-  const totalCost = lines.reduce((sum, line) => sum + (line.quantity * line.unitCost), 0);
+  let totalCost = 0;
+  for (const line of lines) {
+    const part = await prisma.seatInsertType.findUnique({ where: { id: line.seatInsertTypeId } });
+    totalCost += (part?.unitCost || 0) * line.quantity;
+  }
   return { totalQuantity, totalCost };
 }
 
@@ -192,8 +195,8 @@ export async function submitOrder(req: Request, res: Response) {
       return res.status(400).json({ error: "Order has no items" });
     }
 
-    // Rules: qty>20 or cost>1000 requires manager approval
-    const requiresApproval = existing.totalQuantity > 20 || existing.totalCost > 1000;
+    // Rules: qty>500 requires manager approval
+    const requiresApproval = existing.totalQuantity > 500;
     const nextStatus = requiresApproval ? "PENDING_APPROVAL" : "APPROVED";
 
     const updateMap: any = {
