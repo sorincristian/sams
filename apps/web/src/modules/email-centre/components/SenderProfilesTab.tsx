@@ -6,7 +6,7 @@ export function SenderProfilesTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/api/email-centre/profiles")
+    api.get("/email-centre/profiles")
       .then(res => setProfiles(res.data))
       .finally(() => setLoading(false));
   }, []);

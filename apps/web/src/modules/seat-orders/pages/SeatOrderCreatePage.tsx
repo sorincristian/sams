@@ -108,12 +108,8 @@ export function SeatOrderCreatePage() {
       setError("Please select a Requesting Garage.");
       return;
     }
-    if (lines.length === 0) {
-      setError("Please add at least one line item.");
-      return;
-    }
     const hasInvalidQty = lines.some(l => Number(l.quantity || 0) < 1);
-    if (hasInvalidQty) {
+    if (lines.length > 0 && hasInvalidQty) {
       setError("All line items must have a valid quantity of at least 1.");
       return;
     }
@@ -353,7 +349,7 @@ export function SeatOrderCreatePage() {
             <Button
               variant="primary"
               onClick={handleSave}
-              disabled={saving || lines.length === 0 || !garageId}
+              disabled={saving}
               className="w-full rounded-[16px] h-[56px] text-[16px] shadow-lg shadow-blue-500/20"
             >
               {saving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}

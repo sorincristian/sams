@@ -52,8 +52,8 @@ export function SeatOrderDetailPage() {
     try {
       setLoading(true);
       const [orderRes, logsRes] = await Promise.all([
-        api.get(`/api/seat-orders/${id}`),
-        api.get(`/api/email-centre/logs?take=100`)
+        api.get(`/seat-orders/${id}`),
+        api.get(`/email-centre/logs?take=100`)
       ]);
       setOrder(orderRes.data);
       
@@ -82,12 +82,12 @@ export function SeatOrderDetailPage() {
     if (actionLoading) return;
     setActionLoading(action);
     try {
-      if (action === "submit") await api.post(`/api/seat-orders/${id}/submit`);
-      if (action === "approve") await api.post(`/api/seat-orders/${id}/approve`, { status: "APPROVED", notes: "" });
-      if (action === "reject") await api.post(`/api/seat-orders/${id}/approve`, { status: "REJECTED", notes: "" });
-      if (action === "send" || action === "resend") await api.post(`/api/seat-orders/${id}/${action}`);
+      if (action === "submit") await api.post(`/seat-orders/${id}/submit`);
+      if (action === "approve") await api.post(`/seat-orders/${id}/approve`, { status: "APPROVED", notes: "" });
+      if (action === "reject") await api.post(`/seat-orders/${id}/approve`, { status: "REJECTED", notes: "" });
+      if (action === "send" || action === "resend") await api.post(`/seat-orders/${id}/${action}`);
       if (action === "receive") {
-        await api.post(`/api/seat-orders/${id}/receive`, {
+        await api.post(`/seat-orders/${id}/receive`, {
           lines: order.lines.map((l: any) => ({ seatOrderLineId: l.id, receivedQty: l.quantity }))
         });
       }
@@ -103,7 +103,7 @@ export function SeatOrderDetailPage() {
     if (actionLoading) return;
     setActionLoading(`retry-${emailId}`);
     try {
-      await api.post(`/api/email-centre/logs/${emailId}/retry`);
+      await api.post(`/email-centre/logs/${emailId}/retry`);
       await fetchData();
     } catch (err) {
       alert("Failed to queue retry.");

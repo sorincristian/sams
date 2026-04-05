@@ -6,7 +6,7 @@ export function EmailLogsTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/api/email-centre/logs")
+    api.get("/email-centre/logs")
       .then(res => setLogs(res.data.data))
       .finally(() => setLoading(false));
   }, []);

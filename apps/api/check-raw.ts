@@ -9,21 +9,21 @@ async function run() {
       const users = await prisma.$queryRaw`SELECT id, email, role, "createdAt", "updatedAt" FROM "User"`;
       console.log(users);
       
-      const admin: any = (users as any[]).find(u => u.email === 'admin@sams.local');
+      const admin: any = (users as any[]).find(u => u.email === 'admin@sams-local.com');
       if (admin) {
          console.log('Exists:', admin.email);
          
          console.log('--- 5) RESETTING PASSWORD ---');
-         const hash = await bcrypt.hash('Admin123!', 10);
-         await prisma.$executeRaw`UPDATE "User" SET "passwordHash" = ${hash} WHERE id = ${admin.id}`;
+         const hash = await bcrypt.hash('admin123', 10);
+         await prisma.$executeRaw`UPDATE "User" SET "passwordHash" = ${hash}, role = 'SYSTEM_ADMIN' WHERE id = ${admin.id}`;
          console.log('Password Hash Reset Successfully');
       } else {
          console.log('--- 4) CREATING ADMIN ---');
-         const hash = await bcrypt.hash('Admin123!', 10);
+         const hash = await bcrypt.hash('admin123', 10);
          const id = crypto.randomUUID();
          try {
-             await prisma.$executeRaw`INSERT INTO "User" (id, email, "passwordHash", role, name, "createdAt", "updatedAt") VALUES (${id}, 'admin@sams.local', ${hash}, 'SYSTEM_ADMIN', 'System Admin', NOW(), NOW())`;
-             console.log('Created admin@sams.local with raw sql');
+             await prisma.$executeRaw`INSERT INTO "User" (id, email, "passwordHash", role, name, "createdAt", "updatedAt") VALUES (${id}, 'admin@sams-local.com', ${hash}, 'SYSTEM_ADMIN', 'System Admin', NOW(), NOW())`;
+             console.log('Created admin@sams-local.com with raw sql');
          } catch(err: any) {
              console.log('Error creating user:', err.message);
          }

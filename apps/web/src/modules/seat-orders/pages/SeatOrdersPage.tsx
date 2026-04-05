@@ -25,7 +25,7 @@ export function SeatOrdersPage() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/api/seat-orders");
+      const res = await api.get("/seat-orders");
       setOrders(res.data);
     } catch (err) {
       console.error(err);

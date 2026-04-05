@@ -6,7 +6,7 @@ export function EmailTemplatesTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/api/email-centre/templates")
+    api.get("/email-centre/templates")
       .then(res => setTemplates(res.data))
       .finally(() => setLoading(false));
   }, []);
