@@ -18,7 +18,7 @@ export function EmailCentrePage() {
       </header>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 8, borderBottom: "1px solid #1e293b", paddingBottom: 8 }}>
+      <div style={{ display: "flex", gap: 8, borderBottom: "1px solid #1e293b", paddingBottom: 8, position: "relative", zIndex: 50, pointerEvents: "auto" }}>
         <button
           onClick={() => setActiveTab("PROFILES")}
           style={{
