@@ -13,7 +13,7 @@ const CreateOrderSchema = z.object({
     seatInsertTypeId: z.string().cuid(),
     quantity: z.number().int().min(1),
     description: z.string().optional()
-  })).min(1)
+  })).optional().default([])
 });
 
 const UpdateOrderSchema = CreateOrderSchema.partial();
@@ -107,7 +107,32 @@ export async function getOrder(req: Request, res: Response) {
     res.json(order);
   } catch (error) {
     console.error("Failed to fetch seat order:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: "Internal server error", details: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+  }
+}
+
+export async function getOrderLogs(req: Request, res: Response) {
+  try {
+    const logs = await prisma.outboundEmail.findMany({
+      where: {
+        OR: [
+          { seatOrderId: req.params.id },
+          { seatOrder: { id: req.params.id } }
+        ]
+      },
+      include: {
+        seatOrder: { select: { orderNumber: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: req.query.take ? parseInt(req.query.take as string) : 100
+    });
+    
+    // Return the array directly but wrap in { data: logs } if frontend expects it,
+    // wait, frontend `SeatOrderDetailPage.tsx` will be adapted to handle it cleanly:
+    res.json({ data: logs });
+  } catch (error) {
+    console.error("Failed to fetch seat order logs:", error);
+    res.status(500).json({ error: "Internal server error", details: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
   }
 }
 

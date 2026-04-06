@@ -27,7 +27,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   const allowedOrigins = [
     'https://sams-web-emwb.onrender.com',
     'http://localhost:3000',
-    'http://localhost:5173'
+    'http://localhost:5173',
+    'http://localhost:5174'
   ];
   if (process.env.CORS_ORIGIN) allowedOrigins.push(process.env.CORS_ORIGIN);
 

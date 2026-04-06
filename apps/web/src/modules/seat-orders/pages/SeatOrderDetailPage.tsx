@@ -53,11 +53,11 @@ export function SeatOrderDetailPage() {
       setLoading(true);
       const [orderRes, logsRes] = await Promise.all([
         api.get(`/seat-orders/${id}`),
-        api.get(`/email-centre/logs?take=100`)
+        api.get(`/seat-orders/${id}/logs?take=100`)
       ]);
       setOrder(orderRes.data);
       
-      const relatedLogs = logsRes.data.data.filter((l: any) => l.seatOrderId === id || l.seatOrder?.orderNumber === orderRes.data.orderNumber);
+      const relatedLogs = logsRes.data.data;
       setEmailLogs(relatedLogs);
     } catch (err) {
       console.error(err);
