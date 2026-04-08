@@ -6,6 +6,48 @@ const port = Number(process.env.PORT || 4000);
 
 console.log("[Phase 2] Successfully loaded Express modules. Starting server...");
 
+import { prisma } from "./prisma.js";
+import bcrypt from "bcryptjs";
+
+async function ensureAdminSeed() {
+  try {
+    const email = 'admin@sams-local.com';
+    const existing = await prisma.user.findUnique({ where: { email } });
+    
+    if (!existing) {
+       const hash = await bcrypt.hash('admin123', 10);
+       await prisma.user.create({
+         data: {
+           email,
+           passwordHash: hash,
+           role: 'SYSTEM_ADMIN',
+           name: 'System Admin',
+           active: true
+         } as any
+       });
+       console.log("[Seed] admin account restored");
+    } else if (!existing.passwordHash || existing.role !== 'SYSTEM_ADMIN') {
+       const hash = await bcrypt.hash('admin123', 10);
+       await prisma.user.update({
+         where: { email },
+         data: { 
+           passwordHash: existing.passwordHash ? undefined : hash, 
+           role: 'SYSTEM_ADMIN',
+           name: existing.name === 'admin' ? 'System Admin' : undefined
+         }
+       });
+       console.log("[Seed] admin account restored");
+    } else {
+       console.log("[Seed] admin account already present");
+    }
+  } catch (e) {
+    console.error("[Seed] Quiet seed failure: ", e);
+  }
+}
+
+// Block server start until seed confirms naturally safely
+await ensureAdminSeed();
+
 const server = app.listen(port, "0.0.0.0", () => {
   console.log(`[Phase 3] SAMS API listening explicitly on 0.0.0.0:${port}`);
   

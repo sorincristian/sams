@@ -1,13 +1,7 @@
 import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
 
 const p = new PrismaClient();
-
-async function main() {
-  const users = await p.user.findMany({
-    where: { OR: [ { role: 'SYSTEM_ADMIN' }, { email: { contains: 'admin' } } ] }
-  });
-  console.log('Admins found:', users.map(u => ({ id: u.id, email: u.email, role: u.role, hash: !!u.passwordHash })));
-}
-
-main().then(() => p.$disconnect());
+p.user.findUnique({ where: { email: 'admin@sams-local.com' } }).then(u => { 
+  console.log('USER:', u ? { id: u.id, email: u.email, name: u.name, role: u.role, hasPasswordHash: !!u.passwordHash } : 'NOT FOUND'); 
+  p.$disconnect(); 
+});
