@@ -9,7 +9,7 @@ interface WorkOrder {
   id: string;
   workOrderNumber: string;
   status: string;
-  bus: { fleetNumber: string; garage: { name: string } };
+  bus: { fleetNumber: string; garageId: string; garage: { id: string; name: string } };
 }
 
 interface Props {
@@ -22,11 +22,12 @@ interface Props {
 export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, onClose, onDone }: Props) {
   const [workOrders, setWorkOrders] = React.useState<WorkOrder[]>([]);
   const [inventoryItems, setInventoryItems] = React.useState<InventoryRow[]>([]);
+  const [globalCatalog, setGlobalCatalog] = React.useState<any[]>([]);
   const [loadingWOs, setLoadingWOs] = React.useState(true);
   const [loadingItems, setLoadingItems] = React.useState(!initialItem);
 
   const [selectedWO, setSelectedWO] = React.useState(prefilledWorkOrderId ?? "");
-  const [selectedItemId, setSelectedItemId] = React.useState(initialItem?.id ?? "");
+  const [selectedCatalogId, setSelectedCatalogId] = React.useState(initialItem?.seatInsertTypeId ?? "");
   const [quantity, setQuantity] = React.useState("1");
   const [notes, setNotes] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -34,8 +35,10 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
   const [queryLocal, setQueryLocal] = React.useState("");
 
   const parsedQuantity = Number(quantity || 0);
-  const resolvedItem = initialItem ?? inventoryItems.find((i) => i.id === selectedItemId) ?? null;
-  const projectedQOH = resolvedItem ? resolvedItem.quantityOnHand - parsedQuantity : null;
+  const targetGarageId = workOrders.find(w => w.id === selectedWO)?.bus.garage?.id || initialItem?.garageId;
+  const resolvedItem = initialItem ?? inventoryItems.find((i) => i.seatInsertTypeId === selectedCatalogId && i.garageId === targetGarageId) ?? null;
+  const currentQOH = resolvedItem ? resolvedItem.quantityOnHand : 0;
+  const projectedQOH = currentQOH - parsedQuantity;
 
   React.useEffect(() => {
     api.get("/work-orders")
@@ -49,13 +52,17 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
       .finally(() => setLoadingWOs(false));
 
     if (!initialItem) {
-      api.get("/inventory")
-        .then((res) => {
-          setInventoryItems(res.data);
-          if (res.data.length > 0) {
-             const it = res.data[0];
-             setSelectedItemId(it.id);
-             setQueryLocal(`${it.seatInsertType.partNumber} — ${it.seatInsertType.description}`);
+      Promise.all([
+        api.get("/inventory"),
+        api.get("/v1/catalog")
+      ])
+        .then(([invRes, catRes]) => {
+          setInventoryItems(invRes.data);
+          setGlobalCatalog(catRes.data);
+          if (catRes.data.length > 0) {
+             const it = catRes.data[0];
+             setSelectedCatalogId(it.id);
+             setQueryLocal(`${it.partNumber} — ${it.description}`);
           }
         })
         .finally(() => setLoadingItems(false));
@@ -63,14 +70,19 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
   }, [initialItem, prefilledWorkOrderId, selectedWO]);
 
   const mappedCatalogParts = useMemo(() => {
-    return inventoryItems.map(item => ({
-      id: item.id,
-      partNumber: item.seatInsertType.partNumber,
-      description: item.seatInsertType.description,
-      componentType: `${item.garage.name} (QOH: ${item.quantityOnHand})`,
-      vendor: ""
-    }));
-  }, [inventoryItems]);
+    return globalCatalog.map(catalogItem => {
+      const invMatches = inventoryItems.filter(i => i.seatInsertTypeId === catalogItem.id);
+      const totalQoh = invMatches.reduce((sum, i) => sum + i.quantityOnHand, 0);
+
+      return {
+        id: catalogItem.id,
+        partNumber: catalogItem.partNumber,
+        description: catalogItem.description,
+        componentType: `System QOH: ${totalQoh}`,
+        vendor: catalogItem.vendor || ""
+      };
+    });
+  }, [globalCatalog, inventoryItems]);
 
   const handleSubmit = useCallback(async (e?: React.FormEvent) => {
     if (loading) return;
@@ -80,10 +92,10 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
       return;
     }
     if (!selectedWO) { setError("Please select a work order."); return; }
-    if (!resolvedItem) { setError("Please select an inventory item."); return; }
+    if (!resolvedItem) { setError("Target garage does not have an active ledger for this part yet. Restock first."); return; }
     if (parsedQuantity < 1) { setError("Quantity must be at least 1."); return; }
-    if (projectedQOH !== null && projectedQOH < 0) {
-      setError(`Cannot issue ${parsedQuantity} — only ${resolvedItem.quantityOnHand} on hand.`);
+    if (projectedQOH < 0) {
+      setError(`Cannot issue ${parsedQuantity} — only ${currentQOH} on hand.`);
       return;
     }
 
@@ -176,8 +188,8 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
                         catalogParts={mappedCatalogParts}
                         queryLocal={queryLocal}
                         setQueryLocal={setQueryLocal}
-                        selectedPartId={selectedItemId}
-                        setSelectedPartId={(id) => setSelectedItemId(id || "")}
+                        selectedPartId={selectedCatalogId}
+                        setSelectedPartId={(id) => setSelectedCatalogId(id || "")}
                         placeholder="Search parts by number, description, or garage..."
                       />
                     </div>
@@ -235,14 +247,12 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
               </div>
 
               {/* Quantity preview */}
-              {resolvedItem && projectedQOH !== null && (
-                <div className={`flex flex-col items-center justify-center p-[18px] rounded-2xl bg-[#020617]/55 border mt-2 ${resolvedItem.quantityOnHand <= 5 ? 'border-amber-500/30' : 'border-blue-500/20'}`}>
-                  <span className={`text-[13px] mb-1 font-medium tracking-wide uppercase ${resolvedItem.quantityOnHand <= 5 ? 'text-amber-500/80' : 'text-[#94a3b8]'}`}>Projected on hand</span>
-                  <span className={`text-[36px] font-bold leading-none ${projectedQOH < 0 ? 'text-red-400' : projectedQOH === 0 ? 'text-amber-400' : 'text-[#34d399]'}`}>
-                    {projectedQOH}
-                  </span>
-                </div>
-              )}
+              <div className={`flex flex-col items-center justify-center p-[18px] rounded-2xl bg-[#020617]/55 border mt-2 ${currentQOH <= 5 ? 'border-amber-500/30' : 'border-blue-500/20'}`}>
+                <span className={`text-[13px] mb-1 font-medium tracking-wide uppercase ${currentQOH <= 5 ? 'text-amber-500/80' : 'text-[#94a3b8]'}`}>Projected on hand</span>
+                <span className={`text-[36px] font-bold leading-none ${projectedQOH < 0 ? 'text-red-400' : projectedQOH === 0 ? 'text-amber-400' : 'text-[#34d399]'}`}>
+                  {projectedQOH}
+                </span>
+              </div>
 
               {/* Notes field */}
               <div className={!resolvedItem ? "hidden" : "mt-2"}>
@@ -274,7 +284,7 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
               <Button
                 type="submit"
                 variant="danger"
-                disabled={loading || (projectedQOH !== null && projectedQOH < 0) || parsedQuantity < 1 || workOrders.length === 0}
+                disabled={loading || projectedQOH < 0 || parsedQuantity < 1 || workOrders.length === 0 || !selectedCatalogId}
                 className="h-11 sm:h-12 px-[18px] rounded-[14px]"
                 aria-label="Confirm inventory issue"
               >

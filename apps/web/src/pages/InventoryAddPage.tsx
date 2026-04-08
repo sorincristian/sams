@@ -21,7 +21,9 @@ export function InventoryAddPage() {
   const [selectedGarageId, setSelectedGarageId] = useState('');
   const [selectedBusRangeId, setSelectedBusRangeId] = useState('');
   
-  const [items, setItems] = useState<SeatInsertItem[]>([]);
+  const [globalCatalog, setGlobalCatalog] = useState<any[]>([]);
+  const [garageInventory, setGarageInventory] = useState<Record<string, number>>({});
+  
   const [quantities, setQuantities] = useState<Record<string, string>>({}); // Use string for blank default
   const [notes, setNotes] = useState('');
 
@@ -33,11 +35,13 @@ export function InventoryAddPage() {
   useEffect(() => {
     Promise.all([
       api.get('/garages'),
-      api.get('/v1/catalog/bus-compat')
+      api.get('/v1/catalog/bus-compat'),
+      api.get('/v1/catalog')
     ])
-      .then(([gRes, bRes]) => {
+      .then(([gRes, bRes, cRes]) => {
         setGarages(gRes.data);
         setBusRanges(bRes.data);
+        setGlobalCatalog(cRes.data);
       })
       .catch(err => {
         console.error(err);
@@ -47,36 +51,39 @@ export function InventoryAddPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedGarageId && selectedBusRangeId) {
+    if (selectedGarageId) {
       setFetchingItems(true);
-      setError(null);
-      
-      const params = new URLSearchParams({
-        garageId: selectedGarageId,
-        busCompatibilityId: selectedBusRangeId
-      });
-
-      api.get(`/inventory/seat-inserts/by-range?${params.toString()}`)
+      api.get('/inventory')
         .then(res => {
-          setItems(res.data);
-          // Initialize quantities to blank strings
-          const initialQts: Record<string, string> = {};
-          res.data.forEach((i: SeatInsertItem) => {
-            initialQts[i.seatInsertTypeId] = '';
+          const map: Record<string, number> = {};
+          res.data.forEach((i: any) => {
+            if (i.garageId === selectedGarageId) map[i.seatInsertTypeId] = i.quantityOnHand;
           });
-          setQuantities(initialQts);
+          setGarageInventory(map);
         })
-        .catch(err => {
-          console.error(err);
-          setError('Failed to load compatible seat inserts.');
-          setItems([]);
-        })
+        .catch(console.error)
         .finally(() => setFetchingItems(false));
     } else {
-      setItems([]);
-      setQuantities({});
+      setGarageInventory({});
     }
-  }, [selectedGarageId, selectedBusRangeId]);
+  }, [selectedGarageId]);
+
+  const items: SeatInsertItem[] = useMemo(() => {
+    let filtered = globalCatalog;
+    if (selectedBusRangeId) {
+      const range = busRanges.find(b => b.id === selectedBusRangeId);
+      if (range) {
+        filtered = filtered.filter(p => (p.busRanges || []).includes(range.fleetRangeLabel));
+      }
+    }
+    return filtered.map(p => ({
+      seatInsertTypeId: p.id,
+      partNumber: p.partNumber,
+      description: p.description,
+      busRangeLabel: (p.busRanges || []).join(', '),
+      currentQty: garageInventory[p.id] || 0
+    }));
+  }, [globalCatalog, selectedBusRangeId, busRanges, garageInventory]);
 
   const handleQuantityChange = (seatInsertTypeId: string, val: string) => {
     if (val === '') {
@@ -183,7 +190,7 @@ export function InventoryAddPage() {
               onChange={(e) => setSelectedBusRangeId(e.target.value)}
               disabled={!selectedGarageId}
             >
-              <option value="">-- Select Compatible Context --</option>
+              <option value="">-- View Full Catalog (Optional Filter) --</option>
               {busRanges.map(b => (
                 <option key={b.id} value={b.id}>{b.manufacturer} - {b.fleetRangeLabel}</option>
               ))}
@@ -192,18 +199,17 @@ export function InventoryAddPage() {
         </div>
       </div>
 
-      {selectedGarageId && selectedBusRangeId && (
-        <div className="card p-0 overflow-hidden border border-emerald-900/40">
-          <div className="px-6 py-4 border-b border-emerald-900/30 bg-emerald-900/10 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-emerald-300 flex items-center gap-2">
-                Compatible Seat Inserts
-              </h2>
-              <p className="text-sm text-emerald-400/70 font-medium mt-0.5">Filter applied: {busRanges.find(b => b.id === selectedBusRangeId)?.fleetRangeLabel}</p>
-            </div>
+      <div className="card p-0 overflow-hidden border border-emerald-900/40">
+        <div className="px-6 py-4 border-b border-emerald-900/30 bg-emerald-900/10 flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-bold text-emerald-300 flex items-center gap-2">
+              Full Catalog Items
+            </h2>
+            <p className="text-sm text-emerald-400/70 font-medium mt-0.5">Filter applied: {selectedBusRangeId ? busRanges.find(b => b.id === selectedBusRangeId)?.fleetRangeLabel : 'None (Showing All)'}</p>
           </div>
-          
-          <div className="overflow-x-auto">
+        </div>
+        
+        <div className="overflow-x-auto">
             {fetchingItems ? (
               <div className="p-6 text-sm font-medium text-emerald-500/60">Resolving dependencies...</div>
             ) : items.length === 0 ? (
@@ -271,8 +277,6 @@ export function InventoryAddPage() {
              </div>
           </div>
         </div>
-      )}
-
     </div>
   );
 }

@@ -52,22 +52,20 @@ export function InstallSeatModal({ workOrderId, onClose, onDone }: Props) {
         const activeWo = woRes.data;
         setWo(activeWo);
 
-        // Fetch replacement pool at this garage
+        // 1. Fetch entire catalog unconditionally
+        const catalogRes = await api.get("/catalog");
+        const fullCatalog: SeatInsertType[] = catalogRes.data || [];
+
+        // 2. Fetch specific replacement pool locally
         const seatsRes = await api.get(`/seat-inserts/items?locationId=${activeWo.bus.garageId}&stockClass=REPLACEMENT_AVAILABLE`);
         const pool: SeatInsert[] = seatsRes.data || [];
 
-        // Group into physical counts per type
-        const typeMap = new Map<string, { type: SeatInsertType; count: number }>();
-        pool.forEach(s => {
-          if (!s.seatInsertType) return;
-          if (typeMap.has(s.seatInsertTypeId)) {
-            typeMap.get(s.seatInsertTypeId)!.count++;
-          } else {
-            typeMap.set(s.seatInsertTypeId, { type: s.seatInsertType, count: 1 });
-          }
+        // 3. Guarantee all catalog items exist in the dropdown, even if count is 0
+        const grouped = fullCatalog.map(part => {
+          const matchCount = pool.filter(s => s.seatInsertTypeId === part.id).length;
+          return { type: part, count: matchCount };
         });
         
-        const grouped = Array.from(typeMap.values());
         setAvailableTypes(grouped);
 
         // Fetch installed seats globally for the removals
