@@ -1,0 +1,50 @@
+[
+  {
+    "id": "cmnpm66ut0000mf8v6xv89dqv",
+    "name": "Malvern",
+    "active": true,
+    "code": "MALVERN"
+  },
+  {
+    "id": "cmnpm8o2l0148mf8vl6xuoxpf",
+    "name": "McNicoll",
+    "active": true,
+    "code": "MCNICOLL"
+  },
+  {
+    "id": "cmnpma4bm01cjmf8vbpqc4g97",
+    "name": "Birch Mount",
+    "active": true,
+    "code": "BIRCHMOUNT"
+  },
+  {
+    "id": "cmnpmb4bw01semf8vwwu1zmdw",
+    "name": "Eglinton",
+    "active": true,
+    "code": "EGLINTON"
+  },
+  {
+    "id": "cmnq27qnr0000fvd8vtfday6k",
+    "name": "Mount Dennis",
+    "active": true,
+    "code": "MOUNTDENNI"
+  },
+  {
+    "id": "cmnpmdqr902vumf8vxexqu595",
+    "name": "Queensway",
+    "active": true,
+    "code": "QUEENSWAY"
+  },
+  {
+    "id": "cmnq27r1t0001fvd8rlpiqcop",
+    "name": "Arrow Road",
+    "active": true,
+    "code": "ARROWROAD"
+  },
+  {
+    "id": "cmnpmideu03ahmf8vewdvtywi",
+    "name": "Wilson",
+    "active": true,
+    "code": "WILSON"
+  }
+]

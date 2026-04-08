@@ -1,0 +1,3 @@
+c:\SIMS\sams-render\apps\api\prisma\import-data\Bus Allocation&Status-Seats.xls
+c:\SIMS\sams-render\apps\api\uploads\diagrams_inventory\Seat_Inserts\Bus Allocation&Status-Seats.xls
+c:\SIMS\sams-render\SIMS\sams-render\apps\api\prisma\import-data\Bus Allocation&Status-Seats.xls
