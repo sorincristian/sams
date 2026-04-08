@@ -187,21 +187,23 @@ export function SeatChangeReportPage() {
         </div>
       </SectionCard>
 
-      {error && <ErrorState error={error} />}
+      {error ? (
+        <ErrorState error={error} />
+      ) : (
+        <>
+          <div className="grid stats">
+            <StatCard title="Total Changes" value={stats.total} />
+            <StatCard title="Created" value={stats.created} />
+            <StatCard title="Updated" value={stats.updated} />
+          </div>
 
-      <div className="grid stats">
-        <StatCard title="Total Changes" value={stats.total} />
-        <StatCard title="Created" value={stats.created} />
-        <StatCard title="Updated" value={stats.updated} />
-      </div>
-
-      <SectionCard title="Changed Records">
-        {loading ? (
-          <LoadingState />
-        ) : data.length === 0 ? (
-          <EmptyState message="No records found for the selected filters." />
-        ) : (
-          <DataTable
+          <SectionCard title="Changed Records">
+            {loading ? (
+              <LoadingState />
+            ) : data.length === 0 ? (
+              <EmptyState message="No records found for the selected filters." />
+            ) : (
+              <DataTable
             headers={
               <>
                 <th>Part / SKU</th>
@@ -234,6 +236,8 @@ export function SeatChangeReportPage() {
           </DataTable>
         )}
       </SectionCard>
+      </>
+      )}
     </PageContainer>
   );
 }

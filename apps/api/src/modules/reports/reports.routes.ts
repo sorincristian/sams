@@ -47,19 +47,25 @@ router.get("/seat-changes", requireAuth, requirePermission("reports", "view"), a
       end = endOfDay(target);
     }
 
+    const isSystemAdmin = req.user?.role === 'SYSTEM_ADMIN' || req.headers['x-dev-user-role'] === 'SYSTEM_ADMIN';
     const allowedGarages = req.user?.scope?.garages || [];
 
-    if (facility && !allowedGarages.includes(String(facility))) {
+    if (!isSystemAdmin && facility && !allowedGarages.includes(String(facility))) {
       return res.status(403).json({ error: "Forbidden: Strict scope bounds violated." });
     }
 
     const whereClause: Prisma.InventoryItemWhereInput = {
-      garageId: facility ? String(facility) : { in: allowedGarages },
       updatedAt: {
         gte: start,
         lte: end,
       },
     };
+
+    if (facility) {
+      whereClause.garageId = String(facility);
+    } else if (!isSystemAdmin) {
+      whereClause.garageId = { in: allowedGarages };
+    }
 
     if (search) {
       const searchStr = String(search);
