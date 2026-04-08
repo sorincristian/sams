@@ -102,8 +102,8 @@ export function InventoryAddPage() {
   }, [quantities]);
 
   const handleSubmit = async () => {
-    if (!selectedGarageId || !selectedBusRangeId) {
-      setError("Garage and Bus Range must be selected.");
+    if (!selectedGarageId) {
+      setError("Garage must be selected.");
       return;
     }
     
@@ -122,7 +122,7 @@ export function InventoryAddPage() {
     try {
       await api.post('/inventory/seat-inserts/intake', {
         garageId: selectedGarageId,
-        busCompatibilityId: selectedBusRangeId,
+        busCompatibilityId: selectedBusRangeId || null,
         notes: notes.trim() || undefined,
         items: payloadItems
       });

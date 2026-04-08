@@ -162,7 +162,7 @@ router.get("/seat-inserts/by-range", requireAuth, requirePermission("inventory",
 router.post("/seat-inserts/intake", requireAuth, requirePermission("inventory", "manage"), async (req: AuthRequest, res) => {
   const schema = z.object({
     garageId: z.string(),
-    busCompatibilityId: z.string(),
+    busCompatibilityId: z.string().nullable().optional(),
     notes: z.string().optional(),
     items: z.array(z.object({
       seatInsertTypeId: z.string(),
@@ -217,7 +217,7 @@ router.post("/seat-inserts/intake", requireAuth, requirePermission("inventory", 
             type: "RECEIVE", // Strict instruction adherence
             notes: parsed.data.notes || undefined,
             referenceType: "INTAKE_BULK",
-            referenceId: parsed.data.busCompatibilityId, // store context
+            referenceId: parsed.data.busCompatibilityId || undefined, // store context
             performedByUserId: actorUserId
           }
         });
