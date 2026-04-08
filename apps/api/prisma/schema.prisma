@@ -143,6 +143,8 @@ model Garage {
   outboundEmails OutboundEmail[]
   seatOrders     SeatOrder[]
 
+  active         Boolean @default(true) // Added for soft-retirements
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
