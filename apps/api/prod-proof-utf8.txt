@@ -1,0 +1,65 @@
+﻿node : (node:11772) 
+Warning: To load an ES 
+module, set "type": 
+"module" in the 
+package.json or use 
+the .mjs extension.
+At line:1 char:1
++ node test-prod.cjs > 
+prod-proof.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: ((node:11772)    
+ Wa....mjs extensio    
+n.:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+(Use `node 
+--trace-warnings ...` 
+to show where the 
+warning was created)
+C:\SIMS\sams-render\app
+s\api\test-prod.cjs:1
+import fetch from 
+'node-fetch';
+^^^^^^
+
+SyntaxError: Cannot 
+use import statement 
+outside a module
+    at wrapSafe (node:i
+nternal/modules/cjs/loa
+der:1515:18)
+    at Module._compile 
+(node:internal/modules/
+cjs/loader:1537:20)
+    at Object..js (node
+:internal/modules/cjs/l
+oader:1708:10)
+    at Module.load (nod
+e:internal/modules/cjs/
+loader:1318:32)
+    at Function._load (
+node:internal/modules/c
+js/loader:1128:12)
+    at TracingChannel.t
+raceSync (node:diagnost
+ics_channel:322:14)
+    at wrapModuleLoad (
+node:internal/modules/c
+js/loader:219:24)
+    at Function.execute
+UserEntryPoint [as 
+runMain] (node:internal
+/modules/run_main:170:5
+)
+    at node:internal/ma
+in/run_main_module:36:4
+9
+
+Node.js v22.12.0

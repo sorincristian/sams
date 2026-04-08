@@ -813,6 +813,14 @@ export class SeatInsertsService {
                notes: `Reserved & Installed: ${insertId} (Source: ${chosen.conditionSource})` + (params.removedInsertId ? ` Removed: ${params.removedInsertId}` : '')
             }
          });
+         
+         const existingWorkOrder = await tx.workOrder.findUnique({ where: { id: params.workOrderId } });
+         if (existingWorkOrder && !existingWorkOrder.installedByUserId) {
+            await tx.workOrder.update({
+               where: { id: params.workOrderId },
+               data: { installedByUserId: params.userId }
+            });
+         }
       }
 
       // Return the successfully guarded reservation along with the chosen DB object

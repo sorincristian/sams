@@ -13,7 +13,12 @@ const router = Router();
 
 router.get("/", requireAuth, async (req, res) => {
   const workOrders = await prisma.workOrder.findMany({
-    include: { bus: { include: { garage: true } } },
+    include: {
+      bus: { include: { garage: true } },
+      seatInsertType: { select: { id: true, partNumber: true, description: true } },
+      closedByUser: { select: { name: true } },
+      installedByUser: { select: { name: true } }
+    },
     orderBy: { createdAt: "desc" }
   });
   res.json(workOrders);
@@ -24,7 +29,12 @@ router.get("/:id", requireAuth, async (req, res) => {
   if (!id) return res.status(400).json({ message: "Invalid ID" });
   const wo = await prisma.workOrder.findUnique({
     where: { id },
-    include: { bus: { include: { garage: true } } }
+    include: {
+      bus: { include: { garage: true } },
+      seatInsertType: { select: { id: true, partNumber: true, description: true } },
+      closedByUser: { select: { name: true } },
+      installedByUser: { select: { name: true } }
+    }
   });
   if (!wo) return res.status(404).json({ message: "Work order not found" });
   res.json(wo);
@@ -32,21 +42,25 @@ router.get("/:id", requireAuth, async (req, res) => {
 
 // Valid status transitions
 const TRANSITIONS: Record<string, string[]> = {
-  OPEN:          ["IN_PROGRESS", "CANCELLED"],
-  IN_PROGRESS:   ["WAITING_PARTS", "COMPLETED", "CANCELLED"],
-  WAITING_PARTS: ["IN_PROGRESS", "CANCELLED"],
+  OPEN:          ["IN_PROGRESS", "CANCELLED", "CLOSED"],
+  IN_PROGRESS:   ["WAITING_PARTS", "COMPLETED", "CANCELLED", "CLOSED"],
+  WAITING_PARTS: ["IN_PROGRESS", "CANCELLED", "CLOSED"],
   COMPLETED:     [],   // terminal — no further transitions
   CANCELLED:     [],   // terminal — no further transitions
+  CLOSED:        [],   // terminal — no further transitions
 };
 
 router.patch("/:id/status", requireAuth, async (req, res) => {
   const id = firstString(req.params.id);
   if (!id) return res.status(400).json({ message: "Invalid ID" });
-  const schema = z.object({ status: z.enum(["OPEN", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "CANCELLED"]) });
+  const schema = z.object({ 
+    status: z.enum(["OPEN", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "CANCELLED", "CLOSED"]),
+    closedNotes: z.string().optional()
+  });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ message: "Invalid status value" });
 
-  const { status: newStatus } = parsed.data;
+  const { status: newStatus, closedNotes } = parsed.data;
 
   const wo = await prisma.workOrder.findUnique({ where: { id } });
   if (!wo) return res.status(404).json({ message: "Work order not found" });
@@ -87,9 +101,16 @@ router.patch("/:id/status", requireAuth, async (req, res) => {
     }
   }
 
+  const updateData: any = { status: newStatus };
+  if (newStatus === "CLOSED") {
+    updateData.closedAt = new Date();
+    updateData.closedByUserId = (req as any).user?.id || (req as any).user?.userId || "system";
+    if (closedNotes) updateData.closedNotes = closedNotes;
+  }
+
   const updated = await prisma.workOrder.update({
     where: { id },
-    data: { status: newStatus },
+    data: updateData,
     include: { bus: { include: { garage: true } } }
   });
 
@@ -102,6 +123,7 @@ router.patch("/:id/status", requireAuth, async (req, res) => {
 router.post("/", requireAuth, async (req, res) => {
   const schema = z.object({
     busId: z.string(),
+    seatInsertTypeId: z.string().optional(),
     issueDescription: z.string().min(3),
     priority: z.enum(["LOW", "MEDIUM", "HIGH"]).default("MEDIUM")
   });
@@ -119,9 +141,15 @@ router.post("/", requireAuth, async (req, res) => {
       issueDescription: parsed.data.issueDescription,
       priority: parsed.data.priority,
       busId: bus.id,
-      garageId: bus.garageId
+      garageId: bus.garageId,
+      seatInsertTypeId: parsed.data.seatInsertTypeId || null
     },
-    include: { bus: { include: { garage: true } } }
+    include: {
+      bus: { include: { garage: true } },
+      seatInsertType: { select: { id: true, partNumber: true, description: true } },
+      closedByUser: { select: { name: true } },
+      installedByUser: { select: { name: true } }
+    }
   });
 
   res.status(201).json(created);

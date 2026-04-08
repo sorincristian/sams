@@ -44,6 +44,7 @@ export function InstallSeatModal({ workOrderId, onClose, onDone }: Props) {
   const [selectedRemovedSeatId, setSelectedRemovedSeatId] = React.useState("");
   const [removeDisposition, setRemoveDisposition] = React.useState<"DIRTY_RECOVERY" | "SCRAPPED">("DIRTY_RECOVERY");
   const [removeReason, setRemoveReason] = React.useState("OTHER");
+  const [showAutoClosePrompt, setShowAutoClosePrompt] = React.useState(false);
 
   React.useEffect(() => {
     async function load() {
@@ -51,6 +52,9 @@ export function InstallSeatModal({ workOrderId, onClose, onDone }: Props) {
         const woRes = await api.get(`/work-orders/${workOrderId}`);
         const activeWo = woRes.data;
         setWo(activeWo);
+        if (activeWo.seatInsertTypeId) {
+          setSelectedTypeId(activeWo.seatInsertTypeId);
+        }
 
         // 1. Fetch entire catalog unconditionally
         const catalogRes = await api.get("/catalog");
@@ -105,17 +109,60 @@ export function InstallSeatModal({ workOrderId, onClose, onDone }: Props) {
         removedDisposition: selectedRemovedSeatId ? removeDisposition : undefined,
         removedReason: selectedRemovedSeatId ? removeReason : undefined
       });
-      onDone();
+      setShowAutoClosePrompt(true);
     } catch (err: any) {
       setError(err?.response?.data?.error || err.message || "Failed to install seat.");
       setSubmitting(false);
     }
   }
 
+  async function handleAutoClose(doClose: boolean) {
+    if (doClose) {
+      try {
+        await api.patch(`/work-orders/${workOrderId}/status`, {
+          status: "CLOSED",
+          closedNotes: "Auto-closed after successful seat installation"
+        });
+      } catch (e: any) {
+        console.error("Auto close failed", e);
+      }
+    }
+    onDone();
+  }
+
   if (loading) {
     return (
       <div style={overlayStyle}>
         <div style={modalStyle} className="text-center p-10 text-slate-400">Loading replacement pool logic...</div>
+      </div>
+    );
+  }
+
+  if (showAutoClosePrompt) {
+    return (
+      <div style={overlayStyle}>
+        <div style={modalStyle} className="text-center p-10">
+          <h3 style={{ marginBottom: 12, fontSize: "1.2rem", fontWeight: 700, color: "#10b981" }}>Seat installed successfully.</h3>
+          <p className="muted" style={{ marginBottom: 24, fontSize: "1rem" }}>
+            Would you like to close this work order now?
+          </p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+            <button
+              type="button"
+              style={{ background: "#374151", padding: "10px 20px", borderRadius: 6, color: "#fff", fontWeight: 600 }}
+              onClick={() => handleAutoClose(false)}
+            >
+              Keep Open
+            </button>
+            <button
+              type="button"
+              style={{ background: "#ef4444", padding: "10px 20px", borderRadius: 6, color: "#fff", fontWeight: 600 }}
+              onClick={() => handleAutoClose(true)}
+            >
+              Close Work Order
+            </button>
+          </div>
+        </div>
       </div>
     );
   }

@@ -15,11 +15,12 @@ interface WorkOrder {
 interface Props {
   item: InventoryRow | null;
   prefilledWorkOrderId?: string;
+  prefilledCatalogId?: string;
   onClose: () => void;
   onDone: () => void;
 }
 
-export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, onClose, onDone }: Props) {
+export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, prefilledCatalogId, onClose, onDone }: Props) {
   const [workOrders, setWorkOrders] = React.useState<WorkOrder[]>([]);
   const [inventoryItems, setInventoryItems] = React.useState<InventoryRow[]>([]);
   const [globalCatalog, setGlobalCatalog] = React.useState<any[]>([]);
@@ -27,7 +28,7 @@ export function IssueInventoryModal({ item: initialItem, prefilledWorkOrderId, o
   const [loadingItems, setLoadingItems] = React.useState(!initialItem);
 
   const [selectedWO, setSelectedWO] = React.useState(prefilledWorkOrderId ?? "");
-  const [selectedCatalogId, setSelectedCatalogId] = React.useState(initialItem?.seatInsertTypeId ?? "");
+  const [selectedCatalogId, setSelectedCatalogId] = React.useState(prefilledCatalogId ?? initialItem?.seatInsertTypeId ?? "");
   const [quantity, setQuantity] = React.useState("1");
   const [notes, setNotes] = React.useState("");
   const [loading, setLoading] = React.useState(false);

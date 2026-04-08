@@ -1,0 +1,16 @@
+﻿Login Result: {
+  token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMWY1YTZhNS1jZmViLTRlYzYtYjU4NS1iMjU4ZDA1OGMzNzciLCJlbWFpbCI6ImFkbWluQHNhbXMtbG9jYWwuY29tIiwicm9sZSI6IlNZU1RFTV9BRE1JTiIsInBlcm1pc3Npb25zIjp7fSwic2NvcGUiOnsiZ2FyYWdlcyI6W119LCJ0b2tlblZlcnNpb24iOjAsImlhdCI6MTc3NTQ0OTYxMSwiZXhwIjoxNzc1NDkyODExfQ.G3nTnvQ4JtqFGxce_xolvYGcp6vU3GzuQHGp9Kk2cTo',
+  user: {
+    id: '01f5a6a5-cfeb-4ec6-b585-b258d058c377',
+    email: 'admin@sams-local.com',
+    name: 'System Admin',
+    role: 'SYSTEM_ADMIN',
+    permissions: {},
+    scope: { garages: [] }
+  }
+}
+Testing with Order ID: cmnkngwtb0001cizmepc3tyt1
+CURL Proof 1 (GET /api/seat-orders/cmnkngwtb0001cizmepc3tyt1): HTTP 200
+{"id":"cmnkngwtb0001cizmepc3tyt1","orderNumber":"SO-2026-000001","garageId":"cmni776cm000353mofrpdm2k2","status":"DRAFT","totalCost":0,"totalQuantity":1,"notes":null,"createdByUserId":"816c7f8a-881b-47e4-90ab-f6b451241580","submittedAt":null,"approvedAt":null,"sentAt":null,"createdAt":"2026-04-04T18:12:27.551Z","updatedAt":"2026-04-04T18:12:27.551Z","garage":{"name":"Eglinton Garage"},"createdByUser":{"name":"System Admin"},"lines":[{"id":"cmnkngwtb0003cizm8t7ittu5","seatOrderId":"cmnkngwtb0001cizmepc3tyt1","seatInsertTypeId":"cmnjh1ufa0013dr6tddkvzwag","quantity":1,"unitCost":0,"description":"WASHER, LOCK 3/8\" STAINLESS STEEL","seatInsertType":{"partNumber":"BS-4521122","description":"WASHER, LOCK 3/8\" STAINLESS STEEL"}}],"approvals":[]}
+CURL Proof 2 (GET /api/seat-orders/cmnkngwtb0001cizmepc3tyt1/logs?take=100): HTTP 500
+{"error":"Internal server error","details":"Cannot read properties of undefined (reading 'findMany')","stack":"TypeError: Cannot read properties of undefined (reading 'findMany')\n    at getOrderLogs (C:\\SIMS\\sams-render\\apps\\api\\src\\modules\\seat-orders\\seat-orders.controller.ts:116:40)\n    at Layer.handle [as handle_request] (C:\\SIMS\\sams-render\\apps\\api\\node_modules\\express\\lib\\router\\layer.js:95:5)\n    at next (C:\\SIMS\\sams-render\\apps\\api\\node_modules\\express\\lib\\router\\route.js:149:13)\n    at Route.dispatch (C:\\SIMS\\sams-render\\apps\\api\\node_modules\\express\\lib\\router\\route.js:119:3)\n    at Layer.handle [as handle_request] (C:\\SIMS\\sams-render\\apps\\api\\node_modules\\express\\lib\\router\\layer.js:95:5)\n    at C:\\SIMS\\sams-render\\apps\\api\\node_modules\\express\\lib\\router\\index.js:284:15\n    at param (C:\\SIMS\\sams-render\\apps\\api\\node_modules\\express\\lib\\router\\index.js:365:14)\n    at param (C:\\SIMS\\sams-render\\apps\\api\\node_modules\\express\\lib\\router\\index.js:376:14)\n    at Function.process_params (C:\\SIMS\\sams-render\\apps\\api\\node_modules\\express\\lib\\router\\index.js:421:3)\n    at next (C:\\SIMS\\sams-render\\apps\\api\\node_modules\\express\\lib\\router\\index.js:280:10)"}

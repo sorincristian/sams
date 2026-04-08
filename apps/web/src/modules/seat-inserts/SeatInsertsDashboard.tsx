@@ -152,7 +152,15 @@ export function SeatInsertsDashboard() {
         </div>
         <div className="flex gap-2">
           <button 
-            onClick={() => fetchDashboardData(false)} 
+            onClick={async () => {
+              try {
+                // Ensure Sync Telemetry genuinely recalculates server-side alerts and statuses
+                await api.post("/seat-inserts/rules/run");
+                await fetchDashboardData(false);
+              } catch (err) {
+                console.error(err);
+              }
+            }} 
             disabled={loading}
             className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg font-semibold text-sm shadow-sm disabled:opacity-50 transition-colors"
           >
@@ -215,10 +223,10 @@ export function SeatInsertsDashboard() {
           <div className="bg-white rounded-2xl shadow p-6">
             <h2 className="text-xl font-semibold mb-4">Logistics Pipeline</h2>
             <PipelineFlow metrics={{
-              dirty: safeSummary.dirtyInventory || 0,
-              packed: safeSummary.packedForReturn || 0,
+              dirty: safeSummary.dirtyRecoveryQueue || 0,
+              packed: safeSummary.harveyInProgress || 0,
               inTransit: safeSummary.atVendorCount || 0,
-              returned: safeSummary.returned || 0
+              returned: safeSummary.rebuiltReturningToday || 0
             }} 
             vendorName={vendorId ? selectedVendorName : null}
             onMutationSuccess={fetchDashboardData} />

@@ -139,30 +139,30 @@ model Garage {
   vendorReceipts          VendorReceipt[]
 
   // Phase 25 Additions
-  emailProfile            GarageEmailProfile?
-  outboundEmails          OutboundEmail[]
-  seatOrders              SeatOrder[]
+  emailProfile   GarageEmailProfile?
+  outboundEmails OutboundEmail[]
+  seatOrders     SeatOrder[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Bus {
-  id                    String                @id @default(cuid())
-  fleetNumber           String                @unique
-  model                 String
-  manufacturer          String
-  status                String                @default("ACTIVE")
-  garageId              String
-  busCompatibilityId    String?
-  garage                Garage                @relation(fields: [garageId], references: [id])
-  busCompatibility      BusCompatibility?     @relation(fields: [busCompatibilityId], references: [id])
-  workOrders            WorkOrder[]
-  seatInserts           SeatInsert[]
-  replacementActivities ReplacementActivity[]
+  id                      String                   @id @default(cuid())
+  fleetNumber             String                   @unique
+  model                   String
+  manufacturer            String
+  status                  String                   @default("ACTIVE")
+  garageId                String
+  busCompatibilityId      String?
+  garage                  Garage                   @relation(fields: [garageId], references: [id])
+  busCompatibility        BusCompatibility?        @relation(fields: [busCompatibilityId], references: [id])
+  workOrders              WorkOrder[]
+  seatInserts             SeatInsert[]
+  replacementActivities   ReplacementActivity[]
   replacementReservations ReplacementReservation[]
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
 }
 
 model SeatInsertType {
@@ -190,26 +190,27 @@ model SeatInsertType {
   diagramHotspots        DiagramHotspot[]
   vendorOrderLines       VendorOrderLine[]
   seatOrderLines         SeatOrderLine[] // Phase 25 Addition
+  workOrders             WorkOrder[]
 
   // Project A: BOM Component Relationships
   components       BomComponent[] @relation("AssemblyComponents")
   usedInAssemblies BomComponent[] @relation("ComponentUsage")
 
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model BomComponent {
-  id               String         @id @default(cuid())
+  id               String @id @default(cuid())
   parentAssemblyId String
   childComponentId String
-  requiredQty      Int            @default(1)
+  requiredQty      Int    @default(1)
 
-  parentAssembly   SeatInsertType @relation("AssemblyComponents", fields: [parentAssemblyId], references: [id], onDelete: Cascade)
-  childComponent   SeatInsertType @relation("ComponentUsage", fields: [childComponentId], references: [id], onDelete: Cascade)
+  parentAssembly SeatInsertType @relation("AssemblyComponents", fields: [parentAssemblyId], references: [id], onDelete: Cascade)
+  childComponent SeatInsertType @relation("ComponentUsage", fields: [childComponentId], references: [id], onDelete: Cascade)
 
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([parentAssemblyId, childComponentId])
 }
@@ -304,19 +305,30 @@ model InventoryTransaction {
 }
 
 model WorkOrder {
-  id               String               @id @default(cuid())
-  workOrderNumber  String               @unique
-  status           String               @default("OPEN")
-  priority         String               @default("MEDIUM")
+  id               String  @id @default(cuid())
+  workOrderNumber  String  @unique
+  status           String  @default("OPEN")
+  priority         String  @default("MEDIUM")
   issueDescription String
   busId            String
   garageId         String
-  bus              Bus                  @relation(fields: [busId], references: [id])
-  garage           Garage               @relation(fields: [garageId], references: [id])
-  partUsages       WorkOrderPartUsage[]
+  seatInsertTypeId String?
+
+  bus                     Bus                      @relation(fields: [busId], references: [id])
+  garage                  Garage                   @relation(fields: [garageId], references: [id])
+  seatInsertType          SeatInsertType?          @relation(fields: [seatInsertTypeId], references: [id])
+  partUsages              WorkOrderPartUsage[]
   replacementReservations ReplacementReservation[]
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
+  
+  installedByUserId       String?
+  closedByUserId          String?
+  installedByUser         User?                    @relation("WorkOrderInstaller", fields: [installedByUserId], references: [id])
+  closedByUser            User?                    @relation("WorkOrderCloser", fields: [closedByUserId], references: [id])
+
+  closedAt                DateTime?
+  closedNotes             String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
 }
 
 model WorkOrderPartUsage {
@@ -338,35 +350,38 @@ model WorkOrderPartUsage {
 }
 
 model User {
-  id                    String                 @id @default(cuid())
-  name                  String
-  email                 String                 @unique
-  passwordHash          String
-  role                  String
-  roleId                String?
-  roleRelation          Role?                  @relation(fields: [roleId], references: [id])
-  garageId              String?
-  garage                Garage?                @relation(fields: [garageId], references: [id])
-  inventoryTransactions InventoryTransaction[]
-  workOrderPartUsages   WorkOrderPartUsage[]
-  auditLogs             AuditLog[]
-  importMappings        ImportMapping[]
-  scopes                UserScope[]
-  createdInvites        UserInvite[]
-  replacementActivities ReplacementActivity[]
-  disposalRecords       DisposalRecord[]
-  vendorReceipts        VendorReceipt[]
+  id                      String                   @id @default(cuid())
+  name                    String
+  email                   String                   @unique
+  passwordHash            String
+  role                    String
+  roleId                  String?
+  roleRelation            Role?                    @relation(fields: [roleId], references: [id])
+  garageId                String?
+  garage                  Garage?                  @relation(fields: [garageId], references: [id])
+  inventoryTransactions   InventoryTransaction[]
+  workOrderPartUsages     WorkOrderPartUsage[]
+  auditLogs               AuditLog[]
+  importMappings          ImportMapping[]
+  scopes                  UserScope[]
+  createdInvites          UserInvite[]
+  replacementActivities   ReplacementActivity[]
+  disposalRecords         DisposalRecord[]
+  vendorReceipts          VendorReceipt[]
   replacementReservations ReplacementReservation[]
 
   // Phase 25 Additions
-  createdSeatOrders     SeatOrder[]         @relation("OrderCreator")
-  approvedSeatOrders    SeatOrderApproval[] @relation("OrderApprover")
-  receivedSeatOrders    SeatOrderReceipt[]  @relation("OrderReceiver")
+  createdSeatOrders            SeatOrder[]           @relation("OrderCreator")
+  approvedSeatOrders           SeatOrderApproval[]   @relation("OrderApprover")
+  receivedSeatOrders           SeatOrderReceipt[]    @relation("OrderReceiver")
   uploadedSeatOrderAttachments SeatOrderAttachment[] @relation("OrderAttachmentUploader")
+  
+  installedWorkOrders          WorkOrder[]           @relation("WorkOrderInstaller")
+  closedWorkOrders             WorkOrder[]           @relation("WorkOrderCloser")
 
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
-  tokenVersion          Int                    @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tokenVersion Int      @default(0)
 }
 
 model AuditLog {
@@ -411,24 +426,24 @@ model Vendor {
 }
 
 model SeatInsert {
-  id             String          @id @default(cuid())
-  seatType        String
-  color           String
-  hardwareCode    String
-  fleetType       String
-  stockClass      StockClass       @default(REPLACEMENT_AVAILABLE)
-  conditionSource ConditionSource?
+  id                String           @id @default(cuid())
+  seatType          String
+  color             String
+  hardwareCode      String
+  fleetType         String
+  stockClass        StockClass       @default(REPLACEMENT_AVAILABLE)
+  conditionSource   ConditionSource?
   locationId        String
   batchId           String?
   installedBusId    String?
   seatInsertTypeId  String?
   vendorOrderLineId String?
 
-  location       Garage             @relation(fields: [locationId], references: [id])
-  batch          ReupholsteryBatch? @relation(fields: [batchId], references: [id])
-  installedBus   Bus?               @relation(fields: [installedBusId], references: [id])
-  seatInsertType SeatInsertType?    @relation(fields: [seatInsertTypeId], references: [id])
-  vendorOrderLine VendorOrderLine?  @relation(fields: [vendorOrderLineId], references: [id])
+  location        Garage             @relation(fields: [locationId], references: [id])
+  batch           ReupholsteryBatch? @relation(fields: [batchId], references: [id])
+  installedBus    Bus?               @relation(fields: [installedBusId], references: [id])
+  seatInsertType  SeatInsertType?    @relation(fields: [seatInsertTypeId], references: [id])
+  vendorOrderLine VendorOrderLine?   @relation(fields: [vendorOrderLineId], references: [id])
 
   replacementActivities ReplacementActivity[]
   disposalRecords       DisposalRecord[]
@@ -465,8 +480,8 @@ model ReupholsteryBatch {
   trackingNumber     String?
   notes              String?
 
-  garage   Garage       @relation(fields: [garageId], references: [id])
-  vendor   Vendor       @relation(fields: [vendorId], references: [id])
+  garage   Garage          @relation(fields: [garageId], references: [id])
+  vendor   Vendor          @relation(fields: [vendorId], references: [id])
   inserts  SeatInsert[]
   receipts VendorReceipt[]
 
@@ -476,8 +491,8 @@ model ReupholsteryBatch {
 }
 
 model VendorOrder {
-  id                   String           @id @default(cuid())
-  orderNumber          String           @unique
+  id                   String            @id @default(cuid())
+  orderNumber          String            @unique
   garageId             String
   vendorId             String
   status               VendorOrderStatus @default(DRAFT)
@@ -497,11 +512,11 @@ model VendorOrder {
 }
 
 model VendorOrderLine {
-  id               String         @id @default(cuid())
+  id               String @id @default(cuid())
   orderId          String
   seatInsertTypeId String
   quantityOrdered  Int
-  quantityReceived Int            @default(0)
+  quantityReceived Int    @default(0)
 
   order          VendorOrder    @relation(fields: [orderId], references: [id])
   seatInsertType SeatInsertType @relation(fields: [seatInsertTypeId], references: [id])
@@ -510,7 +525,7 @@ model VendorOrderLine {
 
 model VendorReceipt {
   id                  String              @id @default(cuid())
-  type                String              // "BATCH_RETURN" | "ORDER_RECEIPT"
+  type                String // "BATCH_RETURN" | "ORDER_RECEIPT"
   reupholsteryBatchId String?
   vendorOrderId       String?
   garageId            String
@@ -520,14 +535,14 @@ model VendorReceipt {
   status              VendorReceiptStatus @default(PENDING)
   notes               String?
 
-  batch       ReupholsteryBatch? @relation(fields: [reupholsteryBatchId], references: [id])
-  order       VendorOrder?       @relation(fields: [vendorOrderId], references: [id])
-  garage      Garage             @relation(fields: [garageId], references: [id])
-  vendor      Vendor             @relation(fields: [vendorId], references: [id])
-  receivingUser User             @relation(fields: [receivedBy], references: [id])
+  batch         ReupholsteryBatch? @relation(fields: [reupholsteryBatchId], references: [id])
+  order         VendorOrder?       @relation(fields: [vendorOrderId], references: [id])
+  garage        Garage             @relation(fields: [garageId], references: [id])
+  vendor        Vendor             @relation(fields: [vendorId], references: [id])
+  receivingUser User               @relation(fields: [receivedBy], references: [id])
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ReplacementActivity {
@@ -679,7 +694,7 @@ enum SeatOrderStatus {
   CONFIRMED
   PARTIALLY_RECEIVED
   RECEIVED
-  INSTALLED 
+  INSTALLED
   CLOSED
   CANCELLED
 }
@@ -699,21 +714,21 @@ enum ApprovalStatus {
 }
 
 model GarageEmailProfile {
-  id              String   @id @default(cuid())
-  garageId        String   @unique
-  fromName        String
-  fromEmail       String
-  replyToEmail    String
-  signatureHtml   String?
-  harveyToEmail   String
-  defaultCc       String?
-  defaultBcc      String?
-  providerType    String   @default("SMTP")
-  active          Boolean  @default(true)
-  
-  garage          Garage   @relation(fields: [garageId], references: [id])
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id            String  @id @default(cuid())
+  garageId      String  @unique
+  fromName      String
+  fromEmail     String
+  replyToEmail  String
+  signatureHtml String?
+  harveyToEmail String
+  defaultCc     String?
+  defaultBcc    String?
+  providerType  String  @default("SMTP")
+  active        Boolean @default(true)
+
+  garage    Garage   @relation(fields: [garageId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model EmailTemplate {
@@ -727,27 +742,27 @@ model EmailTemplate {
 }
 
 model OutboundEmail {
-  id               String      @id @default(cuid())
-  garageId         String
-  to               String
-  cc               String?
-  bcc              String?
-  subject          String
-  bodyHtml         String
-  status           EmailStatus @default(QUEUED)
+  id                String      @id @default(cuid())
+  garageId          String
+  to                String
+  cc                String?
+  bcc               String?
+  subject           String
+  bodyHtml          String
+  status            EmailStatus @default(QUEUED)
   providerMessageId String?
-  errorMessage     String?
-  attempts         Int         @default(0)
-  lockedUntil      DateTime?   
-  templateCode     String      @default("SEAT_ORDER_HARVEY")
-  
-  garage           Garage      @relation(fields: [garageId], references: [id])
-  events           EmailAuditEvent[]
-  seatOrderId      String?
-  seatOrder        SeatOrder?  @relation(fields: [seatOrderId], references: [id])
+  errorMessage      String?
+  attempts          Int         @default(0)
+  lockedUntil       DateTime?
+  templateCode      String      @default("SEAT_ORDER_HARVEY")
 
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  garage      Garage            @relation(fields: [garageId], references: [id])
+  events      EmailAuditEvent[]
+  seatOrderId String?
+  seatOrder   SeatOrder?        @relation(fields: [seatOrderId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model EmailAuditEvent {
@@ -756,115 +771,115 @@ model EmailAuditEvent {
   status           EmailStatus
   message          String?
   providerResponse String?
-  
-  email            OutboundEmail @relation(fields: [emailId], references: [id])
-  createdAt        DateTime      @default(now())
+
+  email     OutboundEmail @relation(fields: [emailId], references: [id])
+  createdAt DateTime      @default(now())
 }
 
 model SeatOrder {
-  id              String          @id @default(cuid())
-  orderNumber     String          @unique
-  garageId        String
-  status          SeatOrderStatus @default(DRAFT)
-  totalCost       Float           @default(0)
-  totalQuantity   Int             @default(0)
-  notes           String?
-  
+  id            String          @id @default(cuid())
+  orderNumber   String          @unique
+  garageId      String
+  status        SeatOrderStatus @default(DRAFT)
+  totalCost     Float           @default(0)
+  totalQuantity Int             @default(0)
+  notes         String?
+
   createdByUserId String
   submittedAt     DateTime?
   approvedAt      DateTime?
   sentAt          DateTime?
 
-  garage          Garage          @relation(fields: [garageId], references: [id])
-  createdByUser   User            @relation("OrderCreator", fields: [createdByUserId], references: [id])
-  
-  outboundEmails  OutboundEmail[]
+  garage        Garage @relation(fields: [garageId], references: [id])
+  createdByUser User   @relation("OrderCreator", fields: [createdByUserId], references: [id])
 
-  lines           SeatOrderLine[]
-  approvals       SeatOrderApproval[]
-  receipts        SeatOrderReceipt[]
-  attachments     SeatOrderAttachment[]
+  outboundEmails OutboundEmail[]
 
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  lines       SeatOrderLine[]
+  approvals   SeatOrderApproval[]
+  receipts    SeatOrderReceipt[]
+  attachments SeatOrderAttachment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model SeatOrderLine {
-  id               String          @id @default(cuid())
+  id               String  @id @default(cuid())
   seatOrderId      String
   seatInsertTypeId String
   quantity         Int
   unitCost         Float
-  description      String?         
-  
-  order            SeatOrder       @relation(fields: [seatOrderId], references: [id])
-  seatInsertType   SeatInsertType  @relation(fields: [seatInsertTypeId], references: [id])
-  receipts         SeatOrderReceiptLine[]
+  description      String?
+
+  order          SeatOrder              @relation(fields: [seatOrderId], references: [id])
+  seatInsertType SeatInsertType         @relation(fields: [seatInsertTypeId], references: [id])
+  receipts       SeatOrderReceiptLine[]
 }
 
 model SeatOrderApproval {
-  id               String          @id @default(cuid())
+  id               String         @id @default(cuid())
   seatOrderId      String
   approvedByUserId String
-  status           ApprovalStatus  @default(PENDING)
+  status           ApprovalStatus @default(PENDING)
   notes            String?
-  
-  order            SeatOrder       @relation(fields: [seatOrderId], references: [id], onDelete: Cascade)
-  approvedByUser   User            @relation("OrderApprover", fields: [approvedByUserId], references: [id])
-  createdAt        DateTime        @default(now())
+
+  order          SeatOrder @relation(fields: [seatOrderId], references: [id], onDelete: Cascade)
+  approvedByUser User      @relation("OrderApprover", fields: [approvedByUserId], references: [id])
+  createdAt      DateTime  @default(now())
 }
 
 model SeatOrderReceipt {
-  id               String          @id @default(cuid())
+  id               String  @id @default(cuid())
   seatOrderId      String
   receivedByUserId String
   notes            String?
-  
-  order            SeatOrder       @relation(fields: [seatOrderId], references: [id])
-  receivedByUser   User            @relation("OrderReceiver", fields: [receivedByUserId], references: [id])
-  lines            SeatOrderReceiptLine[]
-  
-  createdAt        DateTime        @default(now())
+
+  order          SeatOrder              @relation(fields: [seatOrderId], references: [id])
+  receivedByUser User                   @relation("OrderReceiver", fields: [receivedByUserId], references: [id])
+  lines          SeatOrderReceiptLine[]
+
+  createdAt DateTime @default(now())
 }
 
 model SeatOrderReceiptLine {
-  id               String           @id @default(cuid())
-  receiptId        String
-  seatOrderLineId  String
-  receivedQty      Int
-  
-  receipt          SeatOrderReceipt @relation(fields: [receiptId], references: [id])
-  seatOrderLine    SeatOrderLine    @relation(fields: [seatOrderLineId], references: [id])
+  id              String @id @default(cuid())
+  receiptId       String
+  seatOrderLineId String
+  receivedQty     Int
+
+  receipt       SeatOrderReceipt @relation(fields: [receiptId], references: [id])
+  seatOrderLine SeatOrderLine    @relation(fields: [seatOrderLineId], references: [id])
 }
 
 model SeatOrderAttachment {
-  id               String          @id @default(cuid())
+  id               String @id @default(cuid())
   seatOrderId      String
   fileUrl          String
   fileName         String
   uploadedByUserId String
-  
-  order            SeatOrder       @relation(fields: [seatOrderId], references: [id])
-  uploadedByUser   User            @relation("OrderAttachmentUploader", fields: [uploadedByUserId], references: [id])
-  
-  createdAt        DateTime        @default(now())
+
+  order          SeatOrder @relation(fields: [seatOrderId], references: [id])
+  uploadedByUser User      @relation("OrderAttachmentUploader", fields: [uploadedByUserId], references: [id])
+
+  createdAt DateTime @default(now())
 }
 
 model ReplacementReservation {
   id                    String            @id @default(cuid())
   workOrderId           String?
   busId                 String?
-  seatPosition          String?            
-  actualInventoryUnitId String?            
+  seatPosition          String?
+  actualInventoryUnitId String?
   status                ReservationStatus @default(RESERVED)
   expiresAt             DateTime?
   reservedByUserId      String
-  
-  workOrder             WorkOrder?        @relation(fields: [workOrderId], references: [id])
-  bus                   Bus?              @relation(fields: [busId], references: [id])
-  inventoryUnit         SeatInsert?       @relation(fields: [actualInventoryUnitId], references: [id])
-  reservedByUser        User              @relation(fields: [reservedByUserId], references: [id])
 
-  createdAt             DateTime          @default(now())
-  updatedAt             DateTime          @updatedAt
+  workOrder      WorkOrder?  @relation(fields: [workOrderId], references: [id])
+  bus            Bus?        @relation(fields: [busId], references: [id])
+  inventoryUnit  SeatInsert? @relation(fields: [actualInventoryUnitId], references: [id])
+  reservedByUser User        @relation(fields: [reservedByUserId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

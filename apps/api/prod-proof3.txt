@@ -1,0 +1,157 @@
+Login res: {
+  token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4MTZjN2Y4YS04ODFiLTQ3ZTQtOTBhYi1mNmI0NTEyNDE1ODAiLCJlbWFpbCI6ImFkbWluQHNhbXMubG9jYWwiLCJyb2xlIjoiU1lTVEVNX0FETUlOIiwicGVybWlzc2lvbnMiOnt9LCJzY29wZSI6eyJnYXJhZ2VzIjpbXX0sInRva2VuVmVyc2lvbiI6MCwiaWF0IjoxNzc1NTA5NzQ4LCJleHAiOjE3NzU1NTI5NDh9.MBgbuSWmqNadB7eQQMz6wvrLb-kcXrfmOBzrBHcsyo4',
+  user: {
+    id: '816c7f8a-881b-47e4-90ab-f6b451241580',
+    email: 'admin@sams.local',
+    name: 'System Admin',
+    role: 'SYSTEM_ADMIN',
+    permissions: {},
+    scope: { garages: [] }
+  }
+}
+Logged into PROD.
+garagesList type: array [
+  {
+    id: 'cmni776yt000653mocbmakr94',
+    code: 'G-B94A4',
+    name: 'Arrow Road Garage',
+    type: null,
+    thresholdNewInventory: 10,
+    thresholdDirtyInventory: 20,
+    createdAt: '2026-04-03T01:01:27.941Z',
+    updatedAt: '2026-04-03T01:01:27.941Z',
+    _count: { buses: 295 }
+  },
+  {
+    id: 'cmni7765s000253motez45brd',
+    code: 'G-AFEA3',
+    name: 'Birch Mount Garage',
+    type: null,
+    thresholdNewInventory: 10,
+    thresholdDirtyInventory: 20,
+    createdAt: '2026-04-03T01:01:26.897Z',
+    updatedAt: '2026-04-03T01:01:26.897Z',
+    _count: { buses: 239 }
+  },
+  {
+    id: 'cmni776cm000353mofrpdm2k2',
+    code: 'G-05A4B',
+    name: 'Eglinton Garage',
+    type: null,
+    thresholdNewInventory: 10,
+    thresholdDirtyInventory: 20,
+    createdAt: '2026-04-03T01:01:27.142Z',
+    updatedAt: '2026-04-03T01:01:27.142Z',
+    _count: { buses: 268 }
+  },
+  {
+    id: 'cmni775oz000053mo5cwv1d94',
+    code: 'G-1AD18',
+    name: 'Malvern Garage',
+    type: null,
+    thresholdNewInventory: 10,
+    thresholdDirtyInventory: 20,
+    createdAt: '2026-04-03T01:01:26.291Z',
+    updatedAt: '2026-04-03T01:01:26.291Z',
+    _count: { buses: 285 }
+  },
+  {
+    id: 'cmni775zg000153mob705is54',
+    code: 'G-06814',
+    name: 'McNicoll Garage',
+    type: null,
+    thresholdNewInventory: 10,
+    thresholdDirtyInventory: 20,
+    createdAt: '2026-04-03T01:01:26.669Z',
+    updatedAt: '2026-04-03T01:01:26.669Z',
+    _count: { buses: 258 }
+  },
+  {
+    id: 'cmni776k2000453movh8sp0va',
+    code: 'G-35C84',
+    name: 'Mount Dennis Garage',
+    type: null,
+    thresholdNewInventory: 10,
+    thresholdDirtyInventory: 20,
+    createdAt: '2026-04-03T01:01:27.410Z',
+    updatedAt: '2026-04-03T01:01:27.410Z',
+    _count: { buses: 277 }
+  },
+  {
+    id: 'cmni776qy000553mozkkvbv5t',
+    code: 'G-1AFF8',
+    name: 'Queensway Garage',
+    type: null,
+    thresholdNewInventory: 10,
+    thresholdDirtyInventory: 20,
+    createdAt: '2026-04-03T01:01:27.658Z',
+    updatedAt: '2026-04-03T01:01:27.658Z',
+    _count: { buses: 225 }
+  },
+  {
+    id: 'cmnklerb80000mvkj3rql93au',
+    code: 'HUB',
+    name: 'Verification Hub',
+    type: null,
+    thresholdNewInventory: 10,
+    thresholdDirtyInventory: 20,
+    createdAt: '2026-04-04T17:14:47.874Z',
+    updatedAt: '2026-04-04T17:14:47.874Z',
+    _count: { buses: 0 }
+  },
+  {
+    id: 'cmni7776f000753mokq2mnaau',
+    code: 'G-101AE',
+    name: 'Wilson Garage',
+    type: null,
+    thresholdNewInventory: 10,
+    thresholdDirtyInventory: 20,
+    createdAt: '2026-04-03T01:01:28.216Z',
+    updatedAt: '2026-04-03T01:01:28.216Z',
+    _count: { buses: 252 }
+  }
+]
+Using PROD Garage ID: cmni7765s000253motez45brd
+Prod CURL Proof (POST /api/email-centre/profiles): HTTP 400
+{"error":"Profile already exists for this garage."}
+Prod CURL Proof (GET /api/email-centre/profiles): HTTP 200
+[
+  {
+    "id": "cmnnibvtz0003i06neia570zx",
+    "garageId": "cmni7765s000253motez45brd",
+    "fromName": "TTC Birch Dispatch",
+    "fromEmail": "birch@sams.local",
+    "replyToEmail": "dispatch@sams.local",
+    "signatureHtml": null,
+    "harveyToEmail": "noreply@sams.local",
+    "defaultCc": null,
+    "defaultBcc": null,
+    "providerType": "SMTP",
+    "active": true,
+    "createdAt": "2026-04-06T18:11:53.447Z",
+    "updatedAt": "2026-04-06T18:11:53.447Z",
+    "garage": {
+      "name": "Birch Mount Garage",
+      "code": "G-AFEA3"
+    }
+  },
+  {
+    "id": "cmnms3kjv0001i06n7471cbjq",
+    "garageId": "cmni775oz000053mo5cwv1d94",
+    "fromName": "Test Profile",
+    "fromEmail": "test@sams.local",
+    "replyToEmail": "test@sams.local",
+    "signatureHtml": null,
+    "harveyToEmail": "noreply@sams.local",
+    "defaultCc": null,
+    "defaultBcc": null,
+    "providerType": "SMTP",
+    "active": true,
+    "createdAt": "2026-04-06T05:57:35.554Z",
+    "updatedAt": "2026-04-06T05:57:35.554Z",
+    "garage": {
+      "name": "Malvern Garage",
+      "code": "G-1AD18"
+    }
+  }
+]

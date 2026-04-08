@@ -46,9 +46,9 @@ async function run() {
       await prisma.user.create({ data: { id: 'system', name: 'System', email: 'system@sams.local', passwordHash: 'none', role: 'SYSTEM' } });
     }
 
-    // Insert 2 mock NEW inserts
-    const insert1 = await prisma.seatInsert.create({ data: { status: 'NEW', seatType: 'M001', color: 'Blue', hardwareCode: 'H1', fleetType: 'F1', locationId: garage.id } });
-    const insert2 = await prisma.seatInsert.create({ data: { status: 'NEW', seatType: 'M001', color: 'Blue', hardwareCode: 'H1', fleetType: 'F1', locationId: garage.id } });
+    // Insert 2 mock NEW inserts using proper schema enums
+    const insert1 = await prisma.seatInsert.create({ data: { stockClass: 'REPLACEMENT_AVAILABLE', conditionSource: 'NEW', seatType: 'M001', color: 'Blue', hardwareCode: 'H1', fleetType: 'F1', locationId: garage.id } });
+    const insert2 = await prisma.seatInsert.create({ data: { stockClass: 'REPLACEMENT_AVAILABLE', conditionSource: 'NEW', seatType: 'M001', color: 'Blue', hardwareCode: 'H1', fleetType: 'F1', locationId: garage.id } });
 
     console.log(`\n=== 2. REUPHOLSTERY WORKFLOW ===`);
     console.log("Marking insert DIRTY...");
